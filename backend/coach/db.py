@@ -225,6 +225,30 @@ class Store:
             conn=conn,
         )
 
+    async def conversations(self):
+        return await self.query(
+            """SELECT c.id,
+                (SELECT left(content,80) FROM agent_messages WHERE channel=c.id AND role='user'
+                 ORDER BY id LIMIT 1) AS title,
+                coalesce((SELECT created_at FROM agent_messages WHERE channel=c.id ORDER BY id DESC LIMIT 1),
+                         c.created_at) AS updated_at
+               FROM chat_conversations c ORDER BY updated_at DESC, c.id LIMIT 100"""
+        )
+
+    async def create_conversation(self, identifier):
+        return await self.query(
+            "INSERT INTO chat_conversations(id) VALUES (%s) RETURNING id, NULL::text AS title, created_at AS updated_at",
+            (identifier,),
+            one=True,
+        )
+
+    async def conversation_exists(self, identifier):
+        return bool(
+            await self.query(
+                "SELECT 1 FROM chat_conversations WHERE id=%s", (identifier,), one=True
+            )
+        )
+
     async def history(self, channel="web", limit=50):
         rows = await self.query(
             "SELECT role,content,created_at FROM agent_messages WHERE channel=%s ORDER BY id DESC LIMIT %s",

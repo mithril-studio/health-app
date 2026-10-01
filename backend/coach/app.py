@@ -20,7 +20,15 @@ from coach.db import Store
 from coach.intervals import Intervals, UpstreamError
 from coach.jobs import Jobs
 from coach.mcp_server import create_mcp
-from coach.models import ActivityInput, ChatInput, CurvesInput, DateRange, JobInput, LoginInput
+from coach.models import (
+    ActivityInput,
+    ChatInput,
+    ConversationId,
+    CurvesInput,
+    DateRange,
+    JobInput,
+    LoginInput,
+)
 from coach.telegram_link import TelegramLink
 from coach.tools import ToolError, ToolService
 
@@ -211,17 +219,33 @@ def create_app(settings=None, *, store=None, source=None):
     async def sync():
         return await tools.sync.run()
 
+    @app.get("/api/conversations")
+    async def conversations():
+        return {"conversations": await db.conversations()}
+
+    @app.post("/api/conversations", status_code=201)
+    async def new_conversation():
+        return await db.create_conversation("web:" + uuid.uuid4().hex)
+
+    async def require_conversation(identifier):
+        if not await db.conversation_exists(identifier):
+            raise ToolError("Conversation not found", 404)
+
     @app.get("/api/chat")
-    async def chat_history():
-        return {"messages": await db.history(), "agent": agent.status()}
+    async def chat_history(conversation_id: ConversationId = "web"):
+        await require_conversation(conversation_id)
+        return {"messages": await db.history(conversation_id), "agent": agent.status()}
 
     @app.post("/api/chat")
     async def chat(
         body: ChatInput, idempotency_key: Annotated[str | None, Header(max_length=200)] = None
     ):
+        await require_conversation(body.conversation_id)
         await tools.sync.run()
         reply = await agent.respond(
-            body.message, key="web:" + (idempotency_key or uuid.uuid4().hex)
+            body.message,
+            key="web:" + (idempotency_key or uuid.uuid4().hex),
+            channel=body.conversation_id,
         )
         jobs.wakeup.set()
         return {"reply": reply}

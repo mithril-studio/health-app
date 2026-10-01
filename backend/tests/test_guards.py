@@ -127,6 +127,52 @@ async def test_session_survives_unrelated_browser_cookies(web, split_headers):
     ).status_code == 401
 
 
+async def test_conversation_history_is_persistent_and_isolated(web, store, monkeypatch):
+    c, app = web
+    headers = {"Authorization": "Bearer api-secret", "Origin": "https://coach.test"}
+    assert (await c.get("/api/conversations")).status_code == 401
+    await store.message("legacy:user", "web", "user", "Existing conversation")
+    await store.message("telegram:user", "telegram", "user", "Private Telegram thread")
+    listing = (await c.get("/api/conversations", headers=headers)).json()["conversations"]
+    assert len(listing) == 1 and listing[0]["id"] == "web"
+    assert listing[0]["title"] == "Existing conversation"
+    created = (await c.post("/api/conversations", headers=headers, json={})).json()
+    thread = created["id"]
+    assert thread != "web"
+    assert (await c.get("/api/chat", params={"conversation_id": thread}, headers=headers)).json()[
+        "messages"
+    ] == []
+
+    async def sync():
+        pass
+
+    async def respond(message, *, key, channel):
+        await store.message(key + ":user", channel, "user", message)
+        await store.message(key + ":reply", channel, "assistant", "A focused reply")
+        return "A focused reply"
+
+    monkeypatch.setattr(app.state.tools.sync, "run", sync)
+    monkeypatch.setattr(app.state.agent, "respond", respond)
+    result = await c.post(
+        "/api/chat", headers=headers, json={"message": "New question", "conversation_id": thread}
+    )
+    assert result.status_code == 200
+    history = (
+        await c.get("/api/chat", params={"conversation_id": thread}, headers=headers)
+    ).json()["messages"]
+    assert [m["content"] for m in history] == ["New question", "A focused reply"]
+    legacy = (await c.get("/api/chat", headers=headers)).json()["messages"]
+    assert [m["content"] for m in legacy] == ["Existing conversation"]
+    listing = (await c.get("/api/conversations", headers=headers)).json()["conversations"]
+    assert listing[0]["id"] == thread and listing[0]["title"] == "New question"
+    assert (
+        await c.get("/api/chat", params={"conversation_id": "telegram"}, headers=headers)
+    ).status_code == 422
+    assert (
+        await c.get("/api/chat", params={"conversation_id": "web:" + "0" * 32}, headers=headers)
+    ).status_code == 404
+
+
 async def test_login_rate_limit_survives_requests(web):
     c, _ = web
     for _ in range(5):

@@ -105,8 +105,12 @@ class LoginInput(StrictModel):
     password: Annotated[str, Field(min_length=1, max_length=1024)]
 
 
+ConversationId = Annotated[str, StringConstraints(pattern=r"^(web|web:[a-f0-9]{32})$")]
+
+
 class ChatInput(StrictModel):
     message: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8000)]
+    conversation_id: ConversationId = "web"
 
 
 class JobInput(StrictModel):
