@@ -10,7 +10,7 @@
 - **Browser:** live Chrome checks across all four surfaces: no JavaScript errors or Axe A/AA violations. No horizontal body overflow at 320, 768 or 1440 px. Source warnings, running curve, fitness and real planned workouts display correctly. Native browser tests cover move confirmation/rollback, drag-and-drop, chat retry and separate deletion confirmation using synthetic fixtures.
 - **Services:** PostgreSQL (private loopback), FastAPI, Next.js, nginx and the fallback relay are running. VM HTTP wake works when bot protection is disabled. Suspend/hibernate are intentionally off while relying on VM scheduling.
 - **Scheduling implementation:** morning 08:30, evening 21:00 Amsterdam and 20-minute activity polling. Fallback relay has persisted its activity baseline; tests cover both DST changes, retry/backoff, deduplication, crash recovery and non-flooding startup. A seven-day live delivery run has not been performed.
-- **Build/checks:** 52 backend + 33 relay + 10 Worker + 14 frontend unit tests; 13 native Chrome scenarios. Typecheck and production builds pass. Frontend/Worker npm audits report zero vulnerabilities. Worker dry-run bundling passes.
+- **Build/checks:** 52 backend + 33 relay + 10 Worker + 14 frontend unit tests; 13 native Chrome scenarios. Typecheck and production builds pass. Frontend/Worker npm audits report zero vulnerabilities; `pip-audit` found no known vulnerabilities in all pinned Python dependencies. Worker dry-run bundling passes.
 
 ## External setup still required
 
@@ -34,4 +34,4 @@ python3 deploy/smoke.py --chat
 node deploy/browser-smoke.mjs
 ```
 
-Backend tests need an isolated PostgreSQL connection (see backend/IMPLEMENTATION.md). Browser checks consume one login each; the production login limit is five attempts per fifteen minutes. Screenshot artifacts contain private data and are excluded from git.
+Backend tests need an isolated PostgreSQL connection (see backend/IMPLEMENTATION.md). The temporary local test Postgres was stopped after verification; production Postgres remains running on the VM. Browser checks consume one login each; the production login limit is five attempts per fifteen minutes. Screenshot artifacts contain private data and are excluded from git.
