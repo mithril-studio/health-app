@@ -1,0 +1,11 @@
+{
+  "$schema":"node_modules/wrangler/config-schema.json",
+  "name":"coach-reachy",
+  "main":"src/index.mjs",
+  "compatibility_date":"2026-09-01",
+  "workers_dev":true,
+  "observability":{"enabled":true},
+  "triggers":{"crons":["30 6,7 * * *","0 19,20 * * *","*/20 * * * *"]},
+  "vars":{"BOX_URL":"https://coach-reachy.boxd.sh","INTERVALS_ATHLETE_ID":"i734994"},
+  "kv_namespaces":[{"binding":"STATE","id":"REPLACE_WITH_KV_NAMESPACE_ID"}]
+}
