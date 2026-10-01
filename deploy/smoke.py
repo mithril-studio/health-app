@@ -61,10 +61,22 @@ else:
     assert 'get_calendar' in tools
     print('PASS MCP tool catalog (SSE)')
 if args.chat:
+    curve_status,curves=request('/api/curves?sport=Run&period=84')
+    assert curve_status==200, f'Pace curve: {curve_status}'
+    measured=None
+    for curve in curves.get('list',[]):
+        if 5000 in curve.get('distance',[]):
+            index=curve['distance'].index(5000)
+            measured=curve['values'][index]
+            break
     started=time.monotonic()
-    status,result=request('/api/chat',{'message':'Read my recent wellness and fitness data and give two concise recovery-aware training suggestions. Mention the date of the data and any data limitations. Do not create, update, move or delete workouts or zones.'})
+    status,result=request('/api/chat',{'message':'Use the get_curves tool with sport Run and period 84. Report my measured best 5000 metre effort, if available, in m:ss format. Then give one concise recovery-aware suggestion using my recent wellness data. State missing data and do not modify any workouts or settings.'})
     assert status==200 and result.get('reply'),f'Chat: {status}'
-    print('PASS OAuth data-grounded chat:',len(result['reply']),'characters;',round(time.monotonic()-started,1),'seconds')
+    if measured:
+        seconds=round(measured)
+        expected=f'{seconds//60}:{seconds%60:02}'
+        assert expected in result['reply'], 'Coaching reply must report the measured 5 km tool result'
+    print('PASS OAuth MCP-tool coaching matches measured pace data:',len(result['reply']),'characters;',round(time.monotonic()-started,1),'seconds')
 status,_=request('/api/logout',{})
 assert status in (200,204)
 status,_=request('/api/dashboard')

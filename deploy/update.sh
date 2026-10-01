@@ -16,5 +16,6 @@ boxd machine exec "$VM" -- 'cd /opt/coach-reachy/backend && uv pip install --pyt
 boxd machine exec "$VM" -- 'cd /opt/coach-reachy/ops && uv pip install --python .venv/bin/python --only-binary :all: -r requirements.txt'
 boxd machine exec "$VM" -- 'cd /opt/coach-reachy/web && npm ci --ignore-scripts --no-fund --no-audit && NEXT_TELEMETRY_DISABLED=1 npm run build'
 boxd machine exec "$VM" -- 'sudo cp /opt/coach-reachy/deploy/coach-reachy-*.service /opt/coach-reachy/ops/coach-reachy-relay.service /etc/systemd/system/; sudo cp /opt/coach-reachy/deploy/logrotate.conf /etc/logrotate.d/coach-reachy; sudo systemctl daemon-reload; sudo systemctl restart coach-reachy-api coach-reachy-web; if systemctl is-active --quiet coach-reachy-relay; then sudo systemctl restart coach-reachy-relay; fi'
-curl --fail --silent --show-error --retry 5 --retry-delay 2 https://coach-reachy.boxd.sh/api/health
+boxd machine exec "$VM" -- 'sudo cp /opt/coach-reachy/deploy/nginx.conf /etc/nginx/sites-available/coach-reachy; sudo nginx -t && sudo systemctl reload nginx'
+curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 --max-time 15 https://coach-reachy.boxd.sh/api/health
 printf '\nUpdated. Run python3 deploy/smoke.py and node deploy/browser-smoke.mjs.\n'
