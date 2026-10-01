@@ -30,7 +30,7 @@ npm start
 - Activity dialog: lazy `/api/activity/{id}` fetch, raw interval breakdown, recorded HR/pace/power zone time, metric gaps, and a fixed-origin Intervals activity link.
 - Insights: CTL/ATL/form with missing dates left as gaps; logarithmic distance/duration curves; running/cycling switch; weekly zone coverage and sport load including football/gym; HRV/sleep/resting HR beside load; real 5 km results and recorded threshold pace history. Charts include accessible data tables.
 - Coach: server-persisted conversation, suggestion chips that fill the composer, thinking state, errors, history reload, and retries using the same backend-supported `Idempotency-Key`. No automatic retry of writes. Deletions are loaded from `/api/confirmations`, reviewed in a dialog, and confirmed only by `POST /api/confirmations/{token}/confirm`. Chat text can never invoke that endpoint. Missing optional confirmation endpoints are tolerated.
-- The separately supplied Telegram connection component is retained. It requests a pairing link only when the user selects Connect, validates the HTTPS Telegram domain, and never sends a message automatically.
+- Chat is the second sidebar entry. Telegram is a compact, vertically centered link in the upper-right header on every page, replacing the private-workspace label. Unlinked chats open a pairing dialog; linked chats open Telegram directly. The pairing link is generated only after selecting Connect and its HTTPS Telegram domain is validated.
 - Semantic OKLCH light/dark tokens, one muted emerald accent, hairline surfaces, Geist, Lucide, collapsible 256 px sidebar, 64 px header, responsive layouts, keyboard focus, skip link, Radix focus-trapped dialogs, reduced motion, and centralized authored copy in `src/lib/i18n.ts`. Theme and sidebar cookies seed the server shell; preferences are also written locally.
 
 ## Data and privacy
@@ -55,6 +55,6 @@ Source-restricted Strava imports are explicitly labeled **Restricted activity**,
 
 Browser scenarios intercept APIs at the boundary. They verify the frontend contract without using production credentials or changing live workouts. End-to-end delivery to Intervals/Garmin, production cookie configuration, coach provider availability, and Telegram delivery remain backend/deployment integration responsibilities.
 
-The initial contract does not guarantee unrestricted activity details, wellness sensors, threshold history, or a curve for every sport. Their absence is represented explicitly. Only English is currently supplied by the dictionary. Chat replies are rendered as safe plain text; HTML is never executed. Available history length is controlled by the backend.
+The initial contract does not guarantee unrestricted activity details, wellness sensors, threshold history, or a curve for every sport. Their absence is represented explicitly. Only English is currently supplied by the dictionary. Assistant replies render Markdown (headings, emphasis, lists, tables and code) using react-markdown/remark-gfm. Raw HTML and images are disabled, unsafe URL protocols are filtered, and external links use noreferrer. User messages stay plain text; HTML is never executed. Available history length is controlled by the backend.
 
 Automated accessibility checks complement the keyboard/visual review; a full assistive-technology audit has not been performed.

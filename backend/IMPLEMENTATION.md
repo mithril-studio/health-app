@@ -26,7 +26,7 @@ Use independent `APP_PASSWORD`, `API_AUTH_TOKEN` (optional), `MCP_AUTH_TOKEN`, a
 
 ## API integration details
 
-All contract endpoints are implemented. Data APIs accept the secure user session or `API_AUTH_TOKEN`. MCP accepts only `MCP_AUTH_TOKEN` or an expiring internal agent capability. Worker routes accept only `BOX_SHARED_SECRET`. Cookie-authenticated mutations and login require `Origin: APP_ORIGIN`; browser origins are checked even with bearer auth. Persistent rate limiting protects login (5 attempts/15 minutes) and data traffic (180 requests/minute/client/principal). Validation/error responses omit submitted values and upstream bodies.
+All contract endpoints are implemented. Data APIs accept the secure user session or `API_AUTH_TOKEN`. MCP accepts only `MCP_AUTH_TOKEN` or an expiring internal agent capability. Worker routes accept only `BOX_SHARED_SECRET`. Cookie-authenticated mutations and login require `Origin: APP_ORIGIN`; browser origins are checked even with bearer auth. Persistent rate limiting protects login (5 failed passwords/15 minutes plus 60 total submissions/minute) and data traffic (180 requests/minute/client/principal). Successful logins reset failures rather than consuming the allowance; concurrent password attempts are serialized under a database row lock. Failure lockouts return Retry-After. Validation/error responses omit submitted values and upstream bodies.
 
 Additional endpoints:
 

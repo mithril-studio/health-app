@@ -18,7 +18,7 @@ Intervals remains the source of truth. The cache backfills twelve months; writes
 
 The dashboard uses a private password/session login. The generated password is `APP_PASSWORD` in the local ignored `.env`; the deployed environment is root-owned `/opt/coach-reachy/.env` with mode 600 and loaded by systemd. Never put secrets in browser environment variables.
 
-**Telegram needs one user action:** open **Coach → Connect Telegram**, follow the one-time link and press **Start**. The supplied `TELEGRAM_CHAT_ID` is the bot's own ID; a real send test returned `403: the bot can't send messages to the bot`. The app rejects this invalid target. Pairing requires your dashboard session, expires after ten minutes, is single-use, and binds only your private human chat. The binding persists in Postgres and overrides the stale environment value. No arbitrary first sender can take ownership. Reports/notifications wait until you link your chat; real Telegram delivery has not yet been verified.
+**To link Telegram:** use **Telegram in the top-right bar → Connect Telegram**, follow the one-time link and press **Start**. The supplied `TELEGRAM_CHAT_ID` is the bot's own ID; a real send test returned `403: the bot can't send messages to the bot`. The app rejects this invalid target. Pairing requires your dashboard session, expires after ten minutes, is single-use, and binds only your private human chat. The binding persists in Postgres and overrides the stale environment value. No arbitrary first sender can take ownership. Reports/notifications wait until you link your chat; real Telegram delivery has not yet been verified.
 
 MCP uses `Authorization: Bearer <MCP_AUTH_TOKEN>` from `.env`, Streamable HTTP at `/mcp`. Use a client supporting custom bearer headers (e.g. Claude Code). Browser sessions cannot authenticate MCP. The same tool layer supports calendar, activity, fitness, wellness, curves, workout planning/moves/updates, zone settings and separately confirmed deletion. Workout writes are echoed to the configured Telegram chat.
 
@@ -77,6 +77,6 @@ bash deploy/update.sh
 
 Service logs are private under `/opt/coach-reachy/state/` and rotate after seven daily archives. Journald was unavailable on this VM, so systemd writes to those files directly.
 
-Verification: **52 backend tests, 33 relay tests, 10 Worker tests, 14 frontend unit tests, 13 Chrome browser tests**. Production build and live API/MCP smoke checks passed. Real-browser checks found no accessibility violations on all four surfaces and no page overflow at 320/768/1440px. Screenshots contain private data and remain ignored in `artifacts/`. See `VERIFICATION.md` for live status and remaining external setup.
+Verification: **55 backend tests, 33 relay tests, 10 Worker tests, 17 frontend unit tests, 15 Chrome browser tests**. Production build and live API/MCP smoke checks passed. Real-browser checks found no accessibility violations on all four surfaces and no page overflow at 320/768/1440px. Screenshots contain private data and remain ignored in `artifacts/`. See `VERIFICATION.md` for live status and remaining external setup.
 
 The git history contains incremental local checkpoints. No remote repository was configured or created.
