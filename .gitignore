@@ -14,3 +14,5 @@ artifacts/
 .postgres.env
 state/
 *.tar.gz
+claude-auth/
+.credentials.json

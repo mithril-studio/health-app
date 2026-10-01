@@ -32,6 +32,8 @@ class Store:
             await conn.execute('SELECT pg_advisory_xact_lock(%s)', (lock_id('migrations'),))
             await conn.execute('CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY)')
             for path in sorted((Path(__file__).parent.parent / 'migrations').glob('*.sql')):
+                if path.name.startswith('.'):
+                    continue  # macOS archive metadata is not a database migration.
                 if not await (await conn.execute('SELECT 1 FROM schema_migrations WHERE version=%s', (path.name,))).fetchone():
                     await conn.execute(path.read_text())
                     await conn.execute('INSERT INTO schema_migrations VALUES (%s)', (path.name,))
