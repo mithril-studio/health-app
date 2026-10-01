@@ -3,3 +3,5 @@
 {"id":"mem_8e12","domain":"auth","type":"failure","title":"Successful logins must not consume password-failure budget","files":["backend/coach/auth.py","backend/tests/test_login_allowance.py"]}
 {"id":"mem_a7f2","domain":"auth","type":"failure","title":"Read autofilled passwords from native fields and verify sessions","files":["web/src/components/login.tsx","web/src/components/workspace.tsx","web/tests/browser/login-recovery.spec.ts"]}
 {"id":"mem_f934","domain":"auth","type":"failure","title":"Distinguish missing cookies from parser and session failures","files":["backend/coach/auth.py","backend/coach/app.py","backend/tests/test_guards.py","web/src/components/login.tsx"]}
+{"id":"mem_92bf","domain":"frontend","type":"convention","title":"Use sidebar-owned controls and compact house-style pages","files":["web/src/components/shell.tsx","web/src/app/globals.css"]}
+{"id":"mem_901d","domain":"deployment","type":"convention","title":"Use path-scoped committed releases during concurrent work","files":["deploy/update.sh"]}
