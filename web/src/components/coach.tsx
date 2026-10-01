@@ -15,7 +15,7 @@ import { copy } from "@/lib/i18n";
 import { useTraining } from "./workspace";
 import { Badge, Button, ErrorNotice, Mark, PageHeading, Skeleton } from "./ui";
 import { DeletionConfirmations } from "./deletion-confirmations";
-import { TelegramConnection } from "./telegram-connection";
+import { ChatMarkdown } from "./chat-markdown";
 type Attempt = { message: string; key: string };
 export function Coach() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -124,7 +124,6 @@ export function Coach() {
           </Badge>
         }
       />
-      <TelegramConnection />
       <div className="chat-workspace">
         <div className="chat-topline">
           <div>
@@ -190,7 +189,13 @@ export function Coach() {
                       </time>
                     )}
                   </div>
-                  <div className="message-text">{message.content}</div>
+                  <div className="message-text">
+                    {message.role === "assistant" ? (
+                      <ChatMarkdown content={message.content} />
+                    ) : (
+                      message.content
+                    )}
+                  </div>
                 </div>
               </article>
             ))

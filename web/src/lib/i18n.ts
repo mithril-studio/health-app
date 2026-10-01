@@ -91,6 +91,8 @@ export const en = {
     submit: "Enter your workspace",
     submitting: "Signing in…",
     invalid: "That password didn’t work. Please try again.",
+    rateLimit:
+      "Too many incorrect password attempts. Please wait up to 15 minutes before trying again.",
     footer: "A private connection to your Intervals.icu training.",
     strap: "CONSISTENCY, WITH INTENTION.",
     caption: "Train. Recover. Reach further.",
@@ -327,6 +329,7 @@ export const en = {
       "The 5 km curve effort is unavailable. Showing eligible whole-run results only.",
   },
   telegram: {
+    nav: "Telegram",
     title: "Your coach, in Telegram",
     detail:
       "Morning at 08:30, evening at 21:00, and feedback after workouts. Amsterdam time.",

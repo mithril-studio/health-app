@@ -19,9 +19,11 @@ export function Login({ onLogin }: { onLogin: () => Promise<void> }) {
       await onLogin();
     } catch (e) {
       setError(
-        e instanceof ApiError && (e.status === 401 || e.status === 403)
-          ? copy.login.invalid
-          : errorMessage(e),
+        e instanceof ApiError && e.status === 429
+          ? copy.login.rateLimit
+          : e instanceof ApiError && (e.status === 401 || e.status === 403)
+            ? copy.login.invalid
+            : errorMessage(e),
       );
     } finally {
       setBusy(false);

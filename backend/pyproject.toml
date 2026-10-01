@@ -9,4 +9,5 @@ select = ["E", "F", "I", "B", "UP"]
 ignore = ["E501"] # SQL and provider payload strings retain readable statements.
 [tool.ruff.lint.per-file-ignores]
 "tests/test_mcp*.py" = ["F401", "F811"] # Re-export shared pytest fixture.
+"tests/test_login_allowance.py" = ["F811"] # Re-export shared pytest fixture.
 "scripts/*.py" = ["E402"] # Standalone scripts add the backend import root.

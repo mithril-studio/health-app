@@ -2192,6 +2192,95 @@ td {
   font-size: 12px;
   line-height: 1.9;
 }
+.message-markdown {
+  white-space: normal;
+}
+.message-markdown p {
+  margin: 0.5rem 0;
+}
+.message-markdown > :first-child {
+  margin-top: 0;
+}
+.message-markdown > :last-child {
+  margin-bottom: 0;
+}
+.message-markdown h2,
+.message-markdown h3,
+.message-markdown h4,
+.message-markdown h5,
+.message-markdown h6 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+.message-markdown ul,
+.message-markdown ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+.message-markdown ul {
+  list-style: disc;
+}
+.message-markdown ol {
+  list-style: decimal;
+}
+.message-markdown li {
+  margin: 0.25rem 0;
+}
+.message-markdown a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.message-markdown blockquote {
+  border-left: 2px solid var(--border);
+  margin: 0.75rem 0;
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+}
+.message-markdown code {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.9em;
+  background: var(--muted);
+  padding: 0.125rem 0.25rem;
+  border-radius: var(--radius-sm);
+}
+.message-markdown pre {
+  overflow-x: auto;
+  white-space: pre;
+  background: var(--muted);
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  margin: 0.75rem 0;
+}
+.message-markdown pre code {
+  padding: 0;
+}
+.markdown-table {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+.markdown-table table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: inherit;
+}
+.markdown-table th,
+.markdown-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.message-markdown hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1rem 0;
+}
+.telegram-topbar {
+  gap: 0.5rem;
+  white-space: nowrap;
+}
 .user .message-text {
   background: var(--muted);
   padding: 12px 15px;

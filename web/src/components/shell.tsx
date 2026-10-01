@@ -15,18 +15,18 @@ import {
   LogOut,
   ArrowUpRight,
   ShieldCheck,
-  LockKeyhole,
 } from "lucide-react";
 import { SourceNotice } from "./source-notice";
+import { TelegramConnection } from "./telegram-connection";
 import { copy } from "@/lib/i18n";
 import { timestampLabel } from "@/lib/dates";
 import { useTraining } from "./workspace";
 import { Button, ErrorNotice, Mark, Modal, cn } from "./ui";
 const nav = [
   { href: "/", key: "overview", Icon: LayoutDashboard },
+  { href: "/coach", key: "coach", Icon: MessageCircle },
   { href: "/calendar", key: "calendar", Icon: CalendarDays },
   { href: "/insights", key: "insights", Icon: ChartNoAxesCombined },
-  { href: "/coach", key: "coach", Icon: MessageCircle },
 ] as const;
 function preference(name: string, value: string) {
   document.cookie = `${name}=${value}; Path=/; Max-Age=31536000; SameSite=Lax`;
@@ -210,10 +210,7 @@ export function Shell({
             <strong>{copy.nav[title]}</strong>
           </div>
           <div className="topbar-actions">
-            <span className="private-chip">
-              <LockKeyhole size={12} aria-hidden="true" />
-              {copy.common.private}
-            </span>
+            <TelegramConnection />
             <Button
               variant="ghost"
               size="icon"
