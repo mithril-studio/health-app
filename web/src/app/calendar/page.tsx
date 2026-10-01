@@ -4,4 +4,10 @@ import { TrainingCalendar } from "@/components/calendar";
 import { Skeleton } from "@/components/ui";
 import { copy } from "@/lib/i18n";
 export const metadata: Metadata = { title: copy.nav.calendar };
-export default function Page() { return <Suspense fallback={<Skeleton/>}><TrainingCalendar/></Suspense>; }
+export default function Page() {
+  return (
+    <Suspense fallback={<Skeleton />}>
+      <TrainingCalendar />
+    </Suspense>
+  );
+}

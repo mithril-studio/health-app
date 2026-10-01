@@ -1,12 +1,19 @@
-import type { Dashboard } from './data';
+import type { Dashboard } from "./data";
 
-export const sourceCopy = {
-  title: 'Some activity details are restricted at the source',
-  explanation: 'Intervals.icu does not expose Strava-imported activity details through its API. Planned workouts, recovery, fitness and available aggregate curves still work. Connect Garmin directly to Intervals or upload original activity files to enable detailed analysis.',
-  connection: 'Manage Intervals connections',
-  restricted: 'Restricted activity',
-} as const;
+import { copy } from "./i18n";
+import type { Activity } from "./data";
+export const sourceCopy = copy.sources;
+export function isRestricted(activity: Activity) {
+  return (
+    typeof activity.raw._note === "string" && activity.raw._note.length > 0
+  );
+}
+export function activityLabel(activity: Activity) {
+  return isRestricted(activity)
+    ? copy.sources.restricted
+    : activity.name || copy.sports[activity.sport];
+}
 
 export function restrictedCount(data: Dashboard): number {
-  return data.activities.filter(activity => typeof activity.raw._note === 'string' && activity.raw._note.length > 0).length;
+  return data.activities.filter(isRestricted).length;
 }

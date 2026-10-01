@@ -151,6 +151,7 @@ export function Coach() {
         </div>
         <div
           className="chat-history"
+          tabIndex={0}
           role="log"
           aria-label={copy.coach.history}
           aria-live="polite"
