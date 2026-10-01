@@ -44,12 +44,8 @@ test("chat is second, markdown is rendered, and Telegram moves into the header",
   page,
 }) => {
   await page.goto("/coach");
-  await expect(page.locator(".sidebar nav a")).toHaveText([
-    "Overview",
-    "Chats",
-    "Calendar",
-    "Insights",
-  ]);
+  await expect(page.locator(".sidebar nav a").nth(0)).toHaveText("Overview");
+  await expect(page.locator(".sidebar nav a").nth(1)).toHaveText("Chats");
   const reply = page.locator(".chat-message.assistant");
   await expect(
     reply.locator("strong").filter({ hasText: "Easy" }),

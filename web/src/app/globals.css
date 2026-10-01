@@ -339,6 +339,19 @@ label {
   background: var(--muted);
   color: var(--foreground);
 }
+.nav-item {
+  position: relative;
+}
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 25%;
+  width: 3px;
+  height: 50%;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+}
 .nav-item.active {
   background: var(--accent);
   color: var(--accent-foreground);
@@ -460,9 +473,10 @@ label {
   align-items: center;
   gap: 14px;
 }
-.topbar strong {
-  font-size: 12px;
-  font-weight: 500;
+.topbar h1 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
 }
 .breadcrumb,
 .breadcrumb-slash {

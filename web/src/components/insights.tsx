@@ -22,7 +22,6 @@ import {
   CardHeading,
   Empty,
   ErrorNotice,
-  PageHeading,
   Skeleton,
   SportIcon,
 } from "./ui";
@@ -30,73 +29,92 @@ import { TrendChart, dailyRows, type ChartRow } from "./charts";
 import { FitnessCard } from "./fitness";
 import { GoalCard } from "./goal";
 import { ZonesCard } from "./zones-card";
+import { PageMenu, PageTabs, PagePanel } from "./page-menu";
 export function Insights() {
   const { data, now } = useTraining();
   const [period, setPeriod] = useState(84);
+  const [section, setSection] = useState("fitness");
   const oldest = addDays(now, -period + 1);
   const [week, setWeek] = useState(startOfWeek(now));
   return (
     <>
-      <PageHeading
-        title={copy.insights.title}
-        action={
-          <select
-            aria-label={copy.insights.range}
-            value={period}
-            onChange={(e) => setPeriod(Number(e.target.value))}
-          >
-            <option value={28}>{copy.insights.last28}</option>
-            <option value={84}>{copy.insights.last84}</option>
-            <option value={365}>{copy.insights.lastYear}</option>
-          </select>
-        }
-      />
+      <PageMenu>
+        <PageTabs
+          prefix="insights"
+          label={copy.navigation.insights}
+          value={section}
+          onChange={setSection}
+          tabs={[
+            { id: "fitness", label: copy.overview.fitness },
+            { id: "zones", label: copy.navigation.zones },
+            { id: "recovery", label: copy.overview.recovery },
+            { id: "goal", label: copy.overview.goalTitle },
+          ]}
+        />
+        <select
+          aria-label={copy.insights.range}
+          value={period}
+          onChange={(e) => setPeriod(Number(e.target.value))}
+        >
+          <option value={28}>{copy.insights.last28}</option>
+          <option value={84}>{copy.insights.last84}</option>
+          <option value={365}>{copy.insights.lastYear}</option>
+        </select>
+      </PageMenu>
       <DataGate>
         {data && (
           <>
-            <div className="card-grid equal">
-              <FitnessCard data={data} oldest={oldest} newest={now} />
-              <CurvesCard />
-            </div>
-            <div className="insight-week-control">
-              <span>{copy.overview.week}</span>
-              <div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={copy.common.previous}
-                  disabled={week <= addDays(now, -350)}
-                  onClick={() => setWeek(addDays(week, -7))}
-                >
-                  <ChevronLeft size={15} aria-hidden="true" />
-                </Button>
-                <strong>
-                  {dateLabel(week)} — {dateLabel(addDays(week, 6))}
-                </strong>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={copy.common.next}
-                  disabled={week >= startOfWeek(now)}
-                  onClick={() => setWeek(addDays(week, 7))}
-                >
-                  <ChevronRight size={15} aria-hidden="true" />
-                </Button>
+            <PagePanel prefix="insights" id="fitness" value={section}>
+              <div className="card-grid equal">
+                <FitnessCard data={data} oldest={oldest} newest={now} />
+                <CurvesCard />
               </div>
-            </div>
-            <div className="card-grid equal">
-              <ZonesCard data={data} week={week} />
-              <LoadCard data={data} week={week} />
-            </div>
-            <div className="card-grid equal">
-              <Card>
-                <CardHeading title={copy.insights.sportLoad} />
-                <SportLoadChart data={data} now={now} period={period} />
-                <div className="card-footer">{copy.insights.loadNote}</div>
-              </Card>
-              <RecoveryCard data={data} oldest={oldest} now={now} />
-            </div>
-            <GoalCard data={data} />
+            </PagePanel>
+            <PagePanel prefix="insights" id="zones" value={section}>
+              <div className="insight-week-control">
+                <span>{copy.overview.week}</span>
+                <div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={copy.common.previous}
+                    disabled={week <= addDays(now, -350)}
+                    onClick={() => setWeek(addDays(week, -7))}
+                  >
+                    <ChevronLeft size={15} aria-hidden="true" />
+                  </Button>
+                  <strong>
+                    {dateLabel(week)} — {dateLabel(addDays(week, 6))}
+                  </strong>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={copy.common.next}
+                    disabled={week >= startOfWeek(now)}
+                    onClick={() => setWeek(addDays(week, 7))}
+                  >
+                    <ChevronRight size={15} aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
+              <div className="card-grid equal">
+                <ZonesCard data={data} week={week} />
+                <LoadCard data={data} week={week} />
+              </div>
+            </PagePanel>
+            <PagePanel prefix="insights" id="recovery" value={section}>
+              <div className="card-grid equal">
+                <Card>
+                  <CardHeading title={copy.insights.sportLoad} />
+                  <SportLoadChart data={data} now={now} period={period} />
+                  <div className="card-footer">{copy.insights.loadNote}</div>
+                </Card>
+                <RecoveryCard data={data} oldest={oldest} now={now} />
+              </div>
+            </PagePanel>
+            <PagePanel prefix="insights" id="goal" value={section}>
+              <GoalCard data={data} />
+            </PagePanel>
           </>
         )}
       </DataGate>

@@ -6,6 +6,7 @@ import { api, errorMessage } from "@/lib/api";
 import { record, text } from "@/lib/data";
 import { copy } from "@/lib/i18n";
 import { Button, ErrorNotice, cn } from "./ui";
+import { PageMenu } from "./page-menu";
 
 type Conversation = { id: string; title: string };
 function conversation(value: unknown): Conversation {
@@ -72,29 +73,31 @@ export function ConversationMenu({
       className={cn("conversation-menu", expanded && "expanded")}
       aria-label={copy.coach.conversations}
     >
-      <div className="conversation-actions">
-        <Button
-          variant="ghost"
-          className="conversation-history-toggle"
-          aria-label={
-            expanded ? copy.coach.hideHistory : copy.coach.showHistory
-          }
-          aria-expanded={expanded}
-          aria-controls="conversation-list"
-          onClick={() => setExpanded(!expanded)}
-        >
-          <ChevronDown size={16} aria-hidden="true" />
-          {copy.coach.conversations}
-        </Button>
-        <Button
-          variant="outline"
-          disabled={busy || creating}
-          onClick={() => void create()}
-        >
-          <Plus size={16} aria-hidden="true" />
-          {copy.coach.newChat}
-        </Button>
-      </div>
+      <PageMenu>
+        <div className="conversation-actions">
+          <Button
+            variant="ghost"
+            className="conversation-history-toggle"
+            aria-label={
+              expanded ? copy.coach.hideHistory : copy.coach.showHistory
+            }
+            aria-expanded={expanded}
+            aria-controls="conversation-list"
+            onClick={() => setExpanded(!expanded)}
+          >
+            <ChevronDown size={16} aria-hidden="true" />
+            {copy.coach.conversations}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy || creating}
+            onClick={() => void create()}
+          >
+            <Plus size={16} aria-hidden="true" />
+            {copy.coach.newChat}
+          </Button>
+        </div>
+      </PageMenu>
       <div id="conversation-list" className="conversation-list">
         {error && (
           <ErrorNotice message={error} retry={() => setRetry((v) => v + 1)} />

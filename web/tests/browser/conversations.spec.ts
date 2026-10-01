@@ -59,7 +59,10 @@ test("chat sidebar creates, restores, and switches independent conversations", a
   await page.goto("/coach");
   const menu = page.locator(".conversation-menu");
   await expect(page.locator(".chat-history")).toContainText("Prior response");
-  await menu.getByRole("button", { name: "New chat", exact: true }).click();
+  await page
+    .locator("#page-menu")
+    .getByRole("button", { name: "New chat", exact: true })
+    .click();
   await expect(page).toHaveURL(/chat=web%3A/);
   await expect(page.locator(".chat-history")).not.toContainText(
     "Prior response",

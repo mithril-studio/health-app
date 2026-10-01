@@ -1,4 +1,5 @@
 "use client";
+import { PageMenu } from "./page-menu";
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -31,7 +32,6 @@ import {
   Button,
   ErrorNotice,
   Modal,
-  PageHeading,
   Skeleton,
   SportIcon,
   cn,
@@ -140,7 +140,6 @@ export function TrainingCalendar() {
     : null;
   return (
     <>
-      <PageHeading title={copy.calendar.title} />
       <div className="calendar-toolbar">
         <div className="calendar-date-controls">
           <Button
@@ -175,32 +174,38 @@ export function TrainingCalendar() {
             {copy.common.today}
           </Button>
         </div>
-        <div className="calendar-view-controls">
-          <select
-            aria-label={copy.common.sport}
-            value={sport}
-            onChange={(e) => setSport(e.target.value)}
-          >
-            <option value="all">{copy.common.allSports}</option>
-            {Object.entries(copy.sports).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <div className="segmented">
-            {(["week", "month"] as const).map((v) => (
-              <button
-                key={v}
-                aria-pressed={mode === v}
-                disabled={moving}
-                onClick={() => setMode(v)}
-              >
-                {copy.calendar[v]}
-              </button>
-            ))}
+        <PageMenu>
+          <div className="calendar-view-controls">
+            <div
+              className="section-tabs"
+              role="group"
+              aria-label={copy.navigation.calendar}
+            >
+              {(["week", "month"] as const).map((v) => (
+                <button
+                  key={v}
+                  aria-pressed={mode === v}
+                  disabled={moving}
+                  onClick={() => setMode(v)}
+                >
+                  {copy.calendar[v]}
+                </button>
+              ))}
+            </div>
+            <select
+              aria-label={copy.common.sport}
+              value={sport}
+              onChange={(e) => setSport(e.target.value)}
+            >
+              <option value="all">{copy.common.allSports}</option>
+              {Object.entries(copy.sports).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
+        </PageMenu>
       </div>
       {error && (
         <ErrorNotice message={error} retry={() => setVersion((v) => v + 1)} />

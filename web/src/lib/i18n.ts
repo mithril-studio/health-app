@@ -118,6 +118,14 @@ export const en = {
     errorDetail: "Reconnect to the training service, then try again.",
     partial: "Some metrics aren’t available. Only recorded values are shown.",
   },
+  navigation: {
+    overview: "Overview sections",
+    insights: "Insight sections",
+    calendar: "Calendar view",
+    athlete: "Athlete sections",
+    activities: "Activities",
+    zones: "Zones & load",
+  },
   overview: {
     eyebrow: "THE BIG PICTURE",
     title: "Overview",

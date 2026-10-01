@@ -238,19 +238,3 @@ export function ExternalActivityLink({ id }: { id: string }) {
     </a>
   );
 }
-export function PageHeading({
-  title,
-  action,
-}: {
-  title: string;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="page-heading">
-      <div>
-        <h1>{title}</h1>
-      </div>
-      {action}
-    </div>
-  );
-}

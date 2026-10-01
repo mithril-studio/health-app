@@ -256,6 +256,7 @@ test("populated overview and activity detail show real fields and intervals", as
   await page.setViewportSize({ width: 1440, height: 1000 });
   await mock(page, dashboard());
   await page.goto("/");
+  await page.getByRole("tab", { name: "Activities", exact: true }).click();
   await expect(page.getByText("Recorded football")).toBeVisible();
   await accessible(page);
   await page.screenshot({ path: "artifacts/overview-desktop.png" });
@@ -352,15 +353,16 @@ test("insights switch curves and zones without inventing missing metrics", async
   await expect(
     page.getByRole("button", { name: "Running pace", exact: true }),
   ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Cycling power", exact: true })
+    .click();
+  await expect(page.locator(".recharts-wrapper")).not.toHaveCount(0);
+  await page.getByRole("tab", { name: "Zones & load", exact: true }).click();
   await expect(
     page
       .locator(".sport-load-row")
       .getByText("Gym & strength", { exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Cycling power", exact: true })
-    .click();
-  await expect(page.locator(".recharts-wrapper")).not.toHaveCount(0);
   await page.getByRole("button", { name: "Power", exact: true }).click();
   await expect(
     page.getByText("No measured zones for this selection."),
@@ -465,6 +467,7 @@ test("401 responses discard private data and return to login", async ({
 }) => {
   await mock(page, dashboard());
   await page.goto("/");
+  await page.getByRole("tab", { name: "Activities", exact: true }).click();
   await expect(page.getByText("Recorded football")).toBeVisible();
   await page.route("**/api/sync", (r) =>
     r.fulfill({ status: 401, json: { detail: "expired" } }),
@@ -496,9 +499,11 @@ test("restricted activities stay explicit while measured 5 km curves remain avai
       exact: true,
     }),
   ).toHaveCount(1);
+  await page.getByRole("tab", { name: "Activities", exact: true }).click();
   await expect(
     page.getByText("Restricted activity", { exact: true }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: "Recovery", exact: true }).click();
   await expect(
     page.getByText("Best measured 5 km effort", { exact: true }),
   ).toBeVisible();
@@ -538,7 +543,7 @@ test("all surfaces fit small mobile, tablet, and desktop with visible keyboard f
     await page.setViewportSize({ width, height: 900 });
     for (const route of ["/", "/calendar", "/insights", "/coach"]) {
       await page.goto(route);
-      await expect(page.locator(".page-heading h1")).toBeVisible();
+      await expect(page.locator(".topbar h1")).toBeVisible();
       await noOverflow(page);
     }
   }

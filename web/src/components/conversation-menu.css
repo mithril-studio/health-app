@@ -1,11 +1,11 @@
 .coach-layout {
   display: grid;
   grid-template-columns: 208px minmax(0, 1fr);
-  height: calc(100dvh - 180px);
-  min-height: 520px;
+  flex: 1;
+  min-height: 0;
   background: var(--card);
-  box-shadow: 0 0 0 1px var(--hairline);
-  border-radius: var(--radius-xl);
+  box-shadow: none;
+  border-radius: 0;
   overflow: hidden;
 }
 .conversation-menu {
@@ -20,12 +20,11 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 16px;
-  min-height: 66px;
-  border-bottom: 1px solid var(--border);
+  padding: 0;
+  min-height: 40px;
 }
 .conversation-actions > .button {
-  width: 100%;
+  width: auto;
 }
 .conversation-history-toggle {
   display: none;
@@ -97,8 +96,8 @@
     border-bottom: 1px solid var(--border);
   }
   .conversation-actions {
-    padding: 12px;
-    min-height: 56px;
+    padding: 0;
+    min-height: 40px;
     border-bottom: 0;
     justify-content: space-between;
   }

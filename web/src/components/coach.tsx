@@ -9,7 +9,7 @@ import { record, text } from "@/lib/data";
 import { timestampLabel } from "@/lib/dates";
 import { copy } from "@/lib/i18n";
 import { useTraining } from "./workspace";
-import { Button, ErrorNotice, Mark, PageHeading, Skeleton } from "./ui";
+import { Button, ErrorNotice, Mark, Skeleton } from "./ui";
 import { DeletionConfirmations } from "./deletion-confirmations";
 import { ChatMarkdown } from "./chat-markdown";
 type Attempt = { message: string; key: string };
@@ -21,7 +21,6 @@ export function Coach() {
   const changed = useCallback(() => setVersion((v) => v + 1), []);
   return (
     <>
-      <PageHeading title={copy.coach.title} />
       <div className="coach-layout">
         <ConversationMenu
           active={conversationId}

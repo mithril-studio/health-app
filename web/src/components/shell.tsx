@@ -186,7 +186,7 @@ export function Shell({
             >
               <PanelLeft size={18} aria-hidden="true" />
             </Button>
-            <strong>{copy.nav[title]}</strong>
+            <h1 id="page-title">{copy.nav[title]}</h1>
           </div>
           <div className="topbar-actions">
             <Button
@@ -208,9 +208,13 @@ export function Shell({
             <TelegramConnection />
           </div>
         </header>
-        <div className="main-scroll">
+        <div id="page-menu" className="page-menu" />
+        <div
+          className={cn("main-scroll", pathname === "/coach" && "chat-scroll")}
+        >
           <main
             id="main-content"
+            aria-labelledby="page-title"
             tabIndex={-1}
             className={cn(
               "page-content",
