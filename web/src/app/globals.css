@@ -356,3 +356,23 @@ td { font-variant-numeric: tabular-nums; }
  .day-load { grid-column: 2; } .calendar-date-controls h2 { font-size: 11px; margin: 0 2px; } .calendar-date-controls { gap: 3px; } .calendar-date-controls .button-icon { width: 28px; }
  .move-date-field, .comparison { flex-wrap: wrap; }
 }
+.insight-week-control { display: flex; justify-content: space-between; align-items: center; margin: 28px 0 14px; font-size: 12px; }
+.insight-week-control > div { display: flex; align-items: center; gap: 10px; }
+.insight-week-control strong { font-size: 11px; font-weight: 500; }
+.zone-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.zone-controls select { font-size: 10px; width: 120px; padding-block: 8px; }
+.zone-controls .segmented button { font-size: 10px; padding-inline: 8px; }
+.coverage-note { font-size: 10px; color: var(--muted-foreground); }
+.sport-load-row { display: flex; align-items: center; gap: 11px; margin: 10px 0 21px; }
+.sport-load-row > div { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.sport-load-row strong { font-size: 11px; font-weight: 500; }
+.sport-load-row small { font-size: 9px; color: var(--muted-foreground); }
+.sport-load-row .bar-track { margin-top: 3px; height: 4px; }
+.sport-load-row > span:last-child { font-size: 17px; font-weight: 450; }
+.recovery-tabs { display: grid; grid-template-columns: repeat(4,1fr); padding: 4px 22px 20px; gap: 10px; }
+.recovery-tabs button { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; padding: 12px 14px; background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.recovery-tabs button[aria-pressed=true] { border-color: var(--primary); background: var(--accent); }
+.recovery-tabs span { font-size: 10px; color: var(--muted-foreground); }
+.recovery-tabs strong { font-size: 25px; font-weight: 450; letter-spacing: -.8px; }
+.recovery-tabs small { font-size: 10px; color: var(--muted-foreground); margin-left: 5px; letter-spacing: 0; }
+@media(max-width:600px) { .recovery-tabs { grid-template-columns: repeat(2,1fr); } .card-heading:has(.segmented) { flex-direction: column; } }
