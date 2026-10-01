@@ -116,8 +116,8 @@ export function normalizeCurves(value: unknown, sport: "Run" | "Ride"): CurvePoi
   const curves = Array.isArray(value) ? value : array(root.list ?? root.curves);
   const curve = record(curves[0] ?? value);
   const secs = array(curve.secs ?? root.secs);
-  const xs = sport === "Run" ? array(curve.distances ?? root.distances) : secs;
-  const ys = sport === "Run" ? secs : array(curve.watts ?? curve.values);
+  const xs = sport === "Run" ? array(curve.distance ?? curve.distances ?? root.distances) : secs;
+  const ys = sport === "Run" ? array(curve.values ?? curve.secs ?? root.secs) : array(curve.watts ?? curve.values);
   return xs.flatMap((x, i) => {
     const xValue = number(x); const yValue = number(ys[i]);
     if (xValue === null || yValue === null || xValue <= 0 || yValue <= 0) return [];
