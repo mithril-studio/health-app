@@ -1,0 +1,32 @@
+[Unit]
+Description=Coach Reachy local scheduler and Telegram relay
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=boxd
+Group=boxd
+WorkingDirectory=/opt/coach-reachy
+EnvironmentFile=/opt/coach-reachy/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=TZ=Europe/Amsterdam
+ExecStart=/opt/coach-reachy/ops/.venv/bin/python /opt/coach-reachy/ops/relay.py
+Restart=on-failure
+RestartSec=60
+RestartPreventExitStatus=75 78
+TimeoutStopSec=20
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/coach-reachy/state
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

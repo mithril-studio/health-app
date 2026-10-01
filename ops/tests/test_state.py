@@ -101,3 +101,10 @@ class StateTests(unittest.TestCase):
         self.assertTrue(self.db.can_try('telegram', utc('2026-10-01T06:01:00')))
         self.db.succeeded('telegram')
         self.assertTrue(self.db.can_try('telegram', self.now))
+
+    def test_retry_frequency_remains_capped_after_many_failures(self):
+        for _ in range(100):
+            self.db.fail('telegram', self.now)
+        self.restart()
+        self.assertFalse(self.db.can_try('telegram', utc('2026-10-01T06:59:59')))
+        self.assertTrue(self.db.can_try('telegram', utc('2026-10-01T07:00:00')))
