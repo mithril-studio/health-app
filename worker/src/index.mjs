@@ -73,10 +73,25 @@ export default {
     const job=scheduledJob(now);
     const task=async()=>{
       if(job && !await env.STATE.get(job.key)) {
-        await box(env,'/api/internal/job',job);
-        await env.STATE.put(job.key,'sent',{expirationTtl:259200});
+        await env.STATE.put(`pending:${job.key}`,JSON.stringify(job),{expirationTtl:43200});
+      }
+      // Every tick retries failed touchpoints for up to 12 hours, not just tomorrow.
+      const pending=await env.STATE.list({prefix:'pending:'});
+      let failure;
+      for(const {name} of pending.keys) {
+        const raw=await env.STATE.get(name);
+        if(!raw) continue;
+        const queued=JSON.parse(raw);
+        try {
+          if(!await env.STATE.get(queued.key)) {
+            await box(env,'/api/internal/job',queued);
+            await env.STATE.put(queued.key,'sent',{expirationTtl:259200});
+          }
+          await env.STATE.delete(name);
+        } catch(error) { failure=error; }
       }
       if(event.cron==='*/20 * * * *') await pollActivities(env,now);
+      if(failure) throw failure;
     };
     ctx.waitUntil(task());
   }

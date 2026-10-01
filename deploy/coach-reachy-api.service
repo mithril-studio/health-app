@@ -1,0 +1,26 @@
+[Unit]
+Description=Coach Reachy API, coaching tools and MCP
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=boxd
+Group=boxd
+WorkingDirectory=/opt/coach-reachy/backend
+EnvironmentFile=/opt/coach-reachy/.env
+Environment=HOME=/home/boxd
+Environment=PATH=/opt/coach-reachy/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/opt/coach-reachy/backend/.venv/bin/uvicorn coach.app:app --host 127.0.0.1 --port 8001 --no-access-log
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
