@@ -1,12 +1,12 @@
 import { copy } from "./i18n";
 import { record } from "./data";
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
-export async function api<T = unknown>(path: string, options: { method?: "GET" | "POST"; body?: unknown; signal?: AbortSignal; timeout?: number } = {}): Promise<T> {
+export async function api<T = unknown>(path: string, options: { method?: "GET" | "POST"; body?: unknown; signal?: AbortSignal; timeout?: number; idempotencyKey?: string } = {}): Promise<T> {
   const timeout = AbortSignal.timeout(options.timeout ?? 45000);
   try {
     const response = await fetch(path, {
       method: options.method ?? "GET", credentials: "same-origin", cache: "no-store",
-      headers: options.body !== undefined ? { "Content-Type": "application/json" } : undefined,
+      headers: { ...(options.body !== undefined ? { "Content-Type": "application/json" } : {}), ...(options.idempotencyKey ? { "Idempotency-Key": options.idempotencyKey } : {}) },
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       signal: options.signal ? AbortSignal.any([timeout, options.signal]) : timeout,
     });
