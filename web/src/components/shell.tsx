@@ -13,8 +13,6 @@ import {
   Moon,
   RefreshCw,
   LogOut,
-  ArrowUpRight,
-  ShieldCheck,
 } from "lucide-react";
 import { SourceNotice } from "./source-notice";
 import { TelegramConnection } from "./telegram-connection";
@@ -33,7 +31,7 @@ function preference(name: string, value: string) {
   try {
     localStorage.setItem(name, value);
   } catch {
-    /* Cookie remains the source for server rendering. */
+    /* Cookie seeds SSR. */
   }
 }
 export function Shell({
@@ -72,99 +70,99 @@ export function Shell({
   };
   const navigation = (
     <>
-      <Link href="/" className="brand" onClick={() => setMobile(false)}>
-        <Mark />
-        <span>{copy.brand}</span>
-      </Link>
-      <div className="workspace-label">{copy.common.workspace}</div>
+      <div className="sidebar-heading">
+        <Link
+          href="/"
+          className="brand"
+          aria-label={copy.brand}
+          onClick={() => setMobile(false)}
+        >
+          <Mark />
+          <span>{copy.brand}</span>
+        </Link>
+        <Button
+          className="desktop-toggle"
+          variant="ghost"
+          size="icon"
+          aria-label={open ? copy.common.collapse : copy.common.expand}
+          aria-expanded={open}
+          onClick={() => {
+            setOpen(!open);
+            preference("sidebar_state", open ? "0" : "1");
+          }}
+        >
+          {open ? (
+            <PanelLeftClose size={18} aria-hidden="true" />
+          ) : (
+            <PanelLeft size={18} aria-hidden="true" />
+          )}
+        </Button>
+      </div>
       <nav aria-label={copy.common.navigation}>
         {nav.map(({ href, key, Icon }) => (
           <Link
             key={key}
             href={href}
+            title={copy.nav[key]}
+            aria-label={copy.nav[key]}
             className={cn("nav-item", pathname === href && "active")}
             aria-current={pathname === href ? "page" : undefined}
             onClick={() => setMobile(false)}
           >
             <Icon size={18} strokeWidth={1.7} aria-hidden="true" />
-            <span>{copy.nav[key]}</span>
-            {pathname === href && <span className="nav-dot" />}
+            <span className="nav-label">{copy.nav[key]}</span>
           </Link>
         ))}
       </nav>
-      <div className="sidebar-goal">
-        <div className="goal-heading">
-          <span>{copy.overview.goalTitle}</span>
-          <ArrowUpRight size={15} aria-hidden="true" />
-        </div>
-        <div className="sidebar-goal-number">
-          5<span>{copy.common.km}</span>
-        </div>
-        <div className="sidebar-milestones">
-          <span>{copy.insights.sub18}</span>
-          <span className="milestone-line" />
-          <span>{copy.insights.sub17}</span>
-        </div>
-        <p>{copy.tagline}</p>
-      </div>
       <div className="sidebar-bottom">
-        <div className="privacy-label">
-          <ShieldCheck size={14} aria-hidden="true" />
-          {copy.common.privacy}
-        </div>
-        <div className="profile">
-          <div className="avatar">
-            <Mark />
-          </div>
-          <div>
-            <strong>{copy.common.athlete}</strong>
-            <span>{copy.common.personal}</span>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={copy.common.logout}
-            disabled={loggingOut}
-            onClick={async () => {
-              setLoggingOut(true);
-              try {
-                await onLogout();
-              } catch {
-                setLogoutError(copy.common.logoutError);
-              } finally {
-                setLoggingOut(false);
-              }
-            }}
-          >
-            <LogOut size={16} aria-hidden="true" />
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          className="sidebar-action"
+          aria-label={theme === "light" ? copy.common.dark : copy.common.light}
+          title={theme === "light" ? copy.common.dark : copy.common.light}
+          onClick={toggleTheme}
+        >
+          {theme === "light" ? (
+            <Moon size={17} aria-hidden="true" />
+          ) : (
+            <Sun size={17} aria-hidden="true" />
+          )}
+          <span className="nav-label">
+            {theme === "light" ? copy.common.dark : copy.common.light}
+          </span>
+        </Button>
+        <Button
+          variant="ghost"
+          className="sidebar-action"
+          aria-label={copy.common.logout}
+          title={copy.common.logout}
+          disabled={loggingOut}
+          onClick={async () => {
+            setLoggingOut(true);
+            try {
+              await onLogout();
+            } catch {
+              setLogoutError(copy.common.logoutError);
+            } finally {
+              setLoggingOut(false);
+            }
+          }}
+        >
+          <LogOut size={17} aria-hidden="true" />
+          <span className="nav-label">{copy.common.logout}</span>
+        </Button>
       </div>
     </>
   );
-  const last = data?.sync.lastSuccess;
-  const stamp = last ? timestampLabel(last) : null;
-  const stale = last
-    ? !Number.isFinite(Date.parse(last)) ||
-      Date.now() - Date.parse(last) > 6 * 3600000
-    : true;
-  const syncLabel = data?.sync.error
-    ? copy.sync.failed
-    : !stamp
-      ? copy.sync.never
-      : stale
-        ? copy.sync.stale
-        : copy.sync.fresh;
+  const stamp = data?.sync.lastSuccess
+    ? timestampLabel(data.sync.lastSuccess)
+    : null;
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
         {copy.common.skip}
       </a>
-      <aside
-        className={cn("sidebar", !open && "collapsed")}
-        aria-hidden={!open}
-        inert={!open}
-      >
+      <aside className={cn("sidebar", !open && "collapsed")}>
         <div className="sidebar-inner">{navigation}</div>
       </aside>
       <Modal
@@ -179,23 +177,6 @@ export function Shell({
         <header className="topbar">
           <div className="topbar-left">
             <Button
-              className="desktop-toggle"
-              variant="ghost"
-              size="icon"
-              aria-label={open ? copy.common.collapse : copy.common.expand}
-              aria-expanded={open}
-              onClick={() => {
-                setOpen(!open);
-                preference("sidebar_state", open ? "0" : "1");
-              }}
-            >
-              {open ? (
-                <PanelLeftClose size={18} aria-hidden="true" />
-              ) : (
-                <PanelLeft size={18} aria-hidden="true" />
-              )}
-            </Button>
-            <Button
               className="mobile-toggle"
               variant="ghost"
               size="icon"
@@ -205,58 +186,37 @@ export function Shell({
             >
               <PanelLeft size={18} aria-hidden="true" />
             </Button>
-            <span className="breadcrumb">{copy.common.athlete}</span>
-            <span className="breadcrumb-slash">/</span>
             <strong>{copy.nav[title]}</strong>
           </div>
           <div className="topbar-actions">
-            <TelegramConnection />
             <Button
               variant="ghost"
               size="icon"
               aria-label={
-                theme === "light" ? copy.common.dark : copy.common.light
+                syncing ? copy.common.refreshing : copy.common.refresh
               }
-              onClick={toggleTheme}
+              title={stamp ? `${copy.sync.last}: ${stamp}` : copy.sync.never}
+              disabled={syncing || loading}
+              onClick={() => void refresh(true)}
             >
-              {theme === "light" ? (
-                <Moon size={17} aria-hidden="true" />
-              ) : (
-                <Sun size={17} aria-hidden="true" />
-              )}
+              <RefreshCw
+                size={16}
+                className={cn(syncing && "spin")}
+                aria-hidden="true"
+              />
             </Button>
+            <TelegramConnection />
           </div>
         </header>
         <div className="main-scroll">
-          <main id="main-content" tabIndex={-1} className="page-content">
-            <div className="sync-toolbar">
-              <span
-                className="sync-status"
-                title={stamp ? `${copy.sync.last}: ${stamp}` : copy.sync.never}
-              >
-                <span
-                  className={cn(
-                    "status-dot",
-                    !stale && !data?.sync.error && "fresh",
-                  )}
-                />
-                {syncLabel}
-                {stamp && <span className="sync-time">{stamp}</span>}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void refresh(true)}
-                disabled={syncing || loading}
-              >
-                <RefreshCw
-                  size={13}
-                  className={cn(syncing && "spin")}
-                  aria-hidden="true"
-                />
-                {syncing ? copy.common.refreshing : copy.common.refresh}
-              </Button>
-            </div>
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className={cn(
+              "page-content",
+              pathname === "/coach" && "coach-page",
+            )}
+          >
             {logoutError && <ErrorNotice message={logoutError} />}
             {error && data && (
               <ErrorNotice
@@ -270,19 +230,8 @@ export function Shell({
                 retry={() => void refresh(true)}
               />
             )}
-            {data && <SourceNotice data={data} />}
+            {data && pathname !== "/coach" && <SourceNotice data={data} />}
             {children}
-            <footer className="page-footer">
-              <span>
-                <Mark />
-                {copy.brand}
-              </span>
-              <span>
-                {copy.common.basedOn}
-                <span className="footer-dot">·</span>
-                {copy.common.privacy}
-              </span>
-            </footer>
           </main>
         </div>
       </div>

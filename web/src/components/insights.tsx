@@ -39,9 +39,7 @@ export function Insights() {
   return (
     <>
       <PageHeading
-        eyebrow={copy.insights.eyebrow}
         title={copy.insights.title}
-        description={copy.insights.description}
         action={
           <select
             aria-label={copy.insights.range}
@@ -57,10 +55,8 @@ export function Insights() {
       <DataGate>
         {data && (
           <>
-            <div className="section-gap">
+            <div className="card-grid equal">
               <FitnessCard data={data} oldest={oldest} newest={now} />
-            </div>
-            <div className="section-gap">
               <CurvesCard />
             </div>
             <div className="insight-week-control">
@@ -93,15 +89,14 @@ export function Insights() {
               <ZonesCard data={data} week={week} />
               <LoadCard data={data} week={week} />
             </div>
-            <Card className="section-gap">
-              <CardHeading
-                title={copy.insights.sportLoad}
-                description={copy.insights.sportLoadDetail}
-              />
-              <SportLoadChart data={data} now={now} period={period} />
-              <div className="card-footer">{copy.insights.loadNote}</div>
-            </Card>
-            <RecoveryCard data={data} oldest={oldest} now={now} />
+            <div className="card-grid equal">
+              <Card>
+                <CardHeading title={copy.insights.sportLoad} />
+                <SportLoadChart data={data} now={now} period={period} />
+                <div className="card-footer">{copy.insights.loadNote}</div>
+              </Card>
+              <RecoveryCard data={data} oldest={oldest} now={now} />
+            </div>
             <GoalCard data={data} />
           </>
         )}
@@ -141,7 +136,6 @@ function CurvesCard() {
     <Card>
       <CardHeading
         title={copy.insights.curves}
-        description={copy.insights.curvesDetail}
         action={
           <div className="segmented">
             <button
@@ -204,16 +198,13 @@ function CurvesCard() {
     </Card>
   );
 }
-function ZonesCard({ data, week }: { data: Dashboard; week: string }) {
+export function ZonesCard({ data, week }: { data: Dashboard; week: string }) {
   const [kind, setKind] = useState<"hr" | "pace" | "power">("hr");
   const [sport, setSport] = useState<Sport | "all">("all");
   const result = weeklyZones(data.activities, week, kind, sport);
   return (
     <Card>
-      <CardHeading
-        title={copy.insights.zones}
-        description={copy.insights.zonesDetail}
-      />
+      <CardHeading title={copy.insights.zones} />
       <div className="card-body">
         <div className="zone-controls">
           <div className="segmented">
@@ -256,7 +247,6 @@ function LoadCard({ data, week }: { data: Dashboard; week: string }) {
     <Card>
       <CardHeading
         title={copy.insights.sportLoad}
-        description={copy.insights.sportLoadDetail}
         action={
           <Badge>
             {metric(total)} {copy.common.pts}
@@ -383,10 +373,7 @@ function RecoveryCard({
   };
   return (
     <Card className="section-gap">
-      <CardHeading
-        title={copy.insights.recovery}
-        description={copy.insights.recoveryDetail}
-      />
+      <CardHeading title={copy.insights.recovery} />
       <div className="recovery-tabs">
         {(["hrv", "sleep", "restingHR", "load"] as const).map((key) => {
           const latest = rows.findLast((r) => r[key] !== null);

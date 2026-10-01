@@ -21,11 +21,11 @@ import {
   Card,
   CardHeading,
   Empty,
-  Mark,
   PageHeading,
   SportIcon,
 } from "./ui";
 import { FitnessCard } from "./fitness";
+import { ZonesCard } from "./insights";
 import { RecoverySnapshot } from "./recovery";
 import { GoalCard } from "./goal";
 import { ActivityDialog } from "./activity-dialog";
@@ -80,9 +80,7 @@ export function Overview() {
   return (
     <>
       <PageHeading
-        eyebrow={copy.overview.eyebrow}
         title={copy.overview.title}
-        description={copy.overview.description}
         action={
           <Badge>
             {dateLabel(now, {
@@ -115,7 +113,7 @@ export function Overview() {
               </span>
             </div>
             <div className="metric-grid">
-              {stats.map(({ label, value, unit, note, Icon }) => (
+              {stats.map(({ label, value, unit, Icon }) => (
                 <Card key={label} className="metric-card">
                   <div className="metric-label">
                     <span>{label}</span>
@@ -125,22 +123,23 @@ export function Overview() {
                     {value}
                     <span>{unit}</span>
                   </div>
-                  <p>{note}</p>
                 </Card>
               ))}
             </div>
-            <div className="card-grid">
+            <div className="card-grid equal">
               <FitnessCard
                 data={data}
                 oldest={addDays(now, -83)}
                 newest={now}
                 overview
               />
+              <ZonesCard data={data} week={week} />
+            </div>
+            <div className="card-grid equal">
               <div className="stack">
                 <Card className="next-card">
                   <CardHeading
                     title={copy.overview.next}
-                    description={copy.overview.nextDetail}
                     action={
                       <Link
                         href="/calendar"
@@ -184,79 +183,69 @@ export function Overview() {
                     />
                   )}
                 </Card>
-                <div className="coach-callout">
-                  <Mark />
-                  <div>
-                    <h2>{copy.overview.coachTitle}</h2>
-                    <p>{copy.overview.coachText}</p>
-                    <Link href="/coach">
-                      {copy.overview.coachAction}
-                      <ArrowRight size={13} aria-hidden="true" />
+              </div>
+              <Card>
+                <CardHeading
+                  title={copy.overview.weekRhythm}
+                  action={
+                    <Link className="inline-link" href="/calendar">
+                      {copy.nav.calendar}
+                      <ArrowUpRight size={13} aria-hidden="true" />
                     </Link>
-                  </div>
+                  }
+                />
+                <div className="week-strip">
+                  {Array.from({ length: 7 }, (_, i) => addDays(week, i)).map(
+                    (day) => {
+                      const activities = done.filter((a) => a.date === day);
+                      const events = planned.filter(
+                        (e) => e.date === day && !e.activityId,
+                      );
+                      return (
+                        <Link
+                          href={`/calendar?date=${day}`}
+                          key={day}
+                          className={`week-strip-day ${day === now ? "is-today" : ""}`}
+                        >
+                          <span>
+                            {dateLabel(day, { weekday: "short" })}
+                            <strong>
+                              {dateLabel(day, { day: "numeric" })}
+                            </strong>
+                          </span>
+                          <div className="week-markers">
+                            {activities.map((a) => (
+                              <span
+                                key={a.id}
+                                title={`${a.name} · ${copy.common.done}`}
+                                className="week-marker done"
+                              />
+                            ))}
+                            {events.map((e) => (
+                              <span
+                                key={e.id}
+                                title={`${e.name} · ${copy.common.planned}`}
+                                className="week-marker planned"
+                              />
+                            ))}
+                            {!activities.length && !events.length && (
+                              <span className="week-marker empty" />
+                            )}
+                          </div>
+                          <small>
+                            {activities.length
+                              ? `${activities.length} ${copy.common.done.toLowerCase()}`
+                              : events.length
+                                ? `${events.length} ${copy.common.planned.toLowerCase()}`
+                                : copy.common.none}
+                          </small>
+                        </Link>
+                      );
+                    },
+                  )}
                 </div>
-              </div>
+              </Card>
             </div>
-            <Card className="section-gap">
-              <CardHeading
-                title={copy.overview.weekRhythm}
-                description={copy.overview.rhythmDetail}
-                action={
-                  <Link className="inline-link" href="/calendar">
-                    {copy.nav.calendar}
-                    <ArrowUpRight size={13} aria-hidden="true" />
-                  </Link>
-                }
-              />
-              <div className="week-strip">
-                {Array.from({ length: 7 }, (_, i) => addDays(week, i)).map(
-                  (day) => {
-                    const activities = done.filter((a) => a.date === day);
-                    const events = planned.filter(
-                      (e) => e.date === day && !e.activityId,
-                    );
-                    return (
-                      <Link
-                        href={`/calendar?date=${day}`}
-                        key={day}
-                        className={`week-strip-day ${day === now ? "is-today" : ""}`}
-                      >
-                        <span>
-                          {dateLabel(day, { weekday: "short" })}
-                          <strong>{dateLabel(day, { day: "numeric" })}</strong>
-                        </span>
-                        <div className="week-markers">
-                          {activities.map((a) => (
-                            <span
-                              key={a.id}
-                              title={`${a.name} · ${copy.common.done}`}
-                              className="week-marker done"
-                            />
-                          ))}
-                          {events.map((e) => (
-                            <span
-                              key={e.id}
-                              title={`${e.name} · ${copy.common.planned}`}
-                              className="week-marker planned"
-                            />
-                          ))}
-                          {!activities.length && !events.length && (
-                            <span className="week-marker empty" />
-                          )}
-                        </div>
-                        <small>
-                          {activities.length
-                            ? `${activities.length} ${copy.common.done.toLowerCase()}`
-                            : events.length
-                              ? `${events.length} ${copy.common.planned.toLowerCase()}`
-                              : copy.common.none}
-                        </small>
-                      </Link>
-                    );
-                  },
-                )}
-              </div>
-            </Card>
             <div className="card-grid equal">
               <RecoverySnapshot data={data} now={now} />
               <GoalCard data={data} compact />
@@ -264,7 +253,6 @@ export function Overview() {
             <Card>
               <CardHeading
                 title={copy.overview.recent}
-                description={copy.overview.recentDetail}
                 action={
                   <Link href="/calendar" className="inline-link">
                     {copy.common.viewAll}

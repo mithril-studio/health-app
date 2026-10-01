@@ -169,7 +169,7 @@ test("session guard, failed login, successful login, and logout", async ({
   await page.getByLabel("Workspace password").fill("fixture-password");
   await page.getByRole("button", { name: "Enter your workspace" }).click();
   await expect(
-    page.getByRole("heading", { name: "Make the work count." }),
+    page.getByRole("heading", { name: "Overview", exact: true }),
   ).toBeVisible();
   expect(dashboardCalls).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Switch to dark mode" }).click();
@@ -193,6 +193,7 @@ test("empty overview, dark mode persistence, mobile navigation, and accessibilit
   await expect(page.getByText("Your training starts here.")).toBeVisible();
   await accessible(page);
   await noOverflow(page);
+  await page.getByRole("button", { name: "Expand navigation" }).click();
   await page.getByRole("button", { name: "Switch to dark mode" }).click();
   await page.reload();
   await expect(page.locator("html")).toHaveClass(/dark/);
@@ -202,10 +203,49 @@ test("empty overview, dark mode persistence, mobile navigation, and accessibilit
   await page.getByRole("button", { name: "Expand navigation" }).click();
   await page.getByRole("link", { name: "Calendar", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Your training calendar" }),
+    page.getByRole("heading", { name: "Calendar", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await noOverflow(page);
+});
+
+test("minimal shell, paired overview charts, and weekly measured zones", async ({
+  page,
+}) => {
+  await mock(page, dashboard());
+  await page.goto("/");
+  await expect(
+    page
+      .locator(".sidebar-heading")
+      .getByRole("button", { name: "Collapse navigation" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator(".sidebar-bottom")
+      .getByRole("button", { name: "Switch to dark mode" }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".page-heading .eyebrow, .page-description"),
+  ).toHaveCount(0);
+  const zones = page
+    .locator(".card")
+    .filter({
+      has: page.getByRole("heading", { name: "Time in zones", exact: true }),
+    });
+  await expect(zones.locator(".coverage-note")).toContainText("3 / 3");
+  await expect(zones.locator(".zone-row")).toHaveCount(3);
+  const row = page.locator(".card-grid").first();
+  const charts = row.locator(":scope > .card");
+  await expect(charts).toHaveCount(2);
+  const first = await charts.nth(0).boundingBox(),
+    second = await charts.nth(1).boundingBox();
+  expect(Math.abs(first!.y - second!.y)).toBeLessThan(2);
+  await page.getByRole("button", { name: "Collapse navigation" }).click();
+  await expect(page.locator(".sidebar")).toHaveClass(/collapsed/);
+  await page.reload();
+  await expect(page.locator(".sidebar")).toHaveClass(/collapsed/);
+  await page.getByRole("button", { name: "Expand navigation" }).click();
+  await expect(page.locator(".sidebar")).not.toHaveClass(/collapsed/);
 });
 
 test("populated overview and activity detail show real fields and intervals", async ({

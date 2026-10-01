@@ -13,7 +13,7 @@ import { record, text } from "@/lib/data";
 import { timestampLabel } from "@/lib/dates";
 import { copy } from "@/lib/i18n";
 import { useTraining } from "./workspace";
-import { Badge, Button, ErrorNotice, Mark, PageHeading, Skeleton } from "./ui";
+import { Button, ErrorNotice, Mark, PageHeading, Skeleton } from "./ui";
 import { DeletionConfirmations } from "./deletion-confirmations";
 import { ChatMarkdown } from "./chat-markdown";
 type Attempt = { message: string; key: string };
@@ -113,17 +113,7 @@ export function Coach() {
   }
   return (
     <>
-      <PageHeading
-        eyebrow={copy.coach.eyebrow}
-        title={copy.coach.title}
-        description={copy.coach.description}
-        action={
-          <Badge accent>
-            <ShieldCheck size={11} aria-hidden="true" />
-            {copy.coach.connected}
-          </Badge>
-        }
-      />
+      <PageHeading title={copy.coach.title} />
       <div className="chat-workspace">
         <div className="chat-topline">
           <div>

@@ -120,7 +120,7 @@ export const en = {
   },
   overview: {
     eyebrow: "THE BIG PICTURE",
-    title: "Make the work count.",
+    title: "Overview",
     description: "Your training, recovery, and next move. In one place.",
     week: "This week",
     weekLoad: "Training load",
@@ -154,7 +154,7 @@ export const en = {
   },
   calendar: {
     eyebrow: "MAKE SPACE FOR PROGRESS",
-    title: "Your training calendar",
+    title: "Calendar",
     description: "Every sport. Every session. A week that works for you.",
     week: "Week",
     month: "Month",
@@ -186,7 +186,7 @@ export const en = {
   },
   insights: {
     eyebrow: "UNDERSTAND THE WORK",
-    title: "Progress, in perspective.",
+    title: "Insights",
     description: "Follow the patterns. Keep the long game in view.",
     last84: "Last 12 weeks",
     last28: "Last 4 weeks",
@@ -272,7 +272,13 @@ export const en = {
   },
   coach: {
     eyebrow: "A THOUGHTFUL TRAINING PARTNER",
-    title: "Let’s find your next step.",
+    title: "Chats",
+    conversations: "Chat history",
+    newChat: "New chat",
+    earlierChats: "Earlier chats",
+    historyUnavailable: "Couldn’t load your conversations.",
+    showHistory: "Show chat history",
+    hideHistory: "Hide chat history",
     description: "A conversation grounded in your training.",
     welcome: "What’s on your mind?",
     intro:

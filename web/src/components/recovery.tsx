@@ -38,10 +38,7 @@ export function RecoverySnapshot({
   ];
   return (
     <Card>
-      <CardHeading
-        title={copy.overview.recovery}
-        description={copy.overview.recoveryDetail}
-      />
+      <CardHeading title={copy.overview.recovery} />
       <div className="recovery-snapshot">
         {metrics.map(({ key, label, unit, Icon, format }) => {
           const last = rows.findLast((w) => w[key] !== null);

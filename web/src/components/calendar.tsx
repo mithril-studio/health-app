@@ -140,11 +140,7 @@ export function TrainingCalendar() {
     : null;
   return (
     <>
-      <PageHeading
-        eyebrow={copy.calendar.eyebrow}
-        title={copy.calendar.title}
-        description={copy.calendar.description}
-      />
+      <PageHeading title={copy.calendar.title} />
       <div className="calendar-toolbar">
         <div className="calendar-date-controls">
           <Button
