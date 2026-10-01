@@ -27,6 +27,7 @@ try {
   await page.screenshot({path:root+'artifacts/'+(route==='/'?'overview':route.slice(1))+'.png',fullPage:true});
   const results=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   console.log(route, 'axe violations:',JSON.stringify(results.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))));
+  if(results.violations.length)errors.push('Accessibility '+route+': '+results.violations.map(v=>v.id).join(', '));
   console.log(route,'charts:',await page.locator('.recharts-wrapper').count());
  }
  for(const width of [320,768,1440]){
