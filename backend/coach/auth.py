@@ -7,6 +7,12 @@ from http.cookies import SimpleCookie
 
 from starlette.responses import JSONResponse
 
+
+class LoginRateLimited(Exception):
+    def __init__(self, retry_after):
+        self.retry_after = retry_after
+
+
 COOKIE = "__Host-coach_session"
 mcp_capability = ContextVar("mcp_capability", default=None)
 
@@ -46,11 +52,42 @@ class Auth:
             )
         )
 
-    async def login(self, password, previous=None):
-        if not matches(password, self.cfg.app_password.get_secret_value()):
-            return None
-        token = secrets.token_urlsafe(32)
+    async def login(self, password, previous=None, *, rate_key):
         async with self.store.pool.connection() as conn, conn.transaction():
+            # Serialize password attempts on one connection. Successful logins must
+            # not consume the failure budget, even behind a shared reverse proxy.
+            await conn.execute(
+                "INSERT INTO rate_limits(bucket,count,expires_at) VALUES (%s,0,now()+interval '15 minutes') ON CONFLICT DO NOTHING",
+                (rate_key,),
+            )
+            row = await (
+                await conn.execute(
+                    "SELECT count,expires_at,expires_at>now() AS active, "
+                    "GREATEST(1,ceil(extract(epoch FROM expires_at-now())))::int AS retry_after "
+                    "FROM rate_limits WHERE bucket=%s FOR UPDATE",
+                    (rate_key,),
+                )
+            ).fetchone()
+            if row["active"] and row["count"] >= 5:
+                raise LoginRateLimited(row["retry_after"])
+            if not matches(password, self.cfg.app_password.get_secret_value()):
+                await conn.execute(
+                    "UPDATE rate_limits SET count=%s,expires_at=%s WHERE bucket=%s",
+                    (
+                        row["count"] + 1 if row["active"] else 1,
+                        row["expires_at"]
+                        if row["active"]
+                        else datetime.now(UTC) + timedelta(minutes=15),
+                        rate_key,
+                    ),
+                )
+                return None
+            # Keep the locked row to serialize concurrent attempts, resetting only its counter.
+            await conn.execute(
+                "UPDATE rate_limits SET count=0,expires_at=now()+interval '15 minutes' WHERE bucket=%s",
+                (rate_key,),
+            )
+            token = secrets.token_urlsafe(32)
             if previous:
                 await conn.execute("DELETE FROM sessions WHERE token_hash=%s", (digest(previous),))
             await conn.execute(
@@ -139,8 +176,11 @@ class Guard:
             identity = hmac.new(
                 cfg.app_password.get_secret_value().encode(), ip.encode(), hashlib.sha256
             ).hexdigest()
-            limit, window = (5, 900) if path == "/api/login" else (180, 60)
-            bucket = ("login:" if path == "/api/login" else principal + ":") + identity
+            # A separate coarse request limit bounds malformed submissions too.
+            # The stricter password-failure budget is checked atomically in login().
+            scope.setdefault("state", {})["login_bucket"] = "login:" + identity
+            limit, window = (60, 60) if path == "/api/login" else (180, 60)
+            bucket = ("login-requests:" if path == "/api/login" else principal + ":") + identity
             if not await self.auth.rate(bucket, limit, window):
                 return await reject(429, "Rate limit exceeded")
         scope.setdefault("state", {})["principal"] = principal

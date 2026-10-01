@@ -14,7 +14,7 @@ from pydantic import ValidationError
 
 from coach.agent import Agent, AgentUnavailable
 from coach.analytics import insights
-from coach.auth import COOKIE, Auth, Guard, digest
+from coach.auth import COOKIE, Auth, Guard, LoginRateLimited, digest
 from coach.config import Settings
 from coach.db import Store
 from coach.intervals import Intervals, UpstreamError
@@ -129,7 +129,18 @@ def create_app(settings=None, *, store=None, source=None):
 
     @app.post("/api/login")
     async def login(body: LoginInput, request: Request):
-        token = await auth.login(body.password, request.state.session_token)
+        try:
+            token = await auth.login(
+                body.password, request.state.session_token, rate_key=request.state.login_bucket
+            )
+        except LoginRateLimited as exc:
+            return JSONResponse(
+                {
+                    "detail": "Too many incorrect password attempts. Please wait before trying again."
+                },
+                status_code=429,
+                headers={"Retry-After": str(exc.retry_after)},
+            )
         if token is None:
             raise ToolError("Invalid password", 401)
         response = JSONResponse({"authenticated": True})
