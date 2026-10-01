@@ -26,10 +26,18 @@ def event_snapshot(event):
 
 
 class ToolService:
-    def __init__(self, store, source, *, telegram_configured=False):
+    def __init__(self, store, source, *, telegram_configured=False, telegram_link=None):
         self.store, self.source = store, source
         self.sync = SyncService(store, source)
         self.telegram_configured = telegram_configured
+        self.telegram_link = telegram_link
+
+    async def require_telegram(self):
+        configured = (
+            await self.telegram_link.target() if self.telegram_link else self.telegram_configured
+        )
+        if not configured:
+            raise ToolError("Telegram must be linked before writes can be audited and echoed", 503)
 
     async def call(self, name, arguments, *, read_only=False, operation_key=None):
         args = validate_tool(name, arguments)
@@ -54,10 +62,7 @@ class ToolService:
                 data = await self.source.curves(args.sport, args.period)
                 await self.store.put("curve_cache", key, data)
             return data
-        if not self.telegram_configured:
-            raise ToolError(
-                "Telegram must be configured before writes can be audited and echoed", 503
-            )
+        await self.require_telegram()
         operation_id = operation_key or uuid.uuid4().hex
         existing = await self.store.query(
             "SELECT name,args FROM write_operations WHERE id=%s", (operation_id,), one=True
@@ -222,6 +227,7 @@ class ToolService:
         await self.store.enqueue("write:" + id, "write", {"operation_id": id}, conn=conn)
 
     async def execute_write(self, id):
+        await self.require_telegram()
         async with self.store.lock("sync", wait=True):
             return await self._execute_write_locked(id)
 

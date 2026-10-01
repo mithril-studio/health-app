@@ -30,6 +30,9 @@ class FakeEndpoints:
         self.fail_update = None
         self.fail_activities = False
         self.pending = False
+        self.target = '42'
+        self.fail_target = False
+        self.reject_update = None
 
     async def handle(self, request):
         body = json.loads(request.content) if request.content else None
@@ -45,7 +48,13 @@ class FakeEndpoints:
             return httpx.Response(503 if self.fail_activities else 200, json=self.activities)
         if path == '/api/internal/job':
             return httpx.Response(503 if self.fail_job else 200, json={'ok': not self.pending})
+        if path == '/api/internal/telegram-target':
+            return httpx.Response(503 if self.fail_target else 200, json={'chat_id': self.target})
         if path == '/api/internal/telegram':
+            if self.reject_update == body['update_id']:
+                return httpx.Response(403, json={'detail': 'invalid pairing'})
+            if body['message']['text'].startswith('/start '):
+                self.target = str(body['message']['chat']['id'])
             return httpx.Response(503 if self.fail_update == body['update_id'] else 200,
                                   json={'ok': True})
         raise AssertionError('unexpected network route (including Telegram sends)')
@@ -118,6 +127,70 @@ class RelayTests(unittest.IsolatedAsyncioTestCase):
         await self.relay.telegram_step(timeout=0)
         self.assertEqual([x['update_id'] for x in self.fake.bodies('/api/internal/telegram')], [3])
         self.assertEqual(self.db.offset, 6)
+
+    async def test_pairing_from_unknown_chat_refreshes_target_in_same_batch(self):
+        await self.relay.start()
+        self.fake.target = None
+        pairing = update(1, 789)
+        pairing['message']['text'] = '/start ' + 'a' * 32
+        self.fake.updates = [pairing, update(2, 789), update(3, 42)]
+        await self.relay.telegram_step(timeout=0)
+        self.assertEqual([u['update_id'] for u in self.fake.bodies('/api/internal/telegram')], [1, 2])
+        self.assertEqual(self.db.offset, 4)
+        self.assertNotIn('a' * 32, '\n'.join(self.db.db.iterdump()))
+
+    async def test_invalid_pairing_is_acknowledged_and_does_not_block_offsets(self):
+        await self.relay.start()
+        pairing = update(1, 789)
+        pairing['message']['text'] = '/start ' + 'b' * 32
+        self.fake.reject_update = 1
+        self.fake.updates = [pairing, update(2), update(3, 789)]
+        await self.relay.telegram_step(timeout=0)
+        self.assertEqual(self.db.offset, 4)
+        self.assertEqual([u['update_id'] for u in self.fake.bodies('/api/internal/telegram')], [1, 2])
+        self.assertTrue(self.db.can_try('telegram', self.now))
+
+    async def test_dynamic_target_overrides_env_and_refresh_failure_never_falls_back(self):
+        await self.relay.start()
+        self.fake.target = '789'
+        self.fake.updates = [update(1), update(2, 789)]
+        await self.relay.telegram_step(timeout=0)
+        self.assertEqual([u['update_id'] for u in self.fake.bodies('/api/internal/telegram')], [2])
+        self.fake.fail_target = True
+        self.fake.updates = [update(3), update(4, 789)]
+        await self.relay.telegram_step(timeout=0)
+        self.assertEqual(self.db.offset, 3)
+        self.assertEqual([u['update_id'] for u in self.fake.bodies('/api/internal/telegram')], [2])
+        self.fake.fail_target = False
+        self.fake.target = '555'
+        self.now += timedelta(minutes=1)
+        await self.relay.telegram_step(timeout=0)
+        self.assertEqual(self.db.offset, 5)
+        self.assertEqual([u['update_id'] for u in self.fake.bodies('/api/internal/telegram')], [2])
+
+    async def test_pending_update_rechecked_after_relink_and_backend_403_is_final(self):
+        await self.relay.start()
+        self.fake.fail_update = 1
+        self.fake.updates = [update(1), update(2)]
+        await self.relay.telegram_step(timeout=0)
+        self.fake.target = '789'
+        self.fake.fail_update = None
+        self.now += timedelta(minutes=1)
+        await self.relay.telegram_step(timeout=0)
+        self.assertEqual([u['update_id'] for u in self.fake.bodies('/api/internal/telegram')], [1])
+        self.assertEqual(self.db.offset, 3)
+        self.fake.updates = [update(3, 789)]
+        self.fake.reject_update = 3  # Relink between target fetch and forwarding.
+        await self.relay.telegram_step(timeout=0)
+        self.assertEqual(self.db.offset, 4)
+
+    async def test_malformed_target_response_is_retryable_not_authorization(self):
+        for body in ({}, {'chat_id': -42}, {'chat_id': True}, {'chat_id': '*'}):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(
+                lambda _: httpx.Response(200, json=body)
+            )) as client:
+                with self.assertRaises(RemoteFailure):
+                    await Endpoints(self.config, client).target()
 
     async def test_daily_job_retry_dedup_and_no_history(self):
         await self.relay.start()

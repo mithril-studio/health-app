@@ -193,8 +193,18 @@ def authorized_update(update, chat_id):
     if not isinstance(message, dict):
         return False
     chat = message.get('chat')
-    return (isinstance(chat, dict) and chat.get('type') == 'private'
+    return (chat_id is not None and isinstance(chat, dict) and chat.get('type') == 'private'
             and str(chat.get('id')) == str(chat_id) and isinstance(message.get('text'), str))
+
+
+def pairing_update(update):
+    message = update.get('message')
+    if not isinstance(message, dict):
+        return False
+    chat, text = message.get('chat'), message.get('text')
+    return (isinstance(chat, dict) and chat.get('type') == 'private'
+            and type(chat.get('id')) is int and chat['id'] > 0
+            and isinstance(text, str) and text.startswith('/start '))
 
 
 class StartupRefused(Exception):
@@ -208,7 +218,7 @@ class RemoteFailure(Exception):
 class Config:
     def __init__(self, env):
         self.token = env['TELEGRAM_BOT_TOKEN']
-        self.chat_id = env['TELEGRAM_CHAT_ID']
+        self.chat_id = env.get('TELEGRAM_CHAT_ID', '')
         self.shared_secret = env['BOX_SHARED_SECRET']
         self.intervals_key = env['INTERVALS_API_KEY']
         self.athlete_id = env['INTERVALS_ATHLETE_ID']
@@ -219,11 +229,11 @@ class Config:
         import re
         if env.get('TELEGRAM_TRANSPORT') != 'polling':
             raise StartupRefused('TELEGRAM_TRANSPORT must be polling')
-        required = ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID', 'BOX_SHARED_SECRET',
+        required = ['TELEGRAM_BOT_TOKEN', 'BOX_SHARED_SECRET',
                     'INTERVALS_API_KEY', 'INTERVALS_ATHLETE_ID']
         if any(not env.get(key, '').strip() for key in required):
             raise StartupRefused('required relay environment settings are missing')
-        if not re.fullmatch(r'[1-9][0-9]*', env['TELEGRAM_CHAT_ID']):
+        if env.get('TELEGRAM_CHAT_ID') and not re.fullmatch(r'[1-9][0-9]*', env['TELEGRAM_CHAT_ID']):
             raise StartupRefused('TELEGRAM_CHAT_ID must identify a private user chat')
         if not re.fullmatch(r'[0-9]+:[A-Za-z0-9_-]+', env['TELEGRAM_BOT_TOKEN']):
             raise StartupRefused('TELEGRAM_BOT_TOKEN has invalid format')
@@ -242,10 +252,12 @@ class Endpoints:
         self.config = config
         self.client = client
 
-    async def request(self, method, url, **kwargs):
+    async def request(self, method, url, *, ignore_forbidden=False, **kwargs):
         import httpx
         try:
             response = await self.client.request(method, url, follow_redirects=False, **kwargs)
+            if ignore_forbidden and response.status_code == 403:
+                return {'status': 'ignored'}
             if response.status_code == 409 and url.startswith('https://api.telegram.org/'):
                 raise StartupRefused('Telegram polling conflict; stop competing transport before restart')
             response.raise_for_status()
@@ -281,7 +293,7 @@ class Endpoints:
         # Replaying the same job key or update_id must be idempotent there.
         result = await self.request('POST', 'http://127.0.0.1:8001/api/internal/' + path,
                                     headers={'Authorization': f'Bearer {self.config.shared_secret}'},
-                                    json=payload, timeout=180)
+                                    json=payload, timeout=180, ignore_forbidden=path == 'telegram')
         if (not isinstance(result, dict) or result.get('ok') is False
                 or result.get('status') in ('retry', 'failed', 'error', 'processing', 'running', 'pending')):
             raise RemoteFailure('backend did not acknowledge work')
@@ -292,6 +304,20 @@ class Endpoints:
 
     async def forward_update(self, payload):
         return await self.backend('telegram', payload)
+
+    async def target(self):
+        import re
+        result = await self.request('GET', 'http://127.0.0.1:8001/api/internal/telegram-target',
+                                    headers={'Authorization': f'Bearer {self.config.shared_secret}'},
+                                    timeout=20)
+        if not isinstance(result, dict) or 'chat_id' not in result:
+            raise RemoteFailure('invalid Telegram target response')
+        target = result['chat_id']
+        if target is None:
+            return None
+        if type(target) not in (str, int) or not re.fullmatch(r'[1-9][0-9]*', str(target)):
+            raise RemoteFailure('invalid Telegram target response')
+        return str(target)
 
     async def activities(self, now):
         from urllib.parse import quote
@@ -356,17 +382,35 @@ class Relay:
         import logging
         if not self.state.can_try('telegram', self.clock()):
             return
-        try:
-            if not self.state.pending_updates():
-                updates = await self.endpoints.updates(self.state.offset, timeout)
-                self.state.save_updates(updates, self.config.chat_id)
+
+        async def drain():
             for row in self.state.pending_updates():
                 if row['payload'] is not None:
                     update = json.loads(row['payload'])
-                    # Re-check on restart if the configured chat ID changed.
-                    if authorized_update(update, self.config.chat_id):
+                    # Never fall back to config or a cached target after lookup failure.
+                    target = await self.endpoints.target()
+                    if authorized_update(update, target):
                         await self.endpoints.forward_update(update)
                 self.state.acknowledge(row['update_id'])
+
+        try:
+            if self.state.pending_updates():
+                await drain()
+            else:
+                updates = await self.endpoints.updates(self.state.offset, timeout)
+                while updates:
+                    # Pairing capabilities never enter the SQLite inbox. Process each
+                    # directly, then refresh authorization for the rest of this batch.
+                    split = next((i for i, item in enumerate(updates) if pairing_update(item)), len(updates))
+                    if split:
+                        target = await self.endpoints.target()
+                        self.state.save_updates(updates[:split], target)
+                        await drain()
+                    if split < len(updates):
+                        pairing = updates[split]
+                        await self.endpoints.forward_update(pairing)
+                        self.state.acknowledge(pairing['update_id'])
+                    updates = updates[split + 1:]
             self.state.succeeded('telegram')
         except RemoteFailure:
             self.state.fail('telegram', self.clock())

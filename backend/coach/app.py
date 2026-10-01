@@ -21,6 +21,7 @@ from coach.intervals import Intervals, UpstreamError
 from coach.jobs import Jobs
 from coach.mcp_server import create_mcp
 from coach.models import ActivityInput, ChatInput, CurvesInput, DateRange, JobInput, LoginInput
+from coach.telegram_link import TelegramLink
 from coach.tools import ToolError, ToolService
 
 
@@ -33,9 +34,10 @@ def create_app(settings=None, *, store=None, source=None):
         cfg.intervals_api_key.get_secret_value(), cfg.intervals_athlete_id, client
     )
     auth = Auth(cfg, db)
-    tools = ToolService(db, source, telegram_configured=cfg.telegram_configured)
+    telegram_link = TelegramLink(cfg, db, client)
+    tools = ToolService(db, source, telegram_link=telegram_link)
     agent = Agent(cfg, db, tools, client, auth)
-    jobs = Jobs(cfg, db, tools, agent, client)
+    jobs = Jobs(cfg, db, tools, agent, client, telegram_link=telegram_link)
     mcp = create_mcp(tools, cfg)
     # Network libraries can log request URLs containing the Telegram bot token.
     for logger in ("httpx", "httpcore", "mcp", "psycopg.pool"):
@@ -70,6 +72,7 @@ def create_app(settings=None, *, store=None, source=None):
     app.state.ready = False
     app.state.store, app.state.tools, app.state.jobs = db, tools, jobs
     app.state.agent, app.state.auth, app.state.settings = agent, auth, cfg
+    app.state.telegram_link = telegram_link
     app.add_middleware(Guard, auth=auth)
 
     @app.exception_handler(RequestValidationError)
@@ -228,6 +231,22 @@ def create_app(settings=None, *, store=None, source=None):
         result = await tools.confirm_delete(token)
         jobs.wakeup.set()
         return result
+
+    @app.get("/api/telegram")
+    async def telegram_status(request: Request):
+        if request.state.principal != "session":
+            raise ToolError("Telegram pairing requires a user session", 403)
+        return await telegram_link.status()
+
+    @app.post("/api/telegram/pairing")
+    async def telegram_pairing(request: Request):
+        if request.state.principal != "session":
+            raise ToolError("Telegram pairing requires a user session", 403)
+        return await telegram_link.issue()
+
+    @app.get("/api/internal/telegram-target")
+    async def telegram_target():
+        return {"chat_id": await telegram_link.target()}
 
     @app.post("/api/internal/telegram", status_code=202)
     async def telegram(update: Annotated[dict, Body()]):

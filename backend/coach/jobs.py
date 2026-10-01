@@ -3,6 +3,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from coach.models import JobInput
+from coach.telegram_link import TelegramLink, private_sender
 from coach.tools import ToolError
 
 
@@ -21,8 +22,9 @@ def notification_chunks(text):
 
 
 class Jobs:
-    def __init__(self, cfg, store, tools, agent, client):
+    def __init__(self, cfg, store, tools, agent, client, *, telegram_link=None):
         self.cfg, self.store, self.tools, self.agent, self.client = cfg, store, tools, agent, client
+        self.telegram_link = telegram_link or TelegramLink(cfg, store, client)
         self.wakeup = asyncio.Event()
 
     async def accept_telegram(self, update):
@@ -35,16 +37,20 @@ class Jobs:
         message = update.get("message")
         if not isinstance(message, dict):
             return {"status": "ignored", "reason": "Only new text messages are supported"}
-        chat = message.get("chat", {})
-        if not self.cfg.telegram_chat_id or str(chat.get("id", "")) != self.cfg.telegram_chat_id:
-            raise ToolError("Telegram chat not allowed", 403)
+        chat_id = private_sender(message)
         text = message.get("text")
+        if isinstance(text, str) and text.startswith("/start "):
+            result = await self.telegram_link.consume(text[7:], message, update["update_id"])
+            self.wakeup.set()
+            return result
+        if chat_id != await self.telegram_link.target():
+            raise ToolError("Telegram chat not allowed", 403)
         if not isinstance(text, str) or not text.strip():
             return {"status": "ignored", "reason": "Text message required"}
         if len(text) > 8000:
             raise ToolError("Telegram message too long", 422)
         key = f"telegram:{update['update_id']}"
-        await self.store.enqueue(key, "telegram", {"text": text})
+        await self.store.enqueue(key, "telegram", {"text": text, "chat_id": chat_id})
         self.wakeup.set()
         return {"status": "accepted", "key": key}
 
@@ -68,9 +74,18 @@ class Jobs:
                 return {
                     k: v.isoformat() if hasattr(v, "isoformat") else v for k, v in result.items()
                 }
+            if row["kind"] == "telegram":
+                target = await self.telegram_link.target()
+                if target is None:
+                    raise ToolError("Telegram must be linked", 503)
+                if payload.get("chat_id") != target:
+                    return {"status": "ignored"}
             # Never generate advice from a stale wake-up cache. A failed sync is retried.
             await self.tools.sync.run()
             if row["kind"] == "telegram":
+                # Sync can be slow; a relink during it revokes the old sender too.
+                if payload["chat_id"] != await self.telegram_link.target():
+                    return {"status": "ignored"}
                 reply = await self.agent.respond(payload["text"], key=key, channel="telegram")
             else:
                 kind = payload["kind"]
@@ -94,8 +109,6 @@ class Jobs:
         return await self.store.process(key, handler)
 
     async def send_notification(self, key, text):
-        if not self.cfg.telegram_configured:
-            raise ToolError("Telegram is not configured", 503)
         for part, chunk in enumerate(notification_chunks(text)):
             if await self.store.query(
                 "SELECT 1 FROM notification_parts WHERE work_key=%s AND part=%s",
@@ -103,13 +116,16 @@ class Jobs:
                 one=True,
             ):
                 continue
+            target = await self.telegram_link.target()
+            if target is None or not self.cfg.telegram_bot_token.get_secret_value():
+                raise ToolError("Telegram must be linked", 503)
             try:
                 response = await self.client.post(
                     "https://api.telegram.org/bot"
                     + self.cfg.telegram_bot_token.get_secret_value()
                     + "/sendMessage",
                     json={
-                        "chat_id": self.cfg.telegram_chat_id,
+                        "chat_id": target,
                         "text": chunk,
                         "link_preview_options": {"is_disabled": True},
                     },

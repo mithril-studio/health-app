@@ -15,7 +15,8 @@ The backend at **`http://127.0.0.1:8001`** receives:
 
 - `POST /api/internal/job`: `{kind, key, activity_id?}`.
 - `POST /api/internal/telegram`: the original authorized Telegram update.
-- Both use `Authorization: Bearer <BOX_SHARED_SECRET>`.
+- `GET /api/internal/telegram-target`: `{chat_id: string | null}`.
+- All use `Authorization: Bearer <BOX_SHARED_SECRET>`.
 
 **The backend generates the agent response and sends Telegram messages.** This
 process never calls `sendMessage`. Backend processing must deduplicate job keys
@@ -45,7 +46,7 @@ Required settings (same values as the backend):
 | --- | --- |
 | `TELEGRAM_TRANSPORT=polling` | Explicitly enable fallback transport; other values refuse startup |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot credential |
-| `TELEGRAM_CHAT_ID` | Positive numeric private user chat ID |
+| `TELEGRAM_CHAT_ID` | Optional legacy backend fallback; the relay uses the backend's effective target |
 | `BOX_SHARED_SECRET` | Authenticate internal backend requests |
 | `INTERVALS_API_KEY` | Intervals API credential, Basic auth username `API_KEY` |
 | `INTERVALS_ATHLETE_ID` | Athlete to poll |
@@ -101,13 +102,30 @@ a webhook installed during runtime, also stops the process. There is no
 `deleteWebhook` or `setWebhook` code. See the
 [Telegram polling and webhook contract](https://core.telegram.org/bots/api#getupdates).
 
-Only original text `message` updates from the configured chat with
-`chat.type == "private"` reach the backend. Groups, other chats, edits, callbacks,
-and unsupported messages are ignored and acknowledged. Batch updates are saved
-before forwarding and processed in ascending ID order. Failed forwarding stops
-the batch; the offset cannot pass that update. A restart retries the saved batch,
-even if Telegram no longer holds it, and successful updates are not replayed.
-Backend idempotency covers a crash after delivery but before the local commit.
+Original private text messages are filtered using the effective target fetched
+from the backend, including a fresh check before replaying the durable inbox.
+Lookup failures retry with the offset preserved; they never use the stale env ID.
+Groups, other chats, edits, callbacks, and unsupported messages are acknowledged
+without forwarding their content.
+
+Private `/start <token>` messages may reach the backend from any sender. Only the
+backend can redeem the pairing capability; its 403 rejection is final and advances
+the offset. Pairing tokens are never persisted in the relay's SQLite inbox. A
+successful pairing refreshes the target for later messages in the same batch.
+Ordinary authorized batches are saved before forwarding; transient failures stop
+offset advancement and restart retries the saved batch. The backend rechecks the
+exact private sender identity before queueing and before agent execution.
+
+Pairing is initiated by a logged-in browser session using
+`POST /api/telegram/pairing` (same-origin request), returning `{url, expires_at}`.
+`GET /api/telegram` returns `{connected, bot_username, chat_id?}` for that session.
+Service/API/MCP bearer credentials cannot issue pairing capabilities or read this
+session endpoint. Migration `004_telegram_link.sql` persists the link and the hash
+of a 32-character, single-use token expiring after ten minutes. Issuing a new token
+invalidates the previous token and permits relinking. Redemption and the welcome
+outbox entry commit atomically. Pending notifications resolve the database target
+at send time. A legacy env target equal to the `getMe` bot ID is unlinked; no `.env`
+change is required. Deploy backend migration and relay together; main owns rollout.
 
 ## Verification (no messages sent)
 

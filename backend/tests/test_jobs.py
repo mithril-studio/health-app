@@ -20,6 +20,10 @@ async def test_jobs_read_only_and_notification_survives_send_failure(store):
     sends = []
 
     async def remote(req):
+        if req.url.path.endswith("/getMe"):
+            return httpx.Response(200, json={"ok": True, "result": {
+                "id": 999, "is_bot": True, "username": "coachreachybot",
+            }})
         sends.append(req)
         if len(sends) == 1:
             return httpx.Response(503, json={"ok": False})
@@ -42,8 +46,10 @@ async def test_jobs_read_only_and_notification_survives_send_failure(store):
 
 
 async def test_telegram_lock_dedup_and_payload_minimization(store):
-    cfg = Settings(_env_file=None, telegram_chat_id="123")
-    async with httpx.AsyncClient() as client:
+    cfg = Settings(_env_file=None, telegram_bot_token="test", telegram_chat_id="123")
+    async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: httpx.Response(
+        200, json={"ok": True, "result": {"id": 999, "is_bot": True, "username": "coachreachybot"}}
+    ))) as client:
         jobs = Jobs(cfg, store, ToolService(store, WritableSource()), FakeAgent(), client)
         bad = {"update_id": 42, "message": {"chat": {"id": 999}, "text": "hello"}}
         with pytest.raises(ToolError):
@@ -51,15 +57,15 @@ async def test_telegram_lock_dedup_and_payload_minimization(store):
         good = {
             "update_id": 42,
             "message": {
-                "chat": {"id": 123, "first_name": "private"},
+                "chat": {"id": 123, "type": "private", "first_name": "private"},
                 "text": "hello",
-                "from": {"first_name": "private"},
+                "from": {"id": 123, "is_bot": False, "first_name": "private"},
             },
         }
         await jobs.accept_telegram(good)
         await jobs.accept_telegram(good)
         rows = await store.query("SELECT * FROM work_items")
-        assert len(rows) == 1 and rows[0]["payload"] == {"text": "hello"}
+        assert len(rows) == 1 and rows[0]["payload"] == {"text": "hello", "chat_id": "123"}
 
 
 def test_telegram_chunks_respect_utf16_limit():
