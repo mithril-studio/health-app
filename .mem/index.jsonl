@@ -2,3 +2,4 @@
 {"id":"mem_693d","domain":"intervals","type":"failure","title":"Pace curves use distance and values arrays","files":["web/src/lib/data.ts","web/tests/intervals-contract.test.ts"]}
 {"id":"mem_8e12","domain":"auth","type":"failure","title":"Successful logins must not consume password-failure budget","files":["backend/coach/auth.py","backend/tests/test_login_allowance.py"]}
 {"id":"mem_a7f2","domain":"auth","type":"failure","title":"Read autofilled passwords from native fields and verify sessions","files":["web/src/components/login.tsx","web/src/components/workspace.tsx","web/tests/browser/login-recovery.spec.ts"]}
+{"id":"mem_f934","domain":"auth","type":"failure","title":"Distinguish missing cookies from parser and session failures","files":["backend/coach/auth.py","backend/coach/app.py","backend/tests/test_guards.py","web/src/components/login.tsx"]}

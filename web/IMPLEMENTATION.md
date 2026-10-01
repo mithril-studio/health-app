@@ -55,7 +55,7 @@ Source-restricted Strava imports are explicitly labeled **Restricted activity**,
 
 The password field is read from native FormData at submission rather than React state, so password-manager autofill without change events works with both the button and Enter. A successful password response must be followed by a verified session; otherwise the form keeps the password and shows an actionable cookie/session error rather than silently resetting.
 
-Run `npx playwright test tests/browser/login-recovery.spec.ts` for Chrome and `npx playwright test --config=playwright.webkit.config.ts` for WebKit (install with `npx playwright install webkit` once). These cover autofill and a successful password response without a retained session.
+Run `npx playwright test tests/browser/login-recovery.spec.ts` for Chrome and `npx playwright test --config=playwright.webkit.config.ts` for WebKit (install with `npx playwright install webkit` once). These cover autofill and a successful password response without a retained session. The API reports only whether a session cookie reached it; login errors distinguish COOKIE_MISSING from COOKIE_REJECTED. Backend logs record only valid/missing/unknown status, never cookie values or credentials.
 
 ## Integration limits
 
