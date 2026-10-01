@@ -48,40 +48,50 @@ for (const method of ["button", "Enter"] as const) {
   });
 }
 
-test("an accepted password without a retained session shows an actionable error and allows retry", async ({
-  page,
-}) => {
-  let authenticated = false;
-  await page.route("**/api/**", async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path === "/api/session")
-      return route.fulfill({ json: { authenticated } });
-    if (path === "/api/dashboard")
-      return route.fulfill({
-        json: {
-          activities: [],
-          events: [],
-          wellness: [],
-          fitness: [],
-          settings: {},
-          sync: {},
-        },
-      });
-    return route.fulfill({ json: { ok: true } });
+for (const cookieReceived of [undefined, false, true]) {
+  test(`accepted password reports session failure (cookie received: ${cookieReceived}) and allows retry`, async ({
+    page,
+  }) => {
+    let authenticated = false;
+    await page.route("**/api/**", async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path === "/api/session")
+        return route.fulfill({
+          json: { authenticated, cookie_received: cookieReceived },
+        });
+      if (path === "/api/dashboard")
+        return route.fulfill({
+          json: {
+            activities: [],
+            events: [],
+            wellness: [],
+            fitness: [],
+            settings: {},
+            sync: {},
+          },
+        });
+      return route.fulfill({ json: { ok: true } });
+    });
+    await page.goto("/");
+    const input = page.getByLabel("Workspace password");
+    await input.fill("test-password");
+    await page.getByRole("button", { name: "Enter your workspace" }).click();
+    await expect(page.locator(".error-notice[role=alert]")).toContainText(
+      "Your password was accepted",
+    );
+    await expect(page.locator(".error-notice[role=alert]")).toContainText(
+      cookieReceived === false
+        ? "COOKIE_MISSING"
+        : cookieReceived === true
+          ? "COOKIE_REJECTED"
+          : "cookies",
+    );
+    await expect(input).toHaveValue("test-password");
+    await expect(
+      page.getByRole("button", { name: "Enter your workspace" }),
+    ).toBeEnabled();
+    authenticated = true;
+    await page.getByRole("button", { name: "Enter your workspace" }).click();
+    await expect(page.locator(".sidebar")).toBeVisible();
   });
-  await page.goto("/");
-  const input = page.getByLabel("Workspace password");
-  await input.fill("test-password");
-  await page.getByRole("button", { name: "Enter your workspace" }).click();
-  await expect(page.locator(".error-notice[role=alert]")).toContainText(
-    "Your password was accepted",
-  );
-  await expect(page.locator(".error-notice[role=alert]")).toContainText("cookies");
-  await expect(input).toHaveValue("test-password");
-  await expect(
-    page.getByRole("button", { name: "Enter your workspace" }),
-  ).toBeEnabled();
-  authenticated = true;
-  await page.getByRole("button", { name: "Enter your workspace" }).click();
-  await expect(page.locator(".sidebar")).toBeVisible();
-});
+}

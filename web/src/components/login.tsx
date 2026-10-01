@@ -4,7 +4,11 @@ import { ArrowRight, LockKeyhole, ArrowUpRight } from "lucide-react";
 import { api, ApiError, errorMessage } from "@/lib/api";
 import { copy } from "@/lib/i18n";
 import { Button, ErrorNotice, Mark } from "./ui";
-export function Login({ onLogin }: { onLogin: () => Promise<boolean> }) {
+export type SessionCheck = {
+  authenticated: boolean;
+  cookie_received?: boolean;
+};
+export function Login({ onLogin }: { onLogin: () => Promise<SessionCheck> }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -21,8 +25,16 @@ export function Login({ onLogin }: { onLogin: () => Promise<boolean> }) {
     setError("");
     try {
       await api("/api/login", { method: "POST", body: { password } });
-      if (!(await onLogin())) {
-        throw new ApiError(409, copy.login.sessionMissing);
+      const session = await onLogin();
+      if (!session.authenticated) {
+        throw new ApiError(
+          409,
+          session.cookie_received === false
+            ? copy.login.cookieMissing
+            : session.cookie_received === true
+              ? copy.login.cookieRejected
+              : copy.login.sessionMissing,
+        );
       }
       form.reset();
     } catch (e) {

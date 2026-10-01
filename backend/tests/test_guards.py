@@ -41,7 +41,10 @@ async def web(store):
 
 async def test_api_guards_and_token_scope_separation(web):
     c, app = web
-    assert (await c.get("/api/session")).json() == {"authenticated": False}
+    assert (await c.get("/api/session")).json() == {
+        "authenticated": False,
+        "cookie_received": False,
+    }
     assert (await c.get("/api/dashboard")).status_code == 401
     for path, wrong, _right in [
         ("/api/dashboard", "mcp-secret", "api-secret"),
@@ -77,7 +80,7 @@ async def test_login_cookie_origin_logout_and_no_secrets_in_validation(web):
     )
     cookie = r.headers["set-cookie"].lower()
     assert all(v in cookie for v in ("secure", "httponly", "samesite=strict"))
-    assert (await c.get("/api/session")).json() == {"authenticated": True}
+    assert (await c.get("/api/session")).json() == {"authenticated": True, "cookie_received": True}
     assert (await c.post("/api/sync")).status_code == 403
     r = await c.post(
         "/api/login",
@@ -89,6 +92,39 @@ async def test_login_cookie_origin_logout_and_no_secrets_in_validation(web):
         await c.post("/api/logout", headers={"Origin": "https://coach.test"})
     ).status_code == 200
     assert (await c.get("/api/dashboard")).status_code == 401
+
+
+@pytest.mark.parametrize("split_headers", [False, True])
+async def test_session_survives_unrelated_browser_cookies(web, split_headers):
+    c, _ = web
+    response = await c.post(
+        "/api/login",
+        headers={"Origin": "https://coach.test"},
+        json={"password": "correct-password"},
+    )
+    session = response.headers["set-cookie"].split(";", 1)[0]
+    # A parent-domain cookie may contain a raw JSON value accepted by browsers.
+    unrelated = 'preferences={"theme":"dark"}'
+    headers = (
+        [("Cookie", session), ("Cookie", unrelated)]
+        if split_headers
+        else [("Cookie", unrelated + "; " + session)]
+    )
+    assert (await c.get("/api/session", headers=headers)).json()["authenticated"] is True
+    assert (await c.get("/api/dashboard", headers=headers)).status_code == 200
+    # Unrelated cookies cannot authenticate or rescue a forged session token.
+    assert (await c.get("/api/dashboard", headers={"Cookie": unrelated})).status_code == 401
+    assert (
+        await c.get("/api/session", headers={"Cookie": "__Host-coach_session=forged"})
+    ).json() == {
+        "authenticated": False,
+        "cookie_received": True,
+    }
+    assert (
+        await c.get(
+            "/api/dashboard", headers={"Cookie": unrelated + "; __Host-coach_session=forged"}
+        )
+    ).status_code == 401
 
 
 async def test_login_rate_limit_survives_requests(web):

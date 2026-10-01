@@ -19,7 +19,7 @@ import {
 } from "@/lib/data";
 import { addDays, today } from "@/lib/dates";
 import { copy } from "@/lib/i18n";
-import { Login } from "./login";
+import { Login, type SessionCheck } from "./login";
 import { Shell } from "./shell";
 import { ErrorNotice, Mark, Skeleton, Button, Empty } from "./ui";
 
@@ -77,23 +77,25 @@ export function Workspace({
   const checkSession = useCallback(async () => {
     const generation = ++sessionRequest.current;
     try {
-      const session = await api<{ authenticated: boolean }>("/api/session");
-      if (generation !== sessionRequest.current) return authenticated.current;
+      const session = await api<SessionCheck>("/api/session");
+      if (generation !== sessionRequest.current)
+        return { authenticated: authenticated.current };
       authenticated.current = session.authenticated === true;
       setAuth(authenticated.current ? "in" : "out");
       if (!authenticated.current) {
         request.current++;
         setData(null);
       }
-      return authenticated.current;
+      return session;
     } catch (e) {
-      if (generation !== sessionRequest.current) return authenticated.current;
+      if (generation !== sessionRequest.current)
+        return { authenticated: authenticated.current };
       authenticated.current = false;
       request.current++;
       setData(null);
       setAuthError(errorMessage(e));
       setAuth("error");
-      return false;
+      return { authenticated: false };
     }
   }, []);
   const load = useCallback(async () => {

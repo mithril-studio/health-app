@@ -125,7 +125,14 @@ def create_app(settings=None, *, store=None, source=None):
 
     @app.get("/api/session")
     async def session(request: Request):
-        return {"authenticated": await auth.session_valid(request.state.session_token)}
+        token = request.state.session_token
+        authenticated = await auth.session_valid(token)
+        # Status only: never log cookie values, credentials, or request headers.
+        logging.getLogger("uvicorn.error").info(
+            "Browser session check: %s",
+            "valid" if authenticated else "unknown-session" if token else "missing-cookie",
+        )
+        return {"authenticated": authenticated, "cookie_received": bool(token)}
 
     @app.post("/api/login")
     async def login(body: LoginInput, request: Request):

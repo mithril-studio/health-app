@@ -91,6 +91,10 @@ export const en = {
     submit: "Enter your workspace",
     submitting: "Signing in…",
     invalid: "That password didn’t work. Please try again.",
+    cookieMissing:
+      "Your password was accepted, but no session cookie reached the server (COOKIE_MISSING). Allow site cookies and open https://coach-reachy.boxd.sh in a regular browser tab, not an embedded preview.",
+    cookieRejected:
+      "Your password was accepted, but the browser sent an expired or unrecognized session cookie (COOKIE_REJECTED). Clear site data for coach-reachy.boxd.sh, reload, and sign in again.",
     sessionMissing:
       "Your password was accepted, but the sign-in session could not be verified. Allow cookies for coach-reachy.boxd.sh and open https://coach-reachy.boxd.sh directly, then try again.",
     rateLimit:

@@ -3,8 +3,8 @@ import hmac
 import secrets
 from contextvars import ContextVar
 from datetime import UTC, datetime, timedelta
-from http.cookies import SimpleCookie
 
+from starlette.requests import cookie_parser
 from starlette.responses import JSONResponse
 
 
@@ -135,12 +135,13 @@ class Guard:
         # Require the explicitly configured origin, never untrusted forwarded headers.
         if origin and origin != cfg.app_origin:
             return await reject(403, "Origin not allowed")
-        cookie = SimpleCookie()
-        try:
-            cookie.load(headers.get("cookie", ""))
-            token = cookie[COOKIE].value if COOKIE in cookie else ""
-        except Exception:
-            token = ""
+        # Browsers can send permissive parent-domain cookies and multiple Cookie
+        # fields. SimpleCookie rejects an entire header for one unrelated value;
+        # a dict of ASGI headers also loses all but the last Cookie field.
+        raw_cookies = "; ".join(
+            value.decode("latin-1") for key, value in scope["headers"] if key.lower() == b"cookie"
+        )
+        token = cookie_parser(raw_cookies).get(COOKIE, "")
         capability = None
         if path == "/mcp" or path.startswith("/mcp/"):
             if not matches(bearer, cfg.mcp_auth_token.get_secret_value()):
