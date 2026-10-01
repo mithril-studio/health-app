@@ -51,6 +51,12 @@ Source-restricted Strava imports are explicitly labeled **Restricted activity**,
 - Strict TypeScript includes unused-local/parameter checks. Production build succeeds for all four routes. Native `npm audit` reports zero vulnerabilities.
 - Visual review used screenshots in ignored `artifacts/`. All synthetic training values exist only in isolated browser/unit test fixtures. The application contains no demo fallback.
 
+## Login regression checks
+
+The password field is read from native FormData at submission rather than React state, so password-manager autofill without change events works with both the button and Enter. A successful password response must be followed by a verified session; otherwise the form keeps the password and shows an actionable cookie/session error rather than silently resetting.
+
+Run `npx playwright test tests/browser/login-recovery.spec.ts` for Chrome and `npx playwright test --config=playwright.webkit.config.ts` for WebKit (install with `npx playwright install webkit` once). These cover autofill and a successful password response without a retained session.
+
 ## Integration limits
 
 Browser scenarios intercept APIs at the boundary. They verify the frontend contract without using production credentials or changing live workouts. End-to-end delivery to Intervals/Garmin, production cookie configuration, coach provider availability, and Telegram delivery remain backend/deployment integration responsibilities.
