@@ -14,6 +14,8 @@ Environment=NEXT_TELEMETRY_DISABLED=1
 ExecStart=/usr/local/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3000
 Restart=always
 RestartSec=5
+StandardOutput=append:/opt/coach-reachy/state/web.log
+StandardError=append:/opt/coach-reachy/state/web.log
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full

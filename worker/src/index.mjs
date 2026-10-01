@@ -10,6 +10,12 @@ export function authorizedUpdate(update, chatId) {
   const message=update.message;
   return Boolean(message && message.chat?.type==='private' && String(message.chat.id)===String(chatId) && typeof message.text==='string');
 }
+export function isPairingUpdate(update) {
+  return update.message?.chat?.type==='private' && typeof update.message.text==='string' && /^\/start(?:@[A-Za-z0-9_]+)? [A-Za-z0-9_-]{16,64}$/.test(update.message.text);
+}
+class BoxError extends Error {
+  constructor(status) {super(`Box request failed (${status})`);this.status=status;}
+}
 async function safeEqual(a,b) {
   if (!a || !b) return false;
   const digest=async text=>new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)));
@@ -21,8 +27,8 @@ async function safeEqual(a,b) {
 async function box(env, path, body) {
   const url=new URL(env.BOX_URL);
   if(url.protocol!=='https:') throw new Error('BOX_URL must use HTTPS');
-  const response=await fetch(new URL(path,url),{method:'POST',headers:{Authorization:`Bearer ${env.BOX_SHARED_SECRET}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(110000),redirect:'error'});
-  if(!response.ok) throw new Error(`Box request failed (${response.status})`);
+  const response=await fetch(new URL(path,url),{method:body===undefined?'GET':'POST',headers:{Authorization:`Bearer ${env.BOX_SHARED_SECRET}`,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(110000),redirect:'error'});
+  if(!response.ok) throw new BoxError(response.status);
   return response;
 }
 export async function pollActivities(env, now) {
@@ -58,9 +64,18 @@ export default {
     if(text.length>32768) return new Response('Too large',{status:413});
     let update;
     try {update=JSON.parse(text);} catch {return new Response('Bad JSON',{status:400});}
-    if(!authorizedUpdate(update,env.TELEGRAM_CHAT_ID)) return Response.json({ok:true});
+    if(update.message?.chat?.type!=='private' || typeof update.message.text!=='string') return Response.json({ok:true});
     try {
-      await box(env,'/api/internal/telegram',update);
+      // The authenticated dashboard can pair a new chat without rotating Worker secrets.
+      // PostgreSQL on the box is the authoritative single-chat binding.
+      const target=await (await box(env,'/api/internal/telegram-target')).json();
+      if(!authorizedUpdate(update,target.chat_id) && !isPairingUpdate(update)) return Response.json({ok:true});
+      try {await box(env,'/api/internal/telegram',update);}
+      catch(error) {
+        // Invalid/expired pairing links must not poison Telegram's retry queue.
+        if(error instanceof BoxError && error.status===403) return Response.json({ok:true});
+        throw error;
+      }
       return Response.json({ok:true});
     } catch {
       // A non-2xx makes Telegram retry; never acknowledge work that was lost.
