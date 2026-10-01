@@ -77,6 +77,8 @@ async function mock(page: Page, data: unknown = empty) {
     if (url.pathname === "/api/session") body = { authenticated: true };
     else if (url.pathname === "/api/dashboard") body = data;
     else if (url.pathname === "/api/chat") body = { messages: [] };
+    else if (url.pathname === "/api/conversations")
+      body = { conversations: [{ id: "web", title: "Earlier chats" }] };
     else if (url.pathname === "/api/confirmations") body = { pending: [] };
     else if (url.pathname.startsWith("/api/activity/"))
       body = {
@@ -227,11 +229,9 @@ test("minimal shell, paired overview charts, and weekly measured zones", async (
   await expect(
     page.locator(".page-heading .eyebrow, .page-description"),
   ).toHaveCount(0);
-  const zones = page
-    .locator(".card")
-    .filter({
-      has: page.getByRole("heading", { name: "Time in zones", exact: true }),
-    });
+  const zones = page.locator(".card").filter({
+    has: page.getByRole("heading", { name: "Time in zones", exact: true }),
+  });
   await expect(zones.locator(".coverage-note")).toContainText("3 / 3");
   await expect(zones.locator(".zone-row")).toHaveCount(3);
   const row = page.locator(".card-grid").first();

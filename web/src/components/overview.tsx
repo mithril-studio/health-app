@@ -25,7 +25,7 @@ import {
   SportIcon,
 } from "./ui";
 import { FitnessCard } from "./fitness";
-import { ZonesCard } from "./insights";
+import { ZonesCard } from "./zones-card";
 import { RecoverySnapshot } from "./recovery";
 import { GoalCard } from "./goal";
 import { ActivityDialog } from "./activity-dialog";
@@ -52,28 +52,24 @@ export function Overview() {
       label: copy.overview.weekLoad,
       value: metric(sumKnown(done.map((a) => a.load))),
       unit: copy.common.pts,
-      note: copy.overview.recordedLoad,
       Icon: Layers,
     },
     {
       label: copy.overview.weekTime,
       value: duration(sumKnown(done.map((a) => a.duration))),
       unit: "",
-      note: copy.overview.completedTime,
       Icon: Clock3,
     },
     {
       label: copy.overview.weekSessions,
       value: String(done.length),
       unit: "",
-      note: copy.overview.allSports,
       Icon: ActivityIcon,
     },
     {
       label: copy.overview.plan,
       value: `${planned.filter((e) => e.activityId).length}`,
       unit: `/ ${planned.length}`,
-      note: copy.overview.pairedOnly,
       Icon: CalendarDays,
     },
   ];

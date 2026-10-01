@@ -1,0 +1,115 @@
+.coach-layout {
+  display: grid;
+  grid-template-columns: 208px minmax(0, 1fr);
+  height: calc(100dvh - 180px);
+  min-height: 520px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--hairline);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+.conversation-menu {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+}
+.conversation-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 16px;
+  min-height: 66px;
+  border-bottom: 1px solid var(--border);
+}
+.conversation-actions > .button {
+  width: 100%;
+}
+.conversation-history-toggle {
+  display: none;
+}
+.conversation-list {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 12px;
+}
+.conversation-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 10px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.conversation-item svg {
+  flex-shrink: 0;
+}
+.conversation-item span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.conversation-item:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.conversation-item.active {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.history-loading {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.coach-layout .chat-workspace {
+  min-width: 0;
+  min-height: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.coach-layout .chat-topline {
+  min-height: 66px;
+  padding: 12px 20px;
+}
+.coach-layout .chat-history {
+  min-height: 140px;
+  max-height: none;
+}
+.coach-layout .chat-bottom {
+  flex-shrink: 0;
+}
+@media (max-width: 800px) {
+  .coach-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .conversation-menu {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .conversation-actions {
+    padding: 12px;
+    min-height: 56px;
+    border-bottom: 0;
+    justify-content: space-between;
+  }
+  .conversation-actions > .button {
+    width: auto;
+  }
+  .conversation-history-toggle {
+    display: inline-flex;
+  }
+  .conversation-menu:not(.expanded) .conversation-list {
+    display: none;
+  }
+  .conversation-list {
+    max-height: 180px;
+  }
+}

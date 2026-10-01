@@ -26,9 +26,6 @@ export function GoalCard({
     <Card className="goal-card">
       <CardHeading
         title={compact ? copy.overview.goalTitle : copy.insights.goal}
-        description={
-          compact ? copy.overview.goalDetail : copy.insights.goalDetail
-        }
         action={<Flag size={17} strokeWidth={1.5} aria-hidden="true" />}
       />
       <div className="goal-body">

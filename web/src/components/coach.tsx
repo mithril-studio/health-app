@@ -1,12 +1,8 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import {
-  ArrowUp,
-  ArrowUpRight,
-  MessageCircle,
-  RotateCcw,
-  ShieldCheck,
-} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ConversationMenu } from "./conversation-menu";
+import { ArrowUp, ArrowUpRight, MessageCircle, RotateCcw } from "lucide-react";
 import { api, errorMessage } from "@/lib/api";
 import { chatMessages, type ChatMessage } from "@/lib/chat";
 import { record, text } from "@/lib/data";
@@ -18,6 +14,48 @@ import { DeletionConfirmations } from "./deletion-confirmations";
 import { ChatMarkdown } from "./chat-markdown";
 type Attempt = { message: string; key: string };
 export function Coach() {
+  const router = useRouter();
+  const conversationId = useSearchParams().get("chat") || "web";
+  const [busy, setBusy] = useState(false);
+  const [version, setVersion] = useState(0);
+  const changed = useCallback(() => setVersion((v) => v + 1), []);
+  return (
+    <>
+      <PageHeading title={copy.coach.title} />
+      <div className="coach-layout">
+        <ConversationMenu
+          active={conversationId}
+          onSelect={(id) =>
+            router.push(`/coach?chat=${encodeURIComponent(id)}`, {
+              scroll: false,
+            })
+          }
+          busy={busy}
+          version={version}
+        />
+        <Conversation
+          key={conversationId}
+          conversationId={conversationId}
+          onBusyChange={setBusy}
+          onHistoryChange={changed}
+        />
+      </div>
+    </>
+  );
+}
+function Conversation({
+  conversationId,
+  onBusyChange,
+  onHistoryChange,
+}: {
+  conversationId: string;
+  onBusyChange: (busy: boolean) => void;
+  onHistoryChange: () => void;
+}) {
+  const historyPath =
+    conversationId === "web"
+      ? "/api/chat"
+      : `/api/chat?conversation_id=${encodeURIComponent(conversationId)}`;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -32,6 +70,10 @@ export function Coach() {
   const mounted = useRef(true);
   const { refresh } = useTraining();
   useEffect(() => {
+    onBusyChange(busy);
+    return () => onBusyChange(false);
+  }, [busy, onBusyChange]);
+  useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
@@ -41,7 +83,7 @@ export function Coach() {
     const controller = new AbortController();
     setLoading(true);
     setHistoryError("");
-    api("/api/chat", { signal: controller.signal })
+    api(historyPath, { signal: controller.signal })
       .then((result) => setMessages(chatMessages(result)))
       .catch((e) => {
         if (!controller.signal.aborted) setHistoryError(errorMessage(e));
@@ -50,7 +92,7 @@ export function Coach() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [version]);
+  }, [version, historyPath]);
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "instant", block: "nearest" });
   }, [messages, busy]);
@@ -74,7 +116,7 @@ export function Coach() {
     try {
       const result = await api("/api/chat", {
         method: "POST",
-        body: { message: next.message },
+        body: { message: next.message, conversation_id: conversationId },
         idempotencyKey: next.key,
         timeout: 180000,
       });
@@ -93,7 +135,7 @@ export function Coach() {
       setConfirmVersion((v) => v + 1);
       // Reconcile with persisted history without turning a successful reply into a failed send.
       try {
-        const history = await api("/api/chat");
+        const history = await api(historyPath);
         if (mounted.current) setMessages(chatMessages(history));
       } catch {
         /* The confirmed reply stays visible; reload remains available. */
@@ -107,13 +149,13 @@ export function Coach() {
     } finally {
       if (mounted.current) {
         setBusy(false);
+        onHistoryChange();
         inputRef.current?.focus();
       }
     }
   }
   return (
     <>
-      <PageHeading title={copy.coach.title} />
       <div className="chat-workspace">
         <div className="chat-topline">
           <div>
@@ -122,7 +164,6 @@ export function Coach() {
             </span>
             <span>
               <strong>{copy.coach.name}</strong>
-              <small>{copy.brand}</small>
             </span>
           </div>
           <Button
@@ -194,9 +235,7 @@ export function Coach() {
               <div className="welcome-mark">
                 <Mark />
               </div>
-              <p className="eyebrow">{copy.brand}</p>
               <h2>{copy.coach.welcome}</h2>
-              <p>{copy.coach.intro}</p>
               <div className="advice-chips">
                 {copy.coach.chips.map((chip) => (
                   <button
@@ -218,7 +257,6 @@ export function Coach() {
               <Mark className="loading-mark" />
               <div>
                 <strong>{copy.coach.thinking}</strong>
-                <span>{copy.coach.thinkingDetail}</span>
               </div>
             </div>
           )}
@@ -282,10 +320,6 @@ export function Coach() {
               <ArrowUp size={17} aria-hidden="true" />
             </Button>
           </form>
-          <p className="composer-footer">
-            <ShieldCheck size={11} aria-hidden="true" />
-            {copy.coach.footer}
-          </p>
         </div>
       </div>
     </>

@@ -23,9 +23,6 @@ export function FitnessCard({
     <Card>
       <CardHeading
         title={overview ? copy.overview.fitness : copy.insights.fitness}
-        description={
-          overview ? copy.overview.fitnessDetail : copy.insights.fitnessDetail
-        }
       />
       <div className="fitness-numbers">
         {[

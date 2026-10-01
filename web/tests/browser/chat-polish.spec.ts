@@ -26,6 +26,8 @@ test.beforeEach(async ({ page }) => {
           },
         ],
       };
+    if (path === "/api/conversations")
+      body = { conversations: [{ id: "web", title: "Earlier chats" }] };
     if (path === "/api/confirmations") body = { pending: [] };
     if (path === "/api/telegram")
       body = { connected: false, bot_username: "coachreachybot" };
@@ -44,7 +46,7 @@ test("chat is second, markdown is rendered, and Telegram moves into the header",
   await page.goto("/coach");
   await expect(page.locator(".sidebar nav a")).toHaveText([
     "Overview",
-    "Coach",
+    "Chats",
     "Calendar",
     "Insights",
   ]);
