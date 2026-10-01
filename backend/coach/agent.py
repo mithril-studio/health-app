@@ -13,6 +13,7 @@ import httpx
 
 from coach.auth import digest
 from coach.models import READ_TOOLS, TOOL_DESCRIPTIONS, TOOL_MODELS
+from coach.tools import ToolError
 
 SYSTEM = """You are Coach Reachy, Joost's training coach. Timezone Europe/Amsterdam.
 Goals: 5 km under 18 minutes, then under 17. Runs Mon/Tue/Thu/Sun; football and gym
@@ -125,10 +126,7 @@ class Agent:
         oauth = bool(self.cfg.anthropic_oauth_token.get_secret_value())
         # Keep official CLI refresh-token rotation persistent without exposing the
         # user's home, hooks or ambient MCP servers to a coaching subprocess.
-        saved_login = bool(
-            self.cfg.claude_config_dir
-            and (Path(self.cfg.claude_config_dir) / ".credentials.json").is_file()
-        )
+        saved_login = self.has_cli_login()
         configured = (
             api
             if self.transport == "api"
@@ -163,21 +161,27 @@ class Agent:
             "settings": await self.store.settings(),
         }
 
-    async def respond(self, message, *, key, channel="web", read_only=False, extra=None):
-        cached = await self.store.query(
+    async def cached_reply(self, key, channel, message):
+        previous = await self.store.query(
+            "SELECT channel,content FROM agent_messages WHERE message_key=%s",
+            (key + ":user",),
+            one=True,
+        )
+        if previous and (previous["channel"] != channel or previous["content"] != message):
+            raise ToolError("Idempotency key already used for different input", 409)
+        return await self.store.query(
             "SELECT content FROM agent_messages WHERE message_key=%s", (key + ":reply",), one=True
         )
+
+    async def respond(self, message, *, key, channel="web", read_only=False, extra=None):
+        cached = await self.cached_reply(key, channel, message)
         if cached:
             return cached["content"]
         if not self.status()["configured"]:
             raise AgentUnavailable("Claude is not configured")
         async with self.store.lock("agent:" + channel, wait=True):
             # Recheck after taking the distributed lock: a duplicate may have finished.
-            cached = await self.store.query(
-                "SELECT content FROM agent_messages WHERE message_key=%s",
-                (key + ":reply",),
-                one=True,
-            )
+            cached = await self.cached_reply(key, channel, message)
             if cached:
                 return cached["content"]
             history = await self.store.history(channel, limit=12)

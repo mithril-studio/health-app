@@ -66,3 +66,15 @@ def test_cli_has_no_ambient_tools_or_credentials(tmp_path):
         x in env
         for x in ("INTERVALS_API_KEY", "MCP_AUTH_TOKEN", "ANTHROPIC_BASE_URL", "ANTHROPIC_API_KEY")
     )
+
+
+async def test_chat_idempotency_key_cannot_reuse_a_different_message(store):
+    from coach.tools import ToolError
+
+    cfg = Settings(_env_file=None)
+    await store.message("reuse:user", "web", "user", "original request")
+    await store.message("reuse:reply", "web", "assistant", "original reply")
+    agent = Agent(cfg, store, None, None, None)
+    with pytest.raises(ToolError):
+        await agent.respond("a different request", key="reuse")
+    assert await agent.respond("original request", key="reuse") == "original reply"

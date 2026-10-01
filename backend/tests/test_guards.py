@@ -126,3 +126,15 @@ async def test_telegram_chat_lock_happens_before_queue(web, store):
     )
     assert r.status_code == 403
     assert await store.query("SELECT * FROM work_items") == []
+
+
+async def test_generic_health_checks_database_readiness(web, monkeypatch):
+    c, app = web
+
+    async def unavailable(*args, **kwargs):
+        raise RuntimeError("private database details")
+
+    monkeypatch.setattr(app.state.store, "query", unavailable)
+    response = await c.get("/api/health")
+    assert response.status_code == 503
+    assert response.json() == {"ready": False}

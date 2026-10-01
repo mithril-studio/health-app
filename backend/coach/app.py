@@ -112,7 +112,13 @@ def create_app(settings=None, *, store=None, source=None):
 
     @app.get("/api/health")
     async def health():
-        return JSONResponse({"ready": app.state.ready}, status_code=200 if app.state.ready else 503)
+        ready = app.state.ready
+        try:
+            async with asyncio.timeout(2):
+                await db.query("SELECT 1", one=True)
+        except Exception:
+            ready = False
+        return JSONResponse({"ready": ready}, status_code=200 if ready else 503)
 
     @app.get("/api/session")
     async def session(request: Request):
