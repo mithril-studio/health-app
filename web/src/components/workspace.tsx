@@ -78,20 +78,22 @@ export function Workspace({
     const generation = ++sessionRequest.current;
     try {
       const session = await api<{ authenticated: boolean }>("/api/session");
-      if (generation !== sessionRequest.current) return;
+      if (generation !== sessionRequest.current) return authenticated.current;
       authenticated.current = session.authenticated === true;
       setAuth(authenticated.current ? "in" : "out");
       if (!authenticated.current) {
         request.current++;
         setData(null);
       }
+      return authenticated.current;
     } catch (e) {
-      if (generation !== sessionRequest.current) return;
+      if (generation !== sessionRequest.current) return authenticated.current;
       authenticated.current = false;
       request.current++;
       setData(null);
       setAuthError(errorMessage(e));
       setAuth("error");
+      return false;
     }
   }, []);
   const load = useCallback(async () => {

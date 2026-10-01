@@ -91,6 +91,8 @@ export const en = {
     submit: "Enter your workspace",
     submitting: "Signing in…",
     invalid: "That password didn’t work. Please try again.",
+    sessionMissing:
+      "Your password was accepted, but the sign-in session could not be verified. Allow cookies for coach-reachy.boxd.sh and open https://coach-reachy.boxd.sh directly, then try again.",
     rateLimit:
       "Too many incorrect password attempts. Please wait up to 15 minutes before trying again.",
     footer: "A private connection to your Intervals.icu training.",

@@ -4,19 +4,27 @@ import { ArrowRight, LockKeyhole, ArrowUpRight } from "lucide-react";
 import { api, ApiError, errorMessage } from "@/lib/api";
 import { copy } from "@/lib/i18n";
 import { Button, ErrorNotice, Mark } from "./ui";
-export function Login({ onLogin }: { onLogin: () => Promise<void> }) {
-  const [password, setPassword] = useState("");
+export function Login({ onLogin }: { onLogin: () => Promise<boolean> }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!password || busy) return;
+    if (busy) return;
+    // Read the native field: autofill need not emit a React change event.
+    const form = event.currentTarget;
+    const password = new FormData(form).get("password");
+    if (typeof password !== "string" || !password) {
+      setError(copy.login.placeholder);
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       await api("/api/login", { method: "POST", body: { password } });
-      setPassword("");
-      await onLogin();
+      if (!(await onLogin())) {
+        throw new ApiError(409, copy.login.sessionMissing);
+      }
+      form.reset();
     } catch (e) {
       setError(
         e instanceof ApiError && e.status === 429
@@ -70,12 +78,13 @@ export function Login({ onLogin }: { onLogin: () => Promise<void> }) {
                 type="password"
                 autoComplete="current-password"
                 placeholder={copy.login.placeholder}
-                value={password}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 maxLength={1024}
                 required
                 aria-invalid={!!error}
                 aria-describedby={error ? "login-error" : undefined}
-                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
             {error && (
@@ -83,11 +92,7 @@ export function Login({ onLogin }: { onLogin: () => Promise<void> }) {
                 <ErrorNotice message={error} />
               </div>
             )}
-            <Button
-              type="submit"
-              disabled={busy || !password}
-              className="login-submit"
-            >
+            <Button type="submit" disabled={busy} className="login-submit">
               {busy ? copy.login.submitting : copy.login.submit}
               {busy ? (
                 <Mark className="loading-mark" />
