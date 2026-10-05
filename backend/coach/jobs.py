@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from coach.agent import AgentUnavailable
 from coach.models import JobInput
 from coach.telegram_link import TelegramLink, private_sender
 from coach.tools import ToolError
@@ -86,7 +87,7 @@ class Jobs:
                 # Sync can be slow; a relink during it revokes the old sender too.
                 if payload["chat_id"] != await self.telegram_link.target():
                     return {"status": "ignored"}
-                reply = await self.agent.respond(payload["text"], key=key, channel="telegram")
+                reply = await self.respond(payload["text"], key=key, channel="telegram")
             else:
                 kind = payload["kind"]
                 prompts = {
@@ -99,7 +100,7 @@ class Jobs:
                     if kind == "activity"
                     else None
                 )
-                reply = await self.agent.respond(
+                reply = await self.respond(
                     prompts[kind], key=key, channel="scheduled", read_only=True, extra=extra
                 )
             # Durable outbox: a generated reply remains queued even if Telegram is down.
@@ -107,6 +108,27 @@ class Jobs:
             return {"notification_key": "reply:" + key}
 
         return await self.store.process(key, handler)
+
+    async def respond(self, message, **kwargs):
+        try:
+            return await self.agent.respond(message, **kwargs)
+        except AgentUnavailable as exc:
+            await self.alert_unavailable(exc)
+            raise
+
+    async def alert_unavailable(self, exc):
+        # Telegram delivery does not depend on Claude, so the owner learns about a broken
+        # login the same day instead of after a silent week of retries. One alert per day;
+        # the failing job itself stays queued and is retried once the login is restored.
+        day = datetime.now(ZoneInfo("Europe/Amsterdam")).date()
+        text = (
+            f"Coach Reachy cannot reach Claude: {exc}. "
+            "Your messages and scheduled reports stay queued and will be answered once this is fixed."
+        )
+        try:
+            await self.store.enqueue(f"alert:agent:{day}", "notification", {"text": text})
+        except ValueError:
+            pass  # Today's alert already exists with an earlier reason.
 
     async def send_notification(self, key, text):
         for part, chunk in enumerate(notification_chunks(text)):

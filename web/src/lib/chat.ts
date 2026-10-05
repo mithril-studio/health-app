@@ -40,3 +40,11 @@ export function pendingDeletions(value: unknown): Deletion[] {
     ];
   });
 }
+export type AgentStatus = { configured: boolean; reason: string };
+/** Coach availability reported beside the history; null when the API omits it. */
+export function agentStatus(value: unknown): AgentStatus | null {
+  const agent = record(value).agent;
+  if (!agent || typeof agent !== "object") return null;
+  const row = record(agent);
+  return { configured: row.configured === true, reason: text(row.reason) };
+}

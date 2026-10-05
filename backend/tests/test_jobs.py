@@ -72,3 +72,28 @@ def test_telegram_chunks_respect_utf16_limit():
     chunks = notification_chunks("🙂" * 9000)
     assert "".join(chunks) == "🙂" * 9000
     assert all(len(c.encode("utf-16-le")) <= 8000 for c in chunks)
+
+
+async def test_unreachable_claude_alerts_owner_once_per_day_and_keeps_job_queued(store):
+    from coach.agent import AgentUnavailable
+
+    class BrokenAgent:
+        async def respond(self, message, **kwargs):
+            raise AgentUnavailable("Claude login on the server expired")
+
+    cfg = Settings(_env_file=None, telegram_bot_token="test", telegram_chat_id="123")
+    async with httpx.AsyncClient() as client:
+        jobs = Jobs(cfg, store, ToolService(store, WritableSource()), BrokenAgent(), client)
+        await jobs.accept_job({"kind": "morning", "key": "2026-10-05"})
+        await jobs.accept_job({"kind": "evening", "key": "2026-10-05"})
+        assert (await jobs.process("job:morning:2026-10-05"))["status"] == "retry"
+        await store.execute("UPDATE work_items SET available_at=now()")
+        assert (await jobs.process("job:evening:2026-10-05"))["status"] == "retry"
+    alerts = await store.query(
+        "SELECT key,payload FROM work_items WHERE kind='notification' AND key LIKE %s",
+        ("alert:agent:%",),
+    )
+    assert len(alerts) == 1 and "expired" in alerts[0]["payload"]["text"]
+    assert "login" in alerts[0]["payload"]["text"]
+    retrying = await store.query("SELECT key FROM work_items WHERE status='retry' ORDER BY key")
+    assert [r["key"] for r in retrying] == ["job:evening:2026-10-05", "job:morning:2026-10-05"]

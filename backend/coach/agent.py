@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import shutil
 import signal
@@ -31,8 +32,29 @@ Keep responses concise and actionable. When evidence is stale, say when it was l
 """
 
 
+log = logging.getLogger("coach")
+
+LOGIN_EXPIRED = (
+    "Claude login on the server expired or was revoked; "
+    "sign in again with deploy/claude-login.sh or set ANTHROPIC_OAUTH_TOKEN"
+)
+
+
 class AgentUnavailable(Exception):
     pass
+
+
+def failure_summary(text, limit=160):
+    """One sanitized line of a CLI failure for service logs: no newlines, bounded size."""
+    return " ".join(str(text or "").split())[:limit]
+
+
+def is_login_failure(text):
+    lowered = str(text or "").lower()
+    return any(
+        marker in lowered
+        for marker in ("authenticate", "oauth", "login", "logged in", "credential", "401")
+    )
 
 
 def bounded_json(value, limit=35000):
@@ -103,17 +125,42 @@ class Agent:
             auth,
         )
         self.auth_rejected = False
+        # Credential file version seen when the provider last rejected it: a newer
+        # login written by `claude auth login` clears the rejection without a restart.
+        self.rejected_login_version = None
 
-    def has_cli_login(self):
+    def login_version(self):
         if not self.cfg.claude_config_dir:
-            return False
+            return None
+        try:
+            return (Path(self.cfg.claude_config_dir) / ".credentials.json").stat().st_mtime_ns
+        except OSError:
+            return None
+
+    def login_state(self):
+        """'present', 'expired' (file without a usable token) or 'missing'."""
+        if not self.cfg.claude_config_dir:
+            return "missing"
         try:
             credential = json.loads(
                 (Path(self.cfg.claude_config_dir) / ".credentials.json").read_text()
             )
-            return bool(credential.get("claudeAiOauth", {}).get("accessToken"))
-        except (OSError, ValueError, TypeError, AttributeError):
-            return False
+        except OSError:
+            return "missing"
+        except ValueError:
+            return "expired"
+        try:
+            token = credential.get("claudeAiOauth", {}).get("accessToken")
+        except AttributeError:
+            return "expired"
+        return "present" if token else "expired"
+
+    def has_cli_login(self):
+        return self.login_state() == "present"
+
+    def reject_login(self):
+        self.auth_rejected = True
+        self.rejected_login_version = self.login_version()
 
     @property
     def transport(self):
@@ -126,20 +173,29 @@ class Agent:
         oauth = bool(self.cfg.anthropic_oauth_token.get_secret_value())
         # Keep official CLI refresh-token rotation persistent without exposing the
         # user's home, hooks or ambient MCP servers to a coaching subprocess.
-        saved_login = self.has_cli_login()
+        login = self.login_state()
+        saved_login = login == "present"
+        if self.auth_rejected and self.transport == "cli" and self.rejected_login_version:
+            # A fresh login file replaces the rejected one; try it again.
+            if self.login_version() != self.rejected_login_version:
+                self.auth_rejected, self.rejected_login_version = False, None
         configured = (
             api
             if self.transport == "api"
             else bool((oauth or api or saved_login) and shutil.which(self.cfg.claude_cli_path))
         )
+        if self.auth_rejected:
+            reason = LOGIN_EXPIRED if self.transport == "cli" else "Provider rejected credentials"
+        elif configured:
+            reason = None
+        elif self.transport == "cli" and login == "expired" and not (oauth or api):
+            reason = LOGIN_EXPIRED
+        else:
+            reason = "Configure an API key or the official Claude CLI with ANTHROPIC_OAUTH_TOKEN or CLAUDE_CONFIG_DIR"
         return {
             "configured": configured and not self.auth_rejected,
             "transport": self.transport,
-            "reason": "Provider rejected credentials"
-            if self.auth_rejected
-            else None
-            if configured
-            else "Configure an API key or the official Claude CLI with ANTHROPIC_OAUTH_TOKEN or CLAUDE_CONFIG_DIR",
+            "reason": reason,
         }
 
     async def context(self):
@@ -177,8 +233,9 @@ class Agent:
         cached = await self.cached_reply(key, channel, message)
         if cached:
             return cached["content"]
-        if not self.status()["configured"]:
-            raise AgentUnavailable("Claude is not configured")
+        status = self.status()
+        if not status["configured"]:
+            raise AgentUnavailable(status["reason"] or "Claude is not configured")
         async with self.store.lock("agent:" + channel, wait=True):
             # Recheck after taking the distributed lock: a duplicate may have finished.
             cached = await self.cached_reply(key, channel, message)
@@ -324,6 +381,13 @@ class Agent:
                 except (ValueError, UnicodeDecodeError):
                     raise AgentUnavailable("Claude CLI returned an invalid response") from None
                 if process.returncode or result.get("is_error"):
+                    # The CLI's own error text is the only diagnostic available: keep a
+                    # bounded single line in the service log, never the prompt or data.
+                    summary = failure_summary(result.get("result"))
+                    log.warning("claude_cli_failed exit=%s: %s", process.returncode, summary)
+                    if is_login_failure(summary):
+                        self.reject_login()
+                        raise AgentUnavailable(LOGIN_EXPIRED)
                     raise AgentUnavailable(
                         "Claude CLI could not complete; check provider credentials and supported CLI version"
                     )

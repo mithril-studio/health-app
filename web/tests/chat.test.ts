@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chatMessages, pendingDeletions } from "../src/lib/chat";
+import { agentStatus, chatMessages, pendingDeletions } from "../src/lib/chat";
 
 test("chat history exposes only conversational roles and rejects malformed history", () => {
   assert.deepEqual(
@@ -32,5 +32,22 @@ test("deletion capabilities are accepted only from structured pending records", 
       ],
     }).length,
     1,
+  );
+});
+test("coach availability is read from the history response and absent when omitted", () => {
+  assert.equal(agentStatus({ messages: [] }), null);
+  assert.deepEqual(
+    agentStatus({
+      messages: [],
+      agent: {
+        configured: false,
+        reason: "Claude login on the server expired",
+      },
+    }),
+    { configured: false, reason: "Claude login on the server expired" },
+  );
+  assert.deepEqual(
+    agentStatus({ messages: [], agent: { configured: "yes", reason: null } }),
+    { configured: false, reason: "" },
   );
 });

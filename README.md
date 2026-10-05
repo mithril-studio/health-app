@@ -24,6 +24,11 @@ MCP uses `Authorization: Bearer <MCP_AUTH_TOKEN>` from `.env`, Streamable HTTP a
 
 Claude chat uses the **official Claude CLI with your Claude OAuth login**, not a subscription OAuth token mislabeled as an Anthropic API key. General CLI tools and ambient MCP servers are disabled for coaching. Only the application's validated training tools can execute actions. OAuth credentials live separately in `/opt/coach-reachy/claude-auth`, readable only by the service user. The official CLI can refresh its login there. If authentication expires/revokes, reauthenticate as `boxd`; do not print or commit the credential file.
 
+**If the coach stops answering (web chat and Telegram at once), the saved login has usually expired or been revoked.** The service then reports `configured: false` with the reason `Claude login on the server expired…`, logs one `claude_cli_failed` line per attempt in `api.log`, and sends one Telegram alert per day while scheduled reports and replies stay queued. On 2 October 2026 the CLI could not refresh its session during the morning report and wiped its tokens; nothing answered until the login was renewed. To recover, either:
+
+1. `boxd connect coach-reachy` and run `bash /opt/coach-reachy/deploy/claude-login.sh`; it signs in only the service-owned credential directory and restarts the API. Queued work resumes by itself.
+2. Or, more durable: run `claude setup-token` on your own machine, add the printed token as `ANTHROPIC_OAUTH_TOKEN=…` to the root-owned `/opt/coach-reachy/.env`, and `sudo systemctl restart coach-reachy-api`. A long-lived token does not depend on refresh-token rotation. Never paste it into chat, git or the browser.
+
 The VM's bot protection must be **off** for authenticated API/MCP/Worker traffic. App authentication stays on. Postgres, Next.js and FastAPI listen on loopback; nginx is the public entry point.
 
 ## Important live-data limitations

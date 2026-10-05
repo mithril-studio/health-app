@@ -314,6 +314,9 @@ export const en = {
       "Help me work toward a sub-18 5 km",
     ],
     noReply: "No reply was returned. Reload the conversation before retrying.",
+    unavailable: "Your coach is offline right now.",
+    unavailableDetail:
+      "The server can’t reach Claude. Your messages will be answered again once the connection is restored.",
     restore: "Reload conversation",
     pending: "A change needs your confirmation",
     deleteTitle: "Delete this planned workout?",

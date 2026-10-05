@@ -12,6 +12,12 @@
 - **Scheduling implementation:** morning 08:30, evening 21:00 Amsterdam and 20-minute activity polling. Fallback relay has persisted its activity baseline; tests cover both DST changes, retry/backoff, deduplication, crash recovery and non-flooding startup. A seven-day live delivery run has not been performed.
 - **Build/checks:** 58 backend + 33 relay + 10 Worker + 18 frontend unit tests; 25 core native Chrome scenarios and 5 WebKit login regression scenarios. Typecheck and production builds pass. Frontend/Worker npm audits report zero vulnerabilities; `pip-audit` found no known vulnerabilities in all pinned Python dependencies. Worker dry-run bundling passes.
 
+## Update — 5 October 2026
+
+- **Coach outage found and explained:** the VM's Claude OAuth session could not be refreshed during the 2 October 08:30 report and the CLI wiped its tokens (`claude auth status` reports `loggedIn: false`). Every web chat, Telegram reply and scheduled report since then failed with `AgentUnavailable` and kept retrying silently; today's Telegram message and the 2 and 5 October morning reports are still queued and will be answered once the login is renewed.
+- **Hardening shipped:** the API logs one sanitized `claude_cli_failed` line per attempt, reports `Claude login on the server expired…` as the agent reason, recovers automatically when a new credential file appears, sends one Telegram alert per day while Claude is unreachable, and the chat page shows that reason and disables the composer. `deploy/claude-login.sh` renews the isolated login. Backend suite now 62 tests, frontend 19 unit tests.
+- **Not yet verified:** a real reply after renewal needs the owner's browser sign-in; run `python3 deploy/smoke.py --chat` afterwards.
+
 ## External setup still required
 
 1. **Link your personal Telegram chat:** the supplied `TELEGRAM_CHAT_ID` is the bot's ID. The real send attempt returned `403: the bot can't send messages to the bot`. Open **Telegram in the top-right bar → Connect Telegram**, then follow the one-time link and press Start. Pairing is session-only, hashed, expiring and single-use; arbitrary first senders cannot take ownership. Backend/relay pairing and target overrides are tested. Notifications wait for a valid target; successful real delivery and a genuine user-to-bot reply remain unverified until pairing.
