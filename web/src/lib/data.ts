@@ -124,6 +124,15 @@ export type Dashboard = {
   sync: { lastSuccess: string | null; error: string | null };
   insights: Raw;
 };
+export function standaloneActivities(
+  activities: Activity[],
+  events: PlannedEvent[],
+) {
+  const pairedActivityIds = new Set(
+    events.flatMap((event) => (event.activityId ? [event.activityId] : [])),
+  );
+  return activities.filter((activity) => !pairedActivityIds.has(activity.id));
+}
 export function normalizeDashboard(value: unknown): Dashboard {
   const root = record(value);
   if (!Array.isArray(root.activities))

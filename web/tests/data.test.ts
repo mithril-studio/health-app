@@ -8,6 +8,7 @@ import {
   goalResults,
   normalizeCurves,
   fitnessSeries,
+  standaloneActivities,
 } from "../src/lib/data";
 import { addDays, startOfWeek, calendarDays } from "../src/lib/dates";
 
@@ -157,6 +158,30 @@ test("calendar date arithmetic is independent of DST and week starts Monday", ()
   assert.equal(dates.length, 35);
   assert.equal(dates[0], "2026-09-28");
   assert.equal(dates.at(-1), "2026-11-01");
+});
+
+test("paired activities are represented by their planned calendar event only", () => {
+  const data = normalizeDashboard({
+    activities: [
+      { id: "paired", start_date_local: "2026-10-08", type: "Run" },
+      { id: "other", start_date_local: "2026-10-08", type: "Ride" },
+    ],
+    events: [
+      {
+        id: "plan",
+        start_date_local: "2026-10-08",
+        type: "Run",
+        paired_activity_id: "paired",
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    standaloneActivities(data.activities, data.events).map(
+      (activity) => activity.id,
+    ),
+    ["other"],
+  );
 });
 
 test("5 km curve goals require an exact measured distance, not interpolation", async () => {

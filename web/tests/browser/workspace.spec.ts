@@ -345,6 +345,35 @@ test("drag and drop move updates calendar only after explicit confirmation", asy
   await page.screenshot({ path: "artifacts/calendar-desktop.png" });
 });
 
+test("calendar shows paired workouts once and keeps other completed workouts", async ({
+  page,
+}) => {
+  const data = dashboard();
+  data.events[0] = {
+    ...data.events[0],
+    start_date_local: `${now}T10:00:00`,
+    paired_activity_id: run.id,
+  } as (typeof data.events)[number] & { paired_activity_id: string };
+  await mock(page, data);
+  await page.goto("/calendar");
+
+  await expect(
+    page.getByRole("button", { name: /Planned test intervals/ }),
+  ).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: /Planned test intervals/ }),
+  ).toContainText("Planned · done");
+  await expect(
+    page.getByRole("button", { name: /Recorded test run/ }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /Recorded football/ }),
+  ).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /Recorded gym/ })).toHaveCount(
+    1,
+  );
+});
+
 test("insights switch curves and zones without inventing missing metrics", async ({
   page,
 }) => {

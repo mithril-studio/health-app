@@ -19,6 +19,7 @@ import {
 } from "@/lib/dates";
 import {
   normalizeDashboard,
+  standaloneActivities,
   type Dashboard,
   type PlannedEvent,
 } from "@/lib/data";
@@ -135,6 +136,7 @@ export function TrainingCalendar() {
     [];
   const events =
     calendar?.events.filter((e) => sport === "all" || e.sport === sport) ?? [];
+  const visibleActivities = standaloneActivities(activities, events);
   const paired = event?.activityId
     ? calendar?.activities.find((a) => a.id === event.activityId)
     : null;
@@ -222,6 +224,9 @@ export function TrainingCalendar() {
         >
           {days.map((day) => {
             const dayActivities = activities.filter((a) => a.date === day);
+            const dayVisibleActivities = visibleActivities.filter(
+              (a) => a.date === day,
+            );
             const dayEvents = events.filter((e) => e.date === day);
             const load = dayActivities
               .filter((a) => a.load !== null)
@@ -313,7 +318,7 @@ export function TrainingCalendar() {
                       </button>
                     );
                   })}
-                  {dayActivities.map((a) => (
+                  {dayVisibleActivities.map((a) => (
                     <button
                       className="calendar-session completed-session"
                       key={`a-${a.id}`}
@@ -337,7 +342,7 @@ export function TrainingCalendar() {
                       </Badge>
                     </button>
                   ))}
-                  {!dayEvents.length && !dayActivities.length && (
+                  {!dayEvents.length && !dayVisibleActivities.length && (
                     <span className="empty-day">{copy.calendar.emptyDay}</span>
                   )}
                 </div>
