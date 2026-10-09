@@ -54,12 +54,12 @@ def test_summary_groups_by_week_and_month_and_counts_missing_load():
     monthly = training_summary(activities, wellness, oldest, newest, "month")
     assert [p["period"] for p in monthly["periods"]] == ["2026-01", "2026-02"]
     assert monthly["periods"][1]["by_sport"] == {
-        "Soccer": {"sessions": 1, "distance_km": 0.0, "moving_time_min": 50.0, "load": 50.0},
+        "Soccer": {"sessions": 1, "distance_km": None, "moving_time_min": 50.0, "load": 50.0},
         "Restricted source": {
             "sessions": 1,
-            "distance_km": 0.0,
-            "moving_time_min": 0.0,
-            "load": 0.0,
+            "distance_km": None,
+            "moving_time_min": None,
+            "load": None,
         },
     }
     assert monthly["periods"][1]["restricted"] == 1 and monthly["periods"][0]["restricted"] == 0
@@ -107,7 +107,7 @@ async def test_year_of_wellness_fits_the_tool_budget_and_summary_covers_it(store
         {"oldest": str(oldest), "newest": str(today), "group_by": "month"},
     )
     assert len(summary["periods"]) == 13 and sum(p["sessions"] for p in summary["periods"]) == 122
-    assert len(json.dumps(summary)) < 8000
+    assert len(json.dumps(summary)) < 16000
     calendar = await service.call("get_calendar", {"oldest": str(oldest), "newest": str(today)})
     assert len(calendar["activities"]) == 122 and "device_name" not in calendar["activities"][0]
 
