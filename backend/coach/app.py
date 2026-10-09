@@ -22,6 +22,7 @@ from coach.jobs import Jobs
 from coach.mcp_server import create_mcp
 from coach.models import (
     ActivityInput,
+    AthleteScoresInput,
     ChatInput,
     ConversationId,
     CurvesInput,
@@ -206,6 +207,14 @@ def create_app(settings=None, *, store=None, source=None):
     @app.get("/api/activity/{id}")
     async def activity(id: str):
         return await tools.call("get_activity", ActivityInput(id=id).model_dump())
+
+    @app.get("/api/athlete-scores")
+    async def athlete_scores():
+        return await db.athlete_scores()
+
+    @app.post("/api/athlete-scores")
+    async def save_athlete_scores(body: AthleteScoresInput):
+        return await db.save_athlete_scores(body)
 
     @app.get("/api/activity/{id}/streams")
     async def streams(id: str):

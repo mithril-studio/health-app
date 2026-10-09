@@ -103,6 +103,60 @@ async def test_read_tools_use_cache_without_remote_requests(tool_service, store)
     assert tool_service.source.calls == []
 
 
+async def test_analysis_uses_cached_intervals_streams_and_sport_threshold(tool_service, store):
+    from test_workout import activity, streams
+
+    a = activity()
+    detail = a.pop("intervals")
+    a.pop("lthr")
+    await store.put("activities", "run", a, date(2026, 10, 8))
+    await store.put("activity_intervals", "run", detail)
+    await store.put("activity_streams", "run", streams([0, 5, 10], [165, 170, 180]))
+    await store.put("sport_settings", "run", {"id": "run", "types": ["Run"], "lthr": 165})
+    planned = {"id": "21", "description": "5 x 800m at 3:50–3:55/km", "paired_activity_id": "run"}
+    await store.put("events", "21", planned, date(2026, 10, 7))
+    await store.put(
+        "events", "22", {"id": "22", "description": "Unpaired workout"}, date(2026, 10, 8)
+    )
+    result = await tool_service.call("get_activity_analysis", {"id": "run"}, read_only=True)
+    assert result["session"]["above_lt2_seconds"] == 5
+    assert result["threshold"]["source"] == "current_sport_settings.lthr"
+    assert len(result["intervals"]) == 3
+    assert result["paired_workouts"] == [planned]
+    page = await tool_service.call("get_activity_analysis", {"id": "run", "offset": 1, "limit": 1})
+    assert page["intervals"][0]["set"] == 2 and page["next_offset"] == 2
+    # Existing activity endpoint retains the raw contract.
+    assert (await tool_service.activity("run"))["intervals"] == detail
+    assert tool_service.source.calls == []
+
+
+async def test_long_paired_plan_cannot_evict_individual_intervals(tool_service, store):
+    import json
+
+    from test_workout import activity
+
+    a = activity()
+    detail = a.pop("intervals")
+    detail["icu_intervals"] *= 20
+    await store.put("activities", "run", a, date(2026, 10, 8))
+    await store.put("activity_intervals", "run", detail)
+    await store.put("activity_streams", "run", [])
+    await store.put(
+        "events",
+        "21",
+        {"id": "21", "description": "x" * 10000, "paired_activity_id": "run"},
+        date(2026, 10, 8),
+    )
+    offset, seen = 0, []
+    while offset is not None:
+        result = await tool_service.call("get_activity_analysis", {"id": "run", "offset": offset})
+        assert len(json.dumps(result)) < 20000
+        assert len(result["paired_workouts"][0]["description"]) == 10000
+        seen.extend(row["set"] for row in result["intervals"])
+        offset = result["next_offset"]
+    assert seen == list(range(1, 61))
+
+
 async def test_refresh_failure_does_not_repeat_remote_mutation(tool_service, store):
     original = tool_service.source.event
     reads = 0

@@ -153,6 +153,29 @@ class Store:
         rows = await self.query("SELECT data FROM sport_settings ORDER BY id")
         return {sport: r["data"] for r in rows for sport in r["data"].get("types", [])}
 
+    async def athlete_scores(self):
+        return await self.query(
+            "SELECT lt1_hr,lt2_hr,vo2max,hr_zones,updated_at FROM athlete_scores WHERE id=1",
+            one=True,
+        ) or {"lt1_hr": None, "lt2_hr": None, "vo2max": None, "hr_zones": None, "updated_at": None}
+
+    async def save_athlete_scores(self, scores):
+        return await self.query(
+            "INSERT INTO athlete_scores(id,lt1_hr,lt2_hr,vo2max,hr_zones) VALUES (1,%s,%s,%s,%s) "
+            "ON CONFLICT(id) DO UPDATE SET lt1_hr=excluded.lt1_hr,lt2_hr=excluded.lt2_hr,"
+            "vo2max=excluded.vo2max,hr_zones=CASE WHEN %s THEN excluded.hr_zones "
+            "ELSE athlete_scores.hr_zones END,updated_at=now() "
+            "RETURNING lt1_hr,lt2_hr,vo2max,hr_zones,updated_at",
+            (
+                scores.lt1_hr,
+                scores.lt2_hr,
+                scores.vo2max,
+                Jsonb([zone.model_dump() for zone in scores.hr_zones]) if scores.hr_zones else None,
+                "hr_zones" in scores.model_fields_set,
+            ),
+            one=True,
+        )
+
     async def sync_status(self):
         row = await self.query(
             "SELECT last_success,error FROM sync_state WHERE resource='all'", one=True

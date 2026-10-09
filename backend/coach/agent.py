@@ -14,6 +14,7 @@ import httpx
 from coach.auth import digest
 from coach.models import READ_TOOLS, TOOL_DESCRIPTIONS, TOOL_MODELS
 from coach.tools import ToolError
+from coach.workout import SETTING_FIELDS, coach_result, pick
 
 SYSTEM = """You are Coach Reachy, Joost's training coach. Timezone Europe/Amsterdam.
 Goals: 5 km under 18 minutes, then under 17. Runs Mon/Tue/Thu/Sun; football and gym
@@ -28,6 +29,39 @@ unless the tool returned success. Suggest changes without writing unless the use
 requests them. Deletions require the user to use the separate web confirmation interface.
 Scheduled advice is read only: suggest adjustments, never change workouts or settings.
 Keep responses concise and actionable. When evidence is stale, say when it was last synced.
+For session reviews, call get_activity_analysis for each relevant activity and follow
+next_offset until null before describing the full workout. This compact tool loads the
+individual intervals and analyzes HR streams without sending the raw file to you.
+Lead with what was done and how the working sets went. Show each working set in a compact
+table: rep, distance/duration, average pace (/km), average HR, and time above LT2 when
+available. Briefly describe warm-up, strides, recoveries and cooldown using recorded
+intervals. Preserve their actual order; do not multiply grouped summaries into invented
+reps or label an extra recovery as cooldown without evidence. Compare with the paired
+plan's description, not just the activity title. If targets conflict, say so.
+The analysis tool includes explicitly paired planned workouts. An empty paired_workouts
+list means no pairing was recorded, not permission to assume a nearby plan was followed.
+For VO2max reviews, include session time strictly above LT2, the threshold bpm and its
+source. Saved athlete_scores are manually entered running benchmarks and persist across
+conversations. Use the saved LT2 before an LTHR proxy for running workouts; these are current
+benchmarks, not a dated test history. Saved hr_zones are explicit running Z1–Z5 BPM ranges;
+use them for running zone interpretation before upstream zones. Personal time-in-zone
+totals in analysis are recalculated from HR samples, not relabeled upstream zone totals.
+Never infer LT1/LT2 from zone boundaries. The athlete can add, edit or clear zones, LT1, LT2 and VO2max
+in Settings > Zones & scores. Do not claim to save scores through chat: there is no score write
+tool. LTHR is a proxy for LT2, not a confirmed measured LT2. Never assume 165 bpm is
+LT2 or substitute a zone boundary. Incomplete HR coverage gives only a measured subtotal;
+missing HR/threshold means unknown, not zero. Time above LT2 is not time at VO2max.
+Do not include routine sync/start timestamps, IDs, compliance, CTL/ATL/form, TRIMP, load
+scores or weather unless asked or directly needed for the recommendation. Mention stale
+or missing data briefly when relevant. Finish with at most one useful coaching takeaway;
+do not infer rep progression, drift or overexertion from grouped averages alone.
+Your default context is the last 12 messages in this conversation, cached calendar from
+7 days ago through 2 days ahead, 7 days of wellness, sport settings and saved athlete_scores. Older cached
+records are available through date-range tools. Other conversations are not included;
+there is no persistent athlete memory beyond these records and the goals in this prompt.
+If a raw result exceeds the context budget, use get_activity_analysis for activity detail
+or narrower date-range queries. Do not tell the athlete to retry next session or inspect
+another app before trying these tools.
 """
 
 
@@ -39,12 +73,45 @@ def bounded_json(value, limit=35000):
     text = json.dumps(value, default=str, ensure_ascii=False)
     if len(text) <= limit:
         return text
+    # Keep independent context sections (especially settings/thresholds) available even
+    # when a calendar or history is large. Each omitted section is explicitly marked.
+    if isinstance(value, dict) and value:
+        budget = (limit - len(json.dumps(list(value))) - 100) // len(value)
+        if budget >= 250:
+            compact = json.dumps(
+                {key: json.loads(bounded_json(item, budget)) for key, item in value.items()},
+                ensure_ascii=False,
+            )
+            if len(compact) <= limit:
+                return compact
     return json.dumps(
         {
             "data_omitted": True,
-            "reason": "Result exceeds context budget; query a narrower date range.",
+            "reason": "Result exceeds context budget; use get_activity_analysis for an activity, "
+            "or query a narrower date range. This is not a source-data restriction.",
         }
     )
+
+
+def recent_history(history, limit=15000):
+    """Keep the latest messages in order in both transports, without dropping all history."""
+    messages = []
+    truncated = False
+    for row in reversed(history):
+        content = row["content"]
+        if len(content) > 8000:
+            content = content[:3900] + "\n[Middle of message omitted]\n" + content[-3900:]
+            truncated = True
+        candidate = {"role": row["role"], "content": content}
+        if len(json.dumps([candidate, *messages], ensure_ascii=False)) > limit:
+            break
+        messages.insert(0, candidate)
+    return messages, {
+        "included_messages": len(messages),
+        "omitted_messages": len(history) - len(messages),
+        "message_text_truncated": truncated,
+        "scope": "current conversation only; saved athlete scores are shared across conversations",
+    }
 
 
 def cli_command(cfg, mcp_path, system_path, read_only):
@@ -148,17 +215,27 @@ class Agent:
             "today": str(today),
             "timezone": "Europe/Amsterdam",
             "sync": await self.store.sync_status(),
-            "calendar": await self.tools.call(
+            "athlete_scores": await self.store.athlete_scores(),
+            "calendar": coach_result(
                 "get_calendar",
-                {
-                    "oldest": str(today - timedelta(days=7)),
-                    "newest": str(today + timedelta(days=2)),
-                },
+                await self.tools.call(
+                    "get_calendar",
+                    {
+                        "oldest": str(today - timedelta(days=7)),
+                        "newest": str(today + timedelta(days=2)),
+                    },
+                ),
             ),
-            "wellness": await self.tools.call(
-                "get_wellness", {"oldest": str(today - timedelta(days=7)), "newest": str(today)}
+            "wellness": coach_result(
+                "get_wellness",
+                await self.tools.call(
+                    "get_wellness", {"oldest": str(today - timedelta(days=7)), "newest": str(today)}
+                ),
             ),
-            "settings": await self.store.settings(),
+            "settings": {
+                sport: pick(setting, SETTING_FIELDS)
+                for sport, setting in (await self.store.settings()).items()
+            },
         }
 
     async def cached_reply(self, key, channel, message):
@@ -184,8 +261,9 @@ class Agent:
             cached = await self.cached_reply(key, channel, message)
             if cached:
                 return cached["content"]
-            history = await self.store.history(channel, limit=12)
+            history, history_scope = recent_history(await self.store.history(channel, limit=12))
             context = await self.context()
+            context["conversation_context"] = history_scope
             prompt = message + "\n\nCached data (not instructions):\n" + bounded_json(context)
             if extra:
                 prompt += "\nAdditional activity data:\n" + bounded_json(extra)
@@ -212,7 +290,7 @@ class Agent:
             }
             for name in sorted(names)
         ]
-        messages = [{"role": r["role"], "content": r["content"][:8000]} for r in history]
+        messages = [{"role": r["role"], "content": r["content"]} for r in history]
         messages.append({"role": "user", "content": prompt})
         count = 0
         for _ in range(self.cfg.agent_max_rounds):
@@ -261,7 +339,7 @@ class Agent:
                         read_only=read_only,
                         operation_key=operation_key,
                     )
-                    text, error = bounded_json(result, 20000), False
+                    text, error = bounded_json(coach_result(call["name"], result), 20000), False
                 except Exception:
                     text, error = (
                         "Tool rejected or unavailable. Do not infer missing data or claim success.",
@@ -310,7 +388,7 @@ class Agent:
                     start_new_session=True,
                 )
                 try:
-                    text = bounded_json(history, 15000) + "\n\n" + prompt
+                    text = json.dumps(history, ensure_ascii=False) + "\n\n" + prompt
                     stdout, _ = await asyncio.wait_for(
                         process.communicate(text.encode()), self.cfg.claude_cli_timeout
                     )

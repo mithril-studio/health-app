@@ -9,6 +9,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from coach.auth import mcp_capability
 from coach.models import READ_TOOLS, TOOL_DESCRIPTIONS, TOOL_MODELS
 from coach.tools import ToolError
+from coach.workout import coach_result
 
 
 def create_mcp(service, settings):
@@ -51,6 +52,8 @@ def create_mcp(service, settings):
             result = await service.call(
                 name, args, read_only=read_only, operation_key=operation_key
             )
+            if capability:
+                result = coach_result(name, result)
             return types.CallToolResult(
                 content=[types.TextContent(type="text", text=json.dumps(result, default=str))]
             )

@@ -1912,6 +1912,93 @@ td {
   margin: 22px 0;
   font-size: 12px;
 }
+.athlete-scores {
+  max-width: 800px;
+}
+.scores-form {
+  display: grid;
+  gap: 24px;
+}
+.scores-zone-fields {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 0 0 24px;
+  margin: 0;
+  min-width: 0;
+}
+.scores-zone-fields legend {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.scores-zone-fields > p {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+.score-zone-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  max-width: 460px;
+  font-size: 13px;
+}
+.score-zone-row input {
+  min-width: 0;
+  width: 100%;
+}
+.score-zone-heading {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.scores-form > p,
+.score-field p,
+.scores-actions span {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.scores-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 24px;
+}
+.score-field {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+.score-field label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.score-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.score-input input {
+  width: 100%;
+  min-width: 0;
+}
+.score-input span {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.scores-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
 .move-date-field {
   display: flex;
   gap: 10px;

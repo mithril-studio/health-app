@@ -95,7 +95,7 @@ class Jobs:
                     "activity": "Post-workout review: compare planned versus done and measured interval pace against targets where present, then one improvement. State missing detail honestly.",
                 }
                 extra = (
-                    await self.tools.call("get_activity", {"id": payload["activity_id"]})
+                    await self.tools.call("get_activity_analysis", {"id": payload["activity_id"]})
                     if kind == "activity"
                     else None
                 )

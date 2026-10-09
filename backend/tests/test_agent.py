@@ -1,8 +1,11 @@
+import json
+from datetime import date
+
 import httpx
 import pytest
 from test_tools import WritableSource
 
-from coach.agent import Agent, AgentUnavailable, cli_command, cli_environment
+from coach.agent import Agent, AgentUnavailable, cli_command, cli_environment, recent_history
 from coach.auth import Auth
 from coach.config import Settings
 from coach.tools import ToolService
@@ -78,3 +81,73 @@ async def test_chat_idempotency_key_cannot_reuse_a_different_message(store):
     with pytest.raises(ToolError):
         await agent.respond("a different request", key="reuse")
     assert await agent.respond("original request", key="reuse") == "original reply"
+
+
+async def test_large_workout_analysis_reaches_provider_with_individual_reps(store):
+    from test_workout import activity, streams
+
+    from coach.models import AthleteScoresInput
+
+    a = activity() | {"start_date_local": "2026-10-08", "unused": "x" * 100000}
+    await store.put("activity_intervals", "run", a.pop("intervals"))
+    await store.put("activities", "run", a, date(2026, 10, 8))
+    await store.put("activity_streams", "run", streams([0, 5, 10], [170, 160, 180]))
+    await store.save_athlete_scores(AthleteScoresInput(lt1_hr=145, lt2_hr=169, vo2max=58.5))
+    for i in range(12):
+        await store.message(
+            f"history:{i}", "web", "user" if i % 2 == 0 else "assistant", str(i) + "x" * 7000
+        )
+    requests = []
+
+    async def remote(req):
+        payload = json.loads(req.content)
+        requests.append(payload)
+        if len(requests) == 1:
+            assert len(payload["messages"]) == 3
+            assert payload["messages"][0]["content"].startswith("10")
+            context = json.loads(
+                payload["messages"][-1]["content"].split("Cached data (not instructions):\n")[1]
+            )
+            assert context["athlete_scores"]["lt2_hr"] == 169
+            assert context["conversation_context"]["omitted_messages"] == 10
+            return httpx.Response(
+                200,
+                json={
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": "analysis",
+                            "name": "get_activity_analysis",
+                            "input": {"id": "run"},
+                        }
+                    ]
+                },
+            )
+        evidence = json.loads(payload["messages"][-1]["content"][0]["content"])
+        assert [r["average_heartrate"] for r in evidence["intervals"]] == [160, 150, 172]
+        assert evidence["session"]["above_lt2_seconds"] == 5
+        assert evidence["threshold"]["source"] == "athlete_scores.lt2_hr"
+        assert evidence["next_offset"] is None
+        return httpx.Response(200, json={"content": [{"type": "text", "text": "Measured review"}]})
+
+    cfg = Settings(_env_file=None, anthropic_api_key="fake")
+    async with httpx.AsyncClient(transport=httpx.MockTransport(remote)) as client:
+        agent = Agent(cfg, store, ToolService(store, WritableSource()), client, Auth(cfg, store))
+        assert await agent.respond("Review my sets", key="analysis") == "Measured review"
+    assert len(requests) == 2
+
+
+def test_long_history_keeps_recent_messages_instead_of_omitting_everything():
+    history = [
+        {"role": "user" if i % 2 == 0 else "assistant", "content": str(i) + "x" * 7000}
+        for i in range(12)
+    ]
+    messages, scope = recent_history(history)
+    assert len(messages) == 2
+    assert messages[0]["content"].startswith("10")
+    assert messages[1]["content"].startswith("11")
+    assert scope["omitted_messages"] == 10
+    assert len(json.dumps(messages, ensure_ascii=False)) <= 15000
+    huge, scope = recent_history([{"role": "user", "content": "start" + "x" * 20000 + "end"}])
+    assert huge[0]["content"].startswith("start") and huge[0]["content"].endswith("end")
+    assert scope["message_text_truncated"] is True

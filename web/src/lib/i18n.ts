@@ -2,11 +2,42 @@
 export const en = {
   brand: "Coach Reachy",
   brandShort: "Reachy",
+  scores: {
+    title: "Zones & scores",
+    description:
+      "Your running zones and benchmarks. Add values from your latest test.",
+    zones: "Heart-rate zones",
+    zone: "Zone",
+    zoneFrom: "From (bpm)",
+    zoneTo: "To (bpm)",
+    zoneLower: "lower limit",
+    zoneUpper: "upper limit",
+    zonesHint:
+      "Enter all five zones as consecutive ranges, with no gaps or overlaps. Both limits are included. Leave all zones empty to use your Intervals settings.",
+    zonesError:
+      "Complete all five zones with whole-number limits between 30 and 250 bpm, or leave them all empty. Each zone must start 1 bpm above the previous zone’s upper limit.",
+    clearZones: "Clear zones",
+    lt1: "LT1 heart rate",
+    lt2: "LT2 heart rate",
+    vo2max: "VO₂max",
+    lt1Hint: "Your first lactate threshold.",
+    lt2Hint: "Used to calculate time above LT2 in your running workouts.",
+    vo2maxHint: "Your measured or estimated aerobic capacity.",
+    vo2maxUnit: "ml/kg/min",
+    note: "Your coach can use these scores in every chat. They stay saved when you sync with Intervals.",
+    clearNote:
+      "Leave a field empty to clear it. Without a saved LT2, your coach uses Intervals’ LTHR as a proxy when available.",
+    save: "Save scores",
+    saving: "Saving…",
+    saved: "Saved. Your coach will use these scores in your next review.",
+    orderError: "LT1 heart rate must be lower than LT2 heart rate.",
+  },
   tagline: "A little more intentional.",
   nav: {
     overview: "Overview",
     calendar: "Calendar",
     insights: "Insights",
+    settings: "Settings",
     coach: "Chats",
   },
   common: {

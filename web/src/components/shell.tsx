@@ -13,6 +13,7 @@ import {
   Moon,
   RefreshCw,
   LogOut,
+  Settings,
 } from "lucide-react";
 import { SourceNotice } from "./source-notice";
 import { TelegramConnection } from "./telegram-connection";
@@ -25,6 +26,7 @@ const nav = [
   { href: "/coach", key: "coach", Icon: MessageCircle },
   { href: "/calendar", key: "calendar", Icon: CalendarDays },
   { href: "/insights", key: "insights", Icon: ChartNoAxesCombined },
+  { href: "/settings", key: "settings", Icon: Settings },
 ] as const;
 function preference(name: string, value: string) {
   document.cookie = `${name}=${value}; Path=/; Max-Age=31536000; SameSite=Lax`;
@@ -234,7 +236,9 @@ export function Shell({
                 retry={() => void refresh(true)}
               />
             )}
-            {data && pathname !== "/coach" && <SourceNotice data={data} />}
+            {data && pathname !== "/coach" && pathname !== "/settings" && (
+              <SourceNotice data={data} />
+            )}
             {children}
           </main>
         </div>

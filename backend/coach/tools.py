@@ -9,6 +9,7 @@ from psycopg.types.json import Jsonb
 from coach.intervals import UpstreamError
 from coach.models import READ_TOOLS, validate_tool
 from coach.sync import SyncService
+from coach.workout import EVENT_FIELDS, analyze_workout, pick
 
 
 class ToolError(Exception):
@@ -55,6 +56,36 @@ class ToolService:
             )
         if name == "get_activity":
             return await self.activity(args.id)
+        if name == "get_activity_analysis":
+            activity = await self.activity(args.id)
+            try:
+                streams = await self.activity(args.id, streams=True)
+            except UpstreamError:
+                streams = {
+                    "available": False,
+                    "reason": "Heart-rate streams temporarily unavailable",
+                }
+            settings = (await self.store.settings()).get(activity.get("type"), {})
+            result = analyze_workout(
+                activity,
+                streams,
+                settings,
+                lt2_hr=args.lt2_hr,
+                scores=await self.store.athlete_scores(),
+                offset=args.offset,
+                limit=args.limit,
+            )
+            events = await self.store.query(
+                "SELECT data FROM events WHERE data->>'paired_activity_id'=%s ORDER BY day,id",
+                (args.id,),
+            )
+            result["paired_workouts"] = [pick(event["data"], EVENT_FIELDS) for event in events]
+            # A long paired plan must not push the individual sets out of the model's
+            # 20k tool budget. Reduce the page, preserving continuation to every set.
+            while len(result["intervals"]) > 1 and len(json.dumps(result, default=str)) > 19000:
+                result["intervals"].pop()
+                result["next_offset"] = args.offset + len(result["intervals"])
+            return result
         if name == "get_curves":
             key = f"{args.sport}:{args.period}"
             data = await self.store.get("curve_cache", key, max_age=3600)

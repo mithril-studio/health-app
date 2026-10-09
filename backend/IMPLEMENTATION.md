@@ -40,6 +40,63 @@ Additional endpoints:
 
 Raw Intervals records are retained, except credential-named fields are removed defensively. `settings` maps sport name to the raw matching sport-settings object. Fitness is strictly wellness CTL/ATL with `form = ctl - atl`; unknown measurements remain null. Threshold pace units are **metres/second**. Curves return the upstream raw `{list,activities}` structure. Run pace-curve `values` are **seconds at each `distance`**, not pace or speed; an exact 5000 m curve point is a measured best effort. No whole-run 5 km estimate is fabricated.
 
+### Coach workout reviews and context
+
+`get_activity_analysis(id, lt2_hr?, offset=0, limit=30)` returns compact individual intervals,
+including measured average HR, pace in seconds/km, and seconds strictly above the threshold.
+It reads the existing lazy interval/stream caches; raw activity and stream HTTP endpoints
+retain their original response shapes. Follow `next_offset` until null to load all intervals.
+Grouped interval averages are never expanded into fabricated reps. Scheduled post-workout
+reviews also receive this analysis rather than the raw activity payload.
+Analysis includes explicitly paired cached workouts (even if their dates differ). Long
+paired descriptions reduce the interval page size automatically so they cannot evict
+the individual sets from the normal tool budget. Agent calls to the legacy raw activity
+tool receive a compact summary and a pointer to the analysis tool.
+
+Threshold precedence is explicit user-supplied LT2, saved personal running LT2, activity `lthr`, then current matching
+sport-settings `lthr`. The latter two are labeled LTHR proxies, with their provenance.
+Durations use recorded time deltas and the HR at each interval's left timestamp, clipped
+to session/interval bounds. Values equal to the threshold are excluded. Missing HR,
+gaps longer than ten seconds and the unrecorded tail are excluded; incomplete coverage
+is labeled as a measured subtotal. Missing thresholds or streams produce null, not zero.
+This measures time above a heart-rate threshold, not time at VO2max. Field names follow
+the official [Intervals API schema](https://intervals.icu/api/v1/docs).
+
+Each coach turn starts with up to 12 messages from its own channel/conversation, the
+calendar from seven days ago through two days ahead, wellness from seven days ago through
+today, sport settings, saved personal scores and sync status. The system prompt contains the 5 km sub-18/sub-17
+goals and Mon/Tue/Thu/Sun running schedule plus football/gym. There is no cross-conversation
+athlete conversation memory. Manually saved scores and zones are shared across chats.
+Older cached records require explicit tool queries. Both transports use the same
+15,000-character history budget: newest messages are retained in order, and very long
+messages preserve their beginning/end with an explicit omission marker. Context includes
+the count of included and budget-omitted messages; an oversized history is no longer
+discarded wholesale by the CLI transport.
+
+Coach calendar/wellness inputs are projected to relevant fields in both transports.
+Oversized context sections are marked as omitted independently, preserving other sections
+such as thresholds. The API tool-result budget remains 20,000 characters; compact analysis
+pages avoid passing raw telemetry to the model. Review instructions prioritize per-set
+execution and threshold time, suppress routine metadata and prohibit unsupported claims
+about rep progression or cooldown identity. Production response quality still requires
+reviewing an actual coach turn; mocked-provider tests verify evidence delivery and calculations.
+
+`Settings > Zones & scores` lets the athlete save, edit and clear running LT1/LT2 heart rates
+(integer bpm, 30–250) and VO2max (ml/kg/min, 5–100). Both thresholds must be ordered when
+present. `GET /api/athlete-scores` reads the current values; authenticated
+`POST /api/athlete-scores` replaces all three, with null clearing an individual value.
+Migration 006 stores these independently of Intervals, so sync cannot overwrite them.
+These are current benchmarks, not a dated test history. Running LT2 takes precedence over
+LTHR for Run, TrailRun and VirtualRun, but does not change cycling analysis or upstream
+zones. Every new coach turn receives all three scores; the coach has no tool to edit them.
+Migration 007 adds optional personal running `hr_zones`: exactly five Z1–Z5 objects with
+inclusive integer `min_bpm`/`max_bpm` limits (30–250), consecutive without overlaps or gaps.
+Submitting null clears zones; omitting the field preserves them for older clients.
+Workout analysis calculates time in these personal zones from recorded HR/time streams,
+reports samples outside the configured ranges and marks partial coverage. It never
+relabels the upstream zone totals or infers LT1/LT2 from a zone boundary. The existing
+dashboard zone charts still display upstream zone totals.
+
 ## Persistence and retries
 
 Initial sync loads 12 calendar months; subsequent activity/wellness syncs overlap the cursor by 7 days. Events refresh the retained past-year and next-year window, removing remote-deleted/moved events. All cache replacements and every sync cursor commit in one transaction after every fetch succeeds. Failed syncs preserve prior data and success cursor, recording only a sanitized error class. Intervals source reads use bounded retries with an explicit User-Agent. Lazy intervals, streams and curves hit the cache first.

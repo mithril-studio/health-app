@@ -1,3 +1,6 @@
+import json
+from datetime import date
+
 import pytest
 from test_guards import web
 
@@ -58,3 +61,37 @@ async def test_cli_capability_has_only_read_tools_for_scheduled_advice(web):
     )
     assert rejected.json()["result"]["isError"] is True
     assert not await app.state.store.query("SELECT * FROM write_operations")
+
+
+async def test_cli_receives_compact_full_workout_analysis(web):
+    from test_workout import activity, streams
+
+    client, app = web
+    store = app.state.store
+    a = activity() | {"unused": "x" * 100000}
+    await store.put("activity_intervals", "run", a.pop("intervals"))
+    await store.put("activities", "run", a, date(2026, 10, 8))
+    await store.put("activity_streams", "run", streams([0, 5, 10], [170, 160, 180]))
+    token = await app.state.auth.issue_capability("analysis", True, 2)
+    response = await client.post(
+        "/mcp",
+        headers={
+            "Authorization": "Bearer " + token,
+            "Accept": "application/json, text/event-stream",
+        },
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "get_activity_analysis",
+                "arguments": {"id": "run"},
+            },
+        },
+    )
+    result = response.json()["result"]
+    assert not result.get("isError")
+    evidence = json.loads(result["content"][0]["text"])
+    assert len(evidence["intervals"]) == 3
+    assert evidence["session"]["above_lt2_seconds"] == 5
+    assert len(result["content"][0]["text"]) < 20000

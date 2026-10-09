@@ -46,9 +46,45 @@ class ActivityInput(StrictModel):
     id: Identifier
 
 
+class ActivityAnalysisInput(ActivityInput):
+    lt2_hr: Annotated[int, Field(strict=True, ge=30, le=250)] | None = None
+    offset: Annotated[int, Field(strict=True, ge=0)] = 0
+    limit: Annotated[int, Field(strict=True, ge=1, le=30)] = 30
+
+
 class CurvesInput(StrictModel):
     sport: Sport = "Run"
     period: Annotated[int, Field(strict=True, ge=1, le=730)] = 84
+
+
+class HeartRateZone(StrictModel):
+    min_bpm: Annotated[int, Field(strict=True, ge=30, le=250)]
+    max_bpm: Annotated[int, Field(strict=True, ge=30, le=250)]
+
+    @model_validator(mode="after")
+    def valid_range(self):
+        if self.min_bpm > self.max_bpm:
+            raise ValueError("Zone minimum must not exceed its maximum")
+        return self
+
+
+class AthleteScoresInput(StrictModel):
+    # A complete form submission: null explicitly clears a previously saved score.
+    lt1_hr: Annotated[int, Field(strict=True, ge=30, le=250)] | None
+    lt2_hr: Annotated[int, Field(strict=True, ge=30, le=250)] | None
+    vo2max: Annotated[float, Field(strict=True, ge=5, le=100)] | None
+    hr_zones: Annotated[list[HeartRateZone], Field(min_length=5, max_length=5)] | None = None
+
+    @model_validator(mode="after")
+    def ordered_thresholds(self):
+        if self.lt1_hr is not None and self.lt2_hr is not None and self.lt1_hr >= self.lt2_hr:
+            raise ValueError("LT1 must be below LT2")
+        if self.hr_zones and any(
+            right.min_bpm != left.max_bpm + 1
+            for left, right in zip(self.hr_zones, self.hr_zones[1:], strict=False)
+        ):
+            raise ValueError("Z1–Z5 must be consecutive ranges with no gaps or overlaps")
+        return self
 
 
 class PlanInput(StrictModel):
@@ -128,6 +164,7 @@ class JobInput(StrictModel):
 TOOL_MODELS = {
     "get_calendar": DateRange,
     "get_activity": ActivityInput,
+    "get_activity_analysis": ActivityAnalysisInput,
     "get_fitness": DateRange,
     "get_wellness": DateRange,
     "get_curves": CurvesInput,
@@ -141,6 +178,11 @@ READ_TOOLS = frozenset(name for name in TOOL_MODELS if name.startswith("get_"))
 TOOL_DESCRIPTIONS = {
     "get_calendar": "Cached planned events and completed activities. Inclusive local ISO dates.",
     "get_activity": "Cached raw activity and lazy intervals; unavailable data remains missing.",
+    "get_activity_analysis": "Use for workout reviews: compact individual sets with measured "
+    "pace, average HR and timestamp-weighted seconds strictly above LT2. Uses saved personal "
+    "running LT2 before activity LTHR, then current sport LTHR as a proxy; pass lt2_hr only "
+    "for a user-supplied LT2 override. "
+    "Follow next_offset until null for all sets. Never turn grouped averages into individual reps.",
     "get_fitness": "CTL, ATL and form from Intervals wellness. No inferred fitness values.",
     "get_wellness": "Cached wellness and recovery records. Inclusive local ISO dates.",
     "get_curves": "Cached best pace (Run/Swim) or power (Ride) curves. Period is days.",
