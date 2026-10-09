@@ -47,10 +47,7 @@ async def test_modes_are_read_only_and_retry_identity_includes_task(store):
 
 
 async def test_shared_profile_across_conversations_without_auto_writes(store):
-    async def profile():
-        return {"goals": "Synthetic goal", "revision": 1}
-
-    store.athlete_profile = profile
+    await store.save_athlete_profile({"goals": "Synthetic goal", "revision": 0})
     agent = Agent(Settings(_env_file=None), store, ToolService(store, WritableSource()), None)
     assert (await agent.context())["athlete_profile"]["goals"] == "Synthetic goal"
     assert "athlete_scores" not in await agent.context()
