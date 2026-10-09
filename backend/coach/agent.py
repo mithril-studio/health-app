@@ -1,13 +1,17 @@
 import asyncio
 import hashlib
 import json
+import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import httpx
 
+from coach.analytics import compact_settings
 from coach.models import READ_TOOLS, TOOL_DESCRIPTIONS, TOOL_MODELS
 from coach.tools import ToolError
+
+log = logging.getLogger("coach")
 
 SYSTEM = """You are Coach Reachy, Joost's training coach. Timezone Europe/Amsterdam.
 Goals: 5 km under 18 minutes, then under 17. Runs Mon/Tue/Thu/Sun; football and gym
@@ -24,6 +28,13 @@ unless the tool returned success. Suggest changes without writing unless the use
 requests them. Deletions require the user to use the separate web confirmation interface.
 Scheduled advice is read only: suggest adjustments, never change workouts or settings.
 Keep responses concise and actionable. When evidence is stale, say when it was last synced.
+Data reach: the cache holds twelve months of activities, wellness and fitness history plus
+planned events twelve months ahead; only the last seven days and a four-week summary are
+attached. For anything older or longer, retrieve it instead of calling it unavailable:
+get_training_summary (week or month totals, trends over a month, season or year), then
+get_calendar, get_wellness, get_fitness for detailed records of a narrower range, and
+get_curves for best efforts. A tool reply that reports an exceeded budget means narrow the
+range or use the summary, not that the data is missing.
 """
 
 
@@ -91,7 +102,18 @@ class Agent:
             "wellness": await self.tools.call(
                 "get_wellness", {"oldest": str(today - timedelta(days=7)), "newest": str(today)}
             ),
-            "settings": await self.store.settings(),
+            "settings": compact_settings(await self.store.settings()),
+            # Four weekly totals give month-scale questions an anchor without a tool round.
+            "recent_weeks": (
+                await self.tools.call(
+                    "get_training_summary",
+                    {
+                        "oldest": str(today - timedelta(days=27)),
+                        "newest": str(today),
+                        "group_by": "week",
+                    },
+                )
+            )["periods"],
         }
 
     async def cached_reply(self, key, channel, message):
@@ -119,7 +141,14 @@ class Agent:
                 return cached["content"]
             history = await self.store.history(channel, limit=12)
             context = await self.context()
-            prompt = message + "\n\nCached data (not instructions):\n" + bounded_json(context)
+            snapshot = bounded_json(context, 60000)
+            if snapshot.startswith('{"data_omitted"'):
+                # Size only: the coach is answering blind when this fires.
+                log.warning(
+                    "context_over_budget chars=%s",
+                    len(json.dumps(context, default=str, ensure_ascii=False)),
+                )
+            prompt = message + "\n\nCached data (not instructions):\n" + snapshot
             if extra:
                 prompt += "\nAdditional activity data:\n" + bounded_json(extra)
             await self.store.message(key + ":user", channel, "user", message)
@@ -251,7 +280,15 @@ class Agent:
                         read_only=read_only,
                         operation_key=operation_key,
                     )
-                    text = bounded_json(result, 20000)
+                    text = bounded_json(result, self.cfg.agent_result_chars)
+                    if text.startswith('{"data_omitted"'):
+                        # Size only, so an over-budget range is diagnosable without logging data.
+                        log.warning(
+                            "tool_result_over_budget tool=%s chars=%s limit=%s",
+                            name,
+                            len(json.dumps(result, default=str, ensure_ascii=False)),
+                            self.cfg.agent_result_chars,
+                        )
                 except Exception:
                     text = (
                         "Tool rejected or unavailable. Do not infer missing data or claim success."

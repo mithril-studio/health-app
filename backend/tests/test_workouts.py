@@ -67,7 +67,11 @@ async def test_session_retry_concurrent_dedup_calendar_coach_and_sync_survival(w
     identifier = "local-" + payload["id"]
     assert any(r["id"] == identifier for r in dashboard["activities"])
     coach = await app.state.tools.call("get_calendar", {"oldest": day, "newest": day})
-    assert coach["activities"] == dashboard["activities"]
+    # get_calendar returns compacted, training-relevant fields; the dashboard keeps raw records.
+    coach_entry = next(r for r in coach["activities"] if r["id"] == identifier)
+    dash_entry = next(r for r in dashboard["activities"] if r["id"] == identifier)
+    assert all(dash_entry.get(k) == v for k, v in coach_entry.items())
+    assert coach_entry["source"] == "app" and coach_entry["type"] == "HomeWorkout"
     detail = (await c.get("/api/activity/" + identifier)).json()
     assert detail["source"] == "app" and detail["intervals"] == []
     assert "icu_training_load" not in detail

@@ -30,7 +30,7 @@ async def test_stateless_mcp_initialize_list_call_and_strict_validation(web):
     assert init.status_code == 200, init.text
     assert "mcp-session-id" not in init.headers
     tools = (await rpc(c, "tools/list")).json()["result"]["tools"]
-    assert len(tools) == 10 and "confirm_delete" not in [t["name"] for t in tools]
+    assert len(tools) == 11 and "confirm_delete" not in [t["name"] for t in tools]
     assert all(t["inputSchema"]["additionalProperties"] is False for t in tools)
     result = await rpc(
         c,
@@ -50,7 +50,7 @@ async def test_readonly_capability_enforced_at_server_and_budget_bounded(web, st
     token = await app.state.auth.issue_capability("scheduled-test", True, 2)
     headers = {**HEADERS, "Authorization": "Bearer " + token}
     tools = (await rpc(c, "tools/list", headers=headers)).json()["result"]["tools"]
-    assert len(tools) == 5
+    assert len(tools) == 6
     invalid = await rpc(
         c, "tools/call", {"name": "delete_workout", "arguments": {"id": "21"}}, headers
     )

@@ -16,6 +16,12 @@ Create the Postgres database/user before starting. The user must be able to crea
 
 Use independent `APP_PASSWORD`, `API_AUTH_TOKEN` (optional), `MCP_AUTH_TOKEN`, and `BOX_SHARED_SECRET`. Root `.env` is not implicitly loaded when running from `backend/`; use the service's `EnvironmentFile` or a backend `.env`. `SESSION_SECRET` is unnecessary: sessions are opaque random capabilities whose SHA-256 digests and expiry are in Postgres.
 
+## Agent data reach
+
+- The cache holds twelve months of activities, wellness and fitness plus planned events twelve months ahead. Every chat attaches the last seven days of calendar and wellness, sport settings, sync status and four weekly totals (`recent_weeks`).
+- `get_training_summary(oldest, newest, group_by=week|month)` aggregates any cached range (up to 730 days): sessions, distance, time and load per sport, wellness averages, end-of-period CTL/ATL/form and `missing_load`. Only recorded values are summed.
+- `get_calendar` and `get_wellness` return training-relevant fields (see `analytics.COMPACT_FIELDS`), so a full year of wellness is about 55 KB. One tool result may use `AGENT_RESULT_CHARS` characters (default 80000); larger results tell the model the data exists and to summarise or narrow the range.
+
 ## OAuth and agent configuration
 
 - `CLAUDE_TRANSPORT=auto` chooses normal Anthropic Messages API when `ANTHROPIC_API_KEY` exists; otherwise official Claude CLI.

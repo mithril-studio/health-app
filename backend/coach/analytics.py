@@ -105,3 +105,254 @@ def insights(activities, wellness, settings):
             "note": "Exact 5 km best efforts require pace curves; no whole-run estimate.",
         },
     }
+
+
+# Model-facing projections of cached Intervals records. Raw records stay in the cache and the
+# dashboard API; the coach only needs the training-relevant fields, so a year fits in a reply.
+ACTIVITY_FIELDS = (
+    "id",
+    "name",
+    "type",
+    "start_date_local",
+    "moving_time",
+    "elapsed_time",
+    "distance",
+    "total_elevation_gain",
+    "average_speed",
+    "average_heartrate",
+    "max_heartrate",
+    "icu_average_watts",
+    "icu_training_load",
+    "icu_intensity",
+    "trimp",
+    "icu_rpe",
+    "feel",
+    "source",
+    "session_duration",
+    "whoop_strain",
+    "_note",
+    "paired_event_id",
+    "icu_zone_times",
+    "hr_zone_times",
+    "pace_zone_times",
+)
+EVENT_FIELDS = (
+    "id",
+    "name",
+    "category",
+    "type",
+    "start_date_local",
+    "moving_time",
+    "distance",
+    "icu_training_load",
+    "paired_activity_id",
+    "athlete_cannot_edit",
+)
+WELLNESS_FIELDS = (
+    "id",
+    "hrv",
+    "restingHR",
+    "sleepSecs",
+    "sleepScore",
+    "sleepQuality",
+    "readiness",
+    "weight",
+    "spO2",
+    "respiration",
+    "soreness",
+    "fatigue",
+    "mood",
+    "stress",
+    "steps",
+    "ctl",
+    "atl",
+    "rampRate",
+)
+COMPACT_FIELDS = {
+    "activities": ACTIVITY_FIELDS,
+    "events": EVENT_FIELDS,
+    "wellness": WELLNESS_FIELDS,
+}
+
+
+def compact_records(table, rows, description_chars=400):
+    fields = COMPACT_FIELDS.get(table)
+    if fields is None:
+        return rows
+    result = []
+    for row in rows:
+        item = {k: row[k] for k in fields if row.get(k) not in (None, "", [], {})}
+        text = row.get("description")
+        if isinstance(text, str) and text.strip():
+            item["description"] = text.strip()[:description_chars]
+        result.append(item)
+    return result
+
+
+def period_start(day, group_by):
+    if group_by == "month":
+        return day.replace(day=1)
+    return day - timedelta(days=day.weekday())
+
+
+def period_label(start, group_by):
+    return start.strftime("%Y-%m") if group_by == "month" else str(start)
+
+
+def mean(values, digits=1):
+    values = [v for v in values if v is not None]
+    return round(sum(values) / len(values), digits) if values else None
+
+
+def training_summary(activities, wellness, oldest, newest, group_by="week"):
+    """Per-week or per-month totals; sums only recorded values and reports what is missing."""
+    periods = {}
+    restriction_notes = set()
+
+    def bucket(day):
+        start = period_start(day, group_by)
+        return periods.setdefault(
+            start,
+            {
+                "period": period_label(start, group_by),
+                "start": str(max(start, oldest)),
+                "sessions": 0,
+                "distance_km": 0.0,
+                "moving_time_min": 0.0,
+                "load": 0.0,
+                "missing_load": 0,
+                "restricted": 0,
+                "by_sport": {},
+                "_wellness": defaultdict(list),
+                "_fitness": None,
+            },
+        )
+
+    for row in activities:
+        if not row.get("start_date_local"):
+            continue
+        day = date.fromisoformat(row["start_date_local"][:10])
+        if not oldest <= day <= newest:
+            continue
+        agg = bucket(day)
+        restricted = not row.get("type") and bool(row.get("_note"))
+        if restricted:
+            # The source withholds this activity's detail; it is a real session, not a gap.
+            agg["restricted"] += 1
+            restriction_notes.add(str(row["_note"])[:200])
+        sport = agg["by_sport"].setdefault(
+            row.get("type") or ("Restricted source" if restricted else "Unknown"),
+            {"sessions": 0, "distance_km": 0.0, "moving_time_min": 0.0, "load": 0.0},
+        )
+        agg["sessions"] += 1
+        sport["sessions"] += 1
+        distance, moving, load = (
+            number(row.get("distance")),
+            number(row.get("moving_time")),
+            number(row.get("icu_training_load")),
+        )
+        if distance is not None:
+            agg["distance_km"] += distance / 1000
+            sport["distance_km"] += distance / 1000
+        if moving is not None:
+            agg["moving_time_min"] += moving / 60
+            sport["moving_time_min"] += moving / 60
+        if load is not None:
+            agg["load"] += load
+            sport["load"] += load
+        else:
+            agg["missing_load"] += 1
+
+    for row in wellness:
+        try:
+            day = date.fromisoformat(str(row.get("id"))[:10])
+        except ValueError:
+            continue
+        if not oldest <= day <= newest:
+            continue
+        agg = bucket(day)
+        samples = agg["_wellness"]
+        samples["days"].append(1)
+        for source, dest, scale in (
+            ("hrv", "hrv", 1),
+            ("restingHR", "resting_hr", 1),
+            ("sleepSecs", "sleep_hours", 1 / 3600),
+            ("readiness", "readiness", 1),
+            ("weight", "weight_kg", 1),
+        ):
+            value = number(row.get(source))
+            if value is not None:
+                samples[dest].append(value * scale)
+        ctl, atl = number(row.get("ctl")), number(row.get("atl"))
+        if ctl is not None and atl is not None:
+            agg["_fitness"] = {
+                "date": str(day),
+                "ctl": round(ctl, 1),
+                "atl": round(atl, 1),
+                "form": round(ctl - atl, 1),
+            }
+
+    result = []
+    for start in sorted(periods):
+        agg = periods[start]
+        samples = agg.pop("_wellness")
+        fitness = agg.pop("_fitness")
+        for key in ("distance_km", "moving_time_min", "load"):
+            agg[key] = round(agg[key], 1)
+        for sport in agg["by_sport"].values():
+            for key in ("distance_km", "moving_time_min", "load"):
+                sport[key] = round(sport[key], 1)
+        wellness_summary = {"days": len(samples["days"])}
+        for key in ("hrv", "resting_hr", "sleep_hours", "readiness", "weight_kg"):
+            value = mean(samples[key])
+            if value is not None:
+                wellness_summary[key + "_avg"] = value
+        agg["wellness"] = wellness_summary
+        if fitness:
+            agg["fitness_end"] = fitness
+        result.append(agg)
+    return {
+        "group_by": group_by,
+        "oldest": str(oldest),
+        "newest": str(newest),
+        "periods": result,
+        "restriction_notes": sorted(restriction_notes),
+        "note": "Totals include only recorded values; missing_load counts sessions without a "
+        "load and restricted counts sessions whose source withholds detail "
+        "(see restriction_notes).",
+    }
+
+
+SETTINGS_FIELDS = (
+    "id",
+    "types",
+    "ftp",
+    "indoor_ftp",
+    "w_prime",
+    "lthr",
+    "max_hr",
+    "hr_zones",
+    "hr_zone_names",
+    "power_zones",
+    "power_zone_names",
+    "threshold_pace",
+    "pace_units",
+    "pace_zones",
+    "pace_zone_names",
+    "sweet_spot_min",
+    "sweet_spot_max",
+    "warmup_time",
+    "cooldown_time",
+    "updated",
+)
+
+
+def compact_settings(settings):
+    """One row per Intervals settings record (not per sport type), zone fields only."""
+    rows = {}
+    for row in settings.values():
+        key = str(row.get("id", id(row)))
+        rows.setdefault(
+            key, {k: row[k] for k in SETTINGS_FIELDS if row.get(k) not in (None, "", [], {})}
+        )
+    return list(rows.values())
