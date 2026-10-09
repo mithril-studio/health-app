@@ -6,3 +6,5 @@
 {"id":"mem_92bf","domain":"frontend","type":"convention","title":"Use sidebar-owned controls and compact house-style pages","files":["web/src/components/shell.tsx","web/src/app/globals.css"]}
 {"id":"mem_901d","domain":"deployment","type":"convention","title":"Use path-scoped committed releases during concurrent work","files":["deploy/update.sh"]}
 {"id":"mem_516c","domain":"frontend","type":"convention","title":"Put page menus in the shell and dock chat history flush left","files":["web/src/components/page-menu.tsx","web/src/components/shell.tsx","web/tests/browser/page-navigation.spec.ts"]}
+{"id": "mem_b7c1", "domain": "deployment", "type": "failure", "title": "VM carried unreleased athlete page; deploy only committed trees", "files": ["deploy/update.sh", "web/src/lib/i18n.ts"]}
+{"id": "mem_c2d4", "domain": "deployment", "type": "failure", "title": "Expired Claude OAuth silently stops web chat, Telegram and reports", "files": ["backend/coach/agent.py", "backend/coach/jobs.py", "deploy/claude-login.sh"]}

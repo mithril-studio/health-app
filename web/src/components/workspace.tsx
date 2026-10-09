@@ -21,6 +21,7 @@ import { addDays, today } from "@/lib/dates";
 import { copy } from "@/lib/i18n";
 import { Login, type SessionCheck } from "./login";
 import { Shell } from "./shell";
+import { WorkoutTimerProvider, useWorkoutTimer } from "./workout-timer";
 import { ErrorNotice, Mark, Skeleton, Button, Empty } from "./ui";
 
 type Context = {
@@ -43,15 +44,20 @@ export function useTraining() {
   if (!value) throw new Error("Training context missing");
   return value;
 }
-export function Workspace({
-  children,
-  theme,
-  sidebarOpen,
-}: {
+type WorkspaceProps = {
   children: ReactNode;
   theme: "light" | "dark";
   sidebarOpen: boolean;
-}) {
+};
+export function Workspace(props: WorkspaceProps) {
+  return (
+    <WorkoutTimerProvider>
+      <WorkspaceSession {...props} />
+    </WorkoutTimerProvider>
+  );
+}
+function WorkspaceSession({ children, theme, sidebarOpen }: WorkspaceProps) {
+  const { access } = useWorkoutTimer();
   const [auth, setAuth] = useState<"checking" | "in" | "out" | "error">(
     "checking",
   );
@@ -185,6 +191,9 @@ export function Workspace({
   useEffect(() => {
     if (auth === "in") void refresh();
   }, [auth, refresh]);
+  useEffect(() => {
+    access(auth);
+  }, [auth, access]);
   if (auth === "checking")
     return (
       <div className="session-screen" role="status">

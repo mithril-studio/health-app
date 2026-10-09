@@ -15,17 +15,14 @@ class Settings(BaseSettings):
     box_shared_secret: SecretStr = SecretStr("")
     intervals_api_key: SecretStr = SecretStr("")
     intervals_athlete_id: str = ""
+    whoop_client_id: str = ""
+    whoop_client_secret: SecretStr = SecretStr("")
     telegram_bot_token: SecretStr = SecretStr("")
     telegram_chat_id: str = ""
-    anthropic_api_key: SecretStr = SecretStr("")
-    anthropic_oauth_token: SecretStr = SecretStr("")
-    anthropic_model: str = "claude-sonnet-4-6"
-    claude_transport: str = "auto"
-    claude_cli_path: str = "claude"
-    claude_config_dir: str = ""
-    # Dedicated service-owned directory, containing only the official OAuth login.
-    claude_config_dir: str = ""
-    claude_cli_timeout: int = Field(default=150, ge=10, le=300)
+    openrouter_api_key: SecretStr = SecretStr("")
+    openrouter_model: str = Field(default="moonshotai/kimi-k3", min_length=1)
+    agent_timeout_seconds: int = Field(default=150, ge=10, le=150)
+    agent_max_tokens: int = Field(default=8192, ge=256, le=32768)
     agent_max_rounds: int = Field(default=6, ge=1, le=10)
     agent_max_tools: int = Field(default=16, ge=1, le=30)
     sync_interval_seconds: int = Field(default=300, ge=30)
@@ -45,13 +42,6 @@ class Settings(BaseSettings):
         ):
             raise ValueError("APP_ORIGIN must be a single origin")
         return value.rstrip("/")
-
-    @field_validator("claude_transport")
-    @classmethod
-    def valid_transport(cls, value):
-        if value not in ("auto", "api", "cli"):
-            raise ValueError("CLAUDE_TRANSPORT must be auto, api or cli")
-        return value
 
     @cached_property
     def intervals_configured(self):

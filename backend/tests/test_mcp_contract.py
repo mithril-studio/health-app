@@ -63,7 +63,7 @@ async def test_cli_capability_has_only_read_tools_for_scheduled_advice(web):
     assert not await app.state.store.query("SELECT * FROM write_operations")
 
 
-async def test_cli_receives_compact_full_workout_analysis(web):
+async def test_scoped_mcp_receives_compact_full_workout_analysis(web):
     from test_workout import activity, streams
 
     client, app = web

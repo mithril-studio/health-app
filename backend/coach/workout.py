@@ -10,7 +10,7 @@ def pick(record, fields):
 ACTIVITY_FIELDS = (
     "id name type start_date_local distance moving_time elapsed_time average_speed "
     "average_heartrate max_heartrate icu_training_load lthr icu_threshold_pace "
-    "description icu_rpe feel source source_error interval_summary"
+    "description icu_rpe feel source source_error interval_summary session_duration whoop_strain"
 )
 EVENT_FIELDS = "id name type start_date_local category description paired_activity_id moving_time"
 WELLNESS_FIELDS = "id ctl atl hrv sleepSecs restingHR weight soreness fatigue stress mood"
@@ -155,7 +155,8 @@ def analyze_workout(activity, streams, settings, *, lt2_hr=None, scores=None, of
         "activity": pick(
             activity,
             "id name type start_date_local distance moving_time elapsed_time "
-            "average_speed average_heartrate max_heartrate icu_rpe feel",
+            "average_speed average_heartrate max_heartrate icu_rpe feel source description "
+            "session_duration whoop_strain",
         ),
         "threshold": boundary,
         "session": time_above(spans, boundary["bpm"], 0, end),

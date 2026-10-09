@@ -5,11 +5,14 @@ cd "$(dirname "$0")/.."
 VM=coach-reachy
 archive=$(mktemp /tmp/coach-reachy-release.XXXXXX)
 trap 'rm -f "$archive"' EXIT
+paths=(backend/coach backend/migrations backend/requirements.txt
+  web/src web/package.json web/package-lock.json web/next.config.ts web/next-env.d.ts web/tsconfig.json web/.npmrc
+  ops/ deploy/)
+# Static assets are optional: a fresh checkout has no web/public yet.
+[ -d web/public ] && paths+=(web/public)
 COPYFILE_DISABLE=1 tar --no-xattrs -czf "$archive" \
   --exclude='._*' --exclude='__pycache__' --exclude='.venv' --exclude='.pytest_cache' \
-  backend/coach backend/migrations backend/requirements.txt \
-  web/src web/public web/package.json web/package-lock.json web/next.config.ts web/next-env.d.ts web/tsconfig.json web/.npmrc \
-  ops/ deploy/
+  "${paths[@]}"
 boxd machine cp "$archive" "$VM:/tmp/coach-reachy-release.tar.gz"
 boxd machine exec "$VM" -- 'tar -xzf /tmp/coach-reachy-release.tar.gz -C /opt/coach-reachy'
 boxd machine exec "$VM" -- 'cd /opt/coach-reachy/backend && uv pip install --python .venv/bin/python --only-binary :all: -r requirements.txt'

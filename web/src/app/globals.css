@@ -2601,3 +2601,331 @@ td {
   border-top: 2px dashed;
   border-radius: 0;
 }
+
+/* Workouts use the same private workspace surfaces as the calendar. */
+.workouts-page {
+  display: grid;
+  gap: 24px;
+}
+.workouts-intro {
+  margin: 0;
+  color: var(--muted-foreground);
+}
+.workouts-menu-label {
+  flex: 1;
+  color: var(--muted-foreground);
+}
+.workout-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.workout-option {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.workout-option .card-heading {
+  padding: 0;
+  margin: 0;
+}
+.workout-option > .button {
+  align-self: flex-start;
+  margin-top: auto;
+}
+.workout-symbol {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--primary);
+}
+.workout-caption {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  margin: 0;
+  line-height: 1.7;
+}
+.routine-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.routine-choices button,
+.meditation-presets button {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: 16px;
+  text-align: left;
+}
+.routine-choices button[aria-pressed="true"],
+.meditation-presets button[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.routine-choices span {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.routine-choices strong {
+  font-size: 20px;
+  font-weight: 500;
+}
+.meditation-presets {
+  display: flex;
+  gap: 8px;
+}
+.meditation-presets button {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 20px;
+  padding: 14px 5px;
+}
+.meditation-presets small {
+  display: block;
+  font-size: 11px;
+}
+.workout-duration {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.workout-duration input {
+  width: 80px;
+}
+.workout-form input,
+.workout-form select,
+.workout-form textarea,
+.workout-duration input {
+  border: 1px solid var(--input);
+  border-radius: var(--radius-sm);
+  background: var(--background);
+  color: var(--foreground);
+  padding: 10px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 16px;
+}
+.workout-secondary > .card {
+  padding: 24px;
+}
+.workout-secondary .card-heading {
+  padding: 0 0 20px;
+}
+.workout-history,
+.whoop-history ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.workout-history button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  background: transparent;
+}
+.workout-history button > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.workout-history strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+}
+.workout-history small {
+  display: block;
+  color: var(--muted-foreground);
+  margin-top: 2px;
+}
+.whoop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+.whoop-history {
+  margin-top: 20px;
+  font-size: 12px;
+}
+.whoop-history li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.whoop-history small {
+  grid-column: 1 / -1;
+  color: var(--muted-foreground);
+}
+.timer-player {
+  display: flex;
+  padding: 32px;
+  gap: 40px;
+  align-items: center;
+}
+.timer-main {
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+}
+.timer-main h2 {
+  font-size: 21px;
+  font-weight: 500;
+  margin: 14px 0 24px;
+}
+.timer-dial {
+  width: 230px;
+  height: 230px;
+  margin: 0 auto 24px;
+  border-radius: 50%;
+  padding: 4px;
+  background: conic-gradient(var(--primary) var(--progress), var(--border) 0);
+}
+.timer-dial > div {
+  background: var(--card);
+  border-radius: 50%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.timer-dial [role="timer"] {
+  font-size: 54px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -2px;
+}
+.timer-dial small {
+  color: var(--muted-foreground);
+}
+.timer-instruction {
+  max-width: 380px;
+  min-height: 100px;
+  margin: 0 auto;
+}
+.timer-instruction h3 {
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+.timer-instruction p {
+  color: var(--muted-foreground);
+  margin: 0 0 20px;
+}
+.timer-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.timer-phone {
+  max-width: 350px;
+  margin: 20px auto 0;
+}
+.stretch-sequence {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 380px;
+}
+.stretch-sequence li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+}
+.stretch-sequence li.current {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.stretch-sequence li > span {
+  width: 22px;
+  color: var(--muted-foreground);
+}
+.stretch-sequence strong {
+  flex: 1;
+  font-weight: 500;
+}
+.stretch-sequence small {
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.workout-form,
+.workout-form fieldset {
+  display: grid;
+  gap: 16px;
+}
+.workout-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.workout-form label {
+  display: grid;
+  gap: 6px;
+}
+.timer-banner {
+  display: block;
+  padding: 9px 16px;
+  margin-bottom: 16px;
+  color: var(--accent-foreground);
+  background: var(--accent);
+  border-radius: var(--radius);
+  text-align: center;
+}
+@media (max-width: 900px) {
+  .workout-grid {
+    grid-template-columns: 1fr;
+  }
+  .timer-player {
+    flex-direction: column;
+  }
+  .stretch-sequence {
+    width: 100%;
+  }
+}
+@media (max-width: 480px) {
+  .workout-option,
+  .workout-secondary > .card,
+  .timer-player {
+    padding: 20px;
+  }
+  .workouts-menu-label {
+    display: none;
+  }
+  .workout-secondary .card-heading {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .routine-choices {
+    gap: 8px;
+  }
+  .timer-dial {
+    width: 200px;
+    height: 200px;
+  }
+}
+
+.workout-sound {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}

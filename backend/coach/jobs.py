@@ -69,6 +69,8 @@ class Jobs:
                 return {"delivered": True}
             if row["kind"] == "write":
                 return await self.tools.execute_write(payload["operation_id"])
+            if row["kind"] == "whoop_sync":
+                return await self.whoop.sync()
             if row["kind"] == "sync":
                 result = await self.tools.sync.run()
                 return {
@@ -151,6 +153,10 @@ class Jobs:
                 now = datetime.now(ZoneInfo("Europe/Amsterdam"))
                 slot = int(now.timestamp()) // self.cfg.sync_interval_seconds
                 await self.store.enqueue(f"sync:{slot}", "sync", {})
+                if getattr(self, "whoop", None) and self.whoop.configured:
+                    await self.store.enqueue(
+                        f"whoop-sync:{int(now.timestamp()) // 1200}", "whoop_sync", {}
+                    )
                 self.wakeup.clear()
                 try:
                     await asyncio.wait_for(self.wakeup.wait(), timeout=5)

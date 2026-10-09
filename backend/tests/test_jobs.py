@@ -21,9 +21,17 @@ async def test_jobs_read_only_and_notification_survives_send_failure(store):
 
     async def remote(req):
         if req.url.path.endswith("/getMe"):
-            return httpx.Response(200, json={"ok": True, "result": {
-                "id": 999, "is_bot": True, "username": "coachreachybot",
-            }})
+            return httpx.Response(
+                200,
+                json={
+                    "ok": True,
+                    "result": {
+                        "id": 999,
+                        "is_bot": True,
+                        "username": "coachreachybot",
+                    },
+                },
+            )
         sends.append(req)
         if len(sends) == 1:
             return httpx.Response(503, json={"ok": False})
@@ -47,9 +55,17 @@ async def test_jobs_read_only_and_notification_survives_send_failure(store):
 
 async def test_telegram_lock_dedup_and_payload_minimization(store):
     cfg = Settings(_env_file=None, telegram_bot_token="test", telegram_chat_id="123")
-    async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: httpx.Response(
-        200, json={"ok": True, "result": {"id": 999, "is_bot": True, "username": "coachreachybot"}}
-    ))) as client:
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(
+                200,
+                json={
+                    "ok": True,
+                    "result": {"id": 999, "is_bot": True, "username": "coachreachybot"},
+                },
+            )
+        )
+    ) as client:
         jobs = Jobs(cfg, store, ToolService(store, WritableSource()), FakeAgent(), client)
         bad = {"update_id": 42, "message": {"chat": {"id": 999}, "text": "hello"}}
         with pytest.raises(ToolError):
@@ -72,3 +88,22 @@ def test_telegram_chunks_respect_utf16_limit():
     chunks = notification_chunks("🙂" * 9000)
     assert "".join(chunks) == "🙂" * 9000
     assert all(len(c.encode("utf-16-le")) <= 8000 for c in chunks)
+
+
+async def test_unavailable_provider_keeps_jobs_queued(store):
+    from coach.agent import AgentUnavailable
+
+    class BrokenAgent:
+        async def respond(self, message, **kwargs):
+            raise AgentUnavailable("openrouter_unavailable")
+
+    cfg = Settings(_env_file=None, telegram_bot_token="test", telegram_chat_id="123")
+    async with httpx.AsyncClient() as client:
+        jobs = Jobs(cfg, store, ToolService(store, WritableSource()), BrokenAgent(), client)
+        await jobs.accept_job({"kind": "morning", "key": "2026-10-05"})
+        await jobs.accept_job({"kind": "evening", "key": "2026-10-05"})
+        assert (await jobs.process("job:morning:2026-10-05"))["status"] == "retry"
+        await store.execute("UPDATE work_items SET available_at=now()")
+        assert (await jobs.process("job:evening:2026-10-05"))["status"] == "retry"
+    retrying = await store.query("SELECT key FROM work_items WHERE status='retry' ORDER BY key")
+    assert [r["key"] for r in retrying] == ["job:evening:2026-10-05", "job:morning:2026-10-05"]

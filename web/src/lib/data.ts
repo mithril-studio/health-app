@@ -21,12 +21,28 @@ export function nonnegative(value: unknown) {
   const n = number(value);
   return n !== null && n >= 0 ? n : null;
 }
-export type Sport = "run" | "ride" | "football" | "gym" | "swim" | "other";
+export type Sport =
+  | "run"
+  | "ride"
+  | "football"
+  | "gym"
+  | "swim"
+  | "stretch"
+  | "meditation"
+  | "home"
+  | "golf"
+  | "tennis"
+  | "other";
 export function sportOf(type: string): Sport {
   if (/run/i.test(type)) return "run";
-  if (/ride|cycl/i.test(type)) return "ride";
+  if (/ride|cycl|spinning/i.test(type)) return "ride";
   if (/soccer|football/i.test(type)) return "football";
-  if (/weight|strength|gym|workout/i.test(type)) return "gym";
+  if (/stretch|yoga|mobility/i.test(type)) return "stretch";
+  if (/meditat/i.test(type)) return "meditation";
+  if (/home.?workout/i.test(type)) return "home";
+  if (/golf/i.test(type)) return "golf";
+  if (/tennis/i.test(type)) return "tennis";
+  if (/weight|strength|gym|workout|fitness|crossfit|powerlifting/i.test(type)) return "gym";
   if (/swim/i.test(type)) return "swim";
   return "other";
 }
@@ -87,7 +103,7 @@ export function normalizeActivity(value: unknown): Activity | null {
     type,
     sport: sportOf(type),
     date,
-    duration: nonnegative(r.moving_time),
+    duration: nonnegative(r.moving_time ?? r.session_duration),
     elapsed: nonnegative(r.elapsed_time),
     distance: nonnegative(r.icu_distance ?? r.distance),
     load: nonnegative(r.icu_training_load),

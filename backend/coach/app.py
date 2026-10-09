@@ -30,8 +30,10 @@ from coach.models import (
     JobInput,
     LoginInput,
 )
+from coach.sessions import SessionInput, combined_activities
 from coach.telegram_link import TelegramLink
 from coach.tools import ToolError, ToolService
+from coach.whoop import OAuthInput, Whoop
 
 
 def create_app(settings=None, *, store=None, source=None):
@@ -45,8 +47,10 @@ def create_app(settings=None, *, store=None, source=None):
     auth = Auth(cfg, db)
     telegram_link = TelegramLink(cfg, db, client)
     tools = ToolService(db, source, telegram_link=telegram_link)
-    agent = Agent(cfg, db, tools, client, auth)
+    agent = Agent(cfg, db, tools, client)
     jobs = Jobs(cfg, db, tools, agent, client, telegram_link=telegram_link)
+    whoop = Whoop(cfg, db, client)
+    jobs.whoop = whoop
     mcp = create_mcp(tools, cfg)
     # Network libraries can log request URLs containing the Telegram bot token.
     for logger in ("httpx", "httpcore", "mcp", "psycopg.pool"):
@@ -82,6 +86,7 @@ def create_app(settings=None, *, store=None, source=None):
     app.state.store, app.state.tools, app.state.jobs = db, tools, jobs
     app.state.agent, app.state.auth, app.state.settings = agent, auth, cfg
     app.state.telegram_link = telegram_link
+    app.state.whoop = whoop
     app.add_middleware(Guard, auth=auth)
 
     @app.exception_handler(RequestValidationError)
@@ -103,7 +108,8 @@ def create_app(settings=None, *, store=None, source=None):
     @app.exception_handler(AgentUnavailable)
     async def agent_error(request, exc):
         return JSONResponse(
-            {"detail": str(exc), "configured": agent.status()["configured"]}, status_code=503
+            {"detail": str(exc), "code": exc.code, "configured": agent.status()["configured"]},
+            status_code=503,
         )
 
     @app.exception_handler(ValueError)
@@ -187,7 +193,7 @@ def create_app(settings=None, *, store=None, source=None):
             oldest=oldest or today - timedelta(days=28), newest=newest or today + timedelta(days=14)
         )
         await wake()
-        activities = await db.range("activities", dates.oldest, dates.newest)
+        activities = await combined_activities(db, dates.oldest, dates.newest)
         events = await db.range("events", dates.oldest, dates.newest)
         wellness = await db.range("wellness", dates.oldest, dates.newest)
         fitness = await db.range("fitness_daily", dates.oldest, dates.newest)
@@ -203,6 +209,74 @@ def create_app(settings=None, *, store=None, source=None):
             "sync": await db.sync_status(),
             "insights": data,
         }
+
+    def user_session(request):
+        if request.state.principal != "session":
+            raise ToolError("A browser session is required", 403)
+
+    @app.post("/api/sessions", status_code=201)
+    async def save_session(body: SessionInput, request: Request):
+        user_session(request)
+        activity = body.activity()
+        async with db.lock("session:" + activity["id"], wait=True) as conn:
+            row = await db.query(
+                "SELECT data FROM local_sessions WHERE id=%s",
+                (activity["id"],),
+                conn=conn,
+                one=True,
+            )
+            existing = row["data"] if row else None
+            if existing and existing != activity:
+                raise ToolError("Session ID already used", 409)
+            if not existing:
+                await db.put(
+                    "local_sessions",
+                    activity["id"],
+                    activity,
+                    activity["start_date_local"][:10],
+                    conn=conn,
+                )
+        return activity
+
+    @app.post("/api/sessions/{id}/delete")
+    async def delete_session(id: str, request: Request):
+        user_session(request)
+        await db.execute("DELETE FROM local_sessions WHERE id=%s", (ActivityInput(id=id).id,))
+        return {"deleted": True}
+
+    @app.get("/api/whoop")
+    async def whoop_status(request: Request):
+        user_session(request)
+        return await whoop.status()
+
+    @app.post("/api/whoop/authorize")
+    async def whoop_authorize(request: Request):
+        user_session(request)
+        return await whoop.authorize(request.state.session_token)
+
+    @app.post("/api/whoop/connect")
+    async def whoop_connect(body: OAuthInput, request: Request):
+        user_session(request)
+        result = await whoop.connect(body, request.state.session_token)
+        await db.enqueue("whoop-connect:" + uuid.uuid4().hex, "whoop_sync", {})
+        jobs.wakeup.set()
+        return result
+
+    @app.post("/api/whoop/sync")
+    async def whoop_sync(request: Request):
+        user_session(request)
+        return await whoop.sync()
+
+    @app.post("/api/whoop/disconnect")
+    async def whoop_disconnect(request: Request):
+        user_session(request)
+        return await whoop.disconnect()
+
+    @app.get("/api/whoop/workouts")
+    async def whoop_workouts(request: Request, oldest: date, newest: date):
+        user_session(request)
+        dates = DateRange(oldest=oldest, newest=newest)
+        return {"workouts": await combined_activities(db, dates.oldest, dates.newest, review=True)}
 
     @app.get("/api/activity/{id}")
     async def activity(id: str):

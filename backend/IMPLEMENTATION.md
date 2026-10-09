@@ -16,13 +16,12 @@ Create the Postgres database/user before starting. The user must be able to crea
 
 Use independent `APP_PASSWORD`, `API_AUTH_TOKEN` (optional), `MCP_AUTH_TOKEN`, and `BOX_SHARED_SECRET`. Root `.env` is not implicitly loaded when running from `backend/`; use the service's `EnvironmentFile` or a backend `.env`. `SESSION_SECRET` is unnecessary: sessions are opaque random capabilities whose SHA-256 digests and expiry are in Postgres.
 
-## OAuth and agent configuration
+## Agent configuration
 
-- `CLAUDE_TRANSPORT=auto` chooses normal Anthropic Messages API when `ANTHROPIC_API_KEY` exists; otherwise official Claude CLI.
-- `ANTHROPIC_OAUTH_TOKEN` is passed only to the official CLI as `CLAUDE_CODE_OAUTH_TOKEN`. No direct OAuth API calls, identity spoofing, forged client headers or token scraping.
-- Alternatively set `CLAUDE_TRANSPORT=cli` and `CLAUDE_CONFIG_DIR=/home/boxd/.claude` on the provisioned VM. This uses the official refreshable login installed and verified by the deployment agent. The directory is explicit; the backend does not search unrelated accounts/keychains for credentials.
-- CLI execution uses a temporary working directory/home, no general built-in tools, disabled hooks, no user/project/local settings, no persistent chat session, and only an explicit authenticated MCP server. An expiring server-issued capability limits tool count and permissions. Scheduled advice has only read tools and writes are also denied server-side. The process group is killed on timeout. The persistent CLI credential directory must be owned by the service user and contain only its intended official login/configuration.
-- Model rounds, tool calls, response tokens and elapsed time are bounded. A supplied date-stamped cache snapshot and strict instructions prohibit fabricated metrics. Missing or rejected credentials report `configured: false`; there is no fake coach reply. API/OAuth credentials were absent from the local project `.env` at initial probe; the deployment agent separately verified its VM CLI login. This backend did not make a paid provider request or copy credentials.
+- Coaching uses `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` (default `moonshotai/kimi-k3`). Legacy Claude CLI and Anthropic transport settings are no longer used.
+- The OpenRouter chat-completions loop retains opaque reasoning state between tool rounds, validates tool calls strictly and restricts scheduled advice to read tools.
+- `AGENT_TIMEOUT_SECONDS`, `AGENT_MAX_TOKENS`, tool and round limits bound each request. Provider errors are sanitized and distinguish authentication, credits, rate limits, unavailable models and timeouts. No provider credentials are exposed to the model.
+- MCP remains available for authenticated external clients and scoped capabilities. The built-in coach calls the same tool service directly.
 
 ## API integration details
 
@@ -67,13 +66,13 @@ calendar from seven days ago through two days ahead, wellness from seven days ag
 today, sport settings, saved personal scores and sync status. The system prompt contains the 5 km sub-18/sub-17
 goals and Mon/Tue/Thu/Sun running schedule plus football/gym. There is no cross-conversation
 athlete conversation memory. Manually saved scores and zones are shared across chats.
-Older cached records require explicit tool queries. Both transports use the same
+Older cached records require explicit tool queries. The coach uses a
 15,000-character history budget: newest messages are retained in order, and very long
 messages preserve their beginning/end with an explicit omission marker. Context includes
 the count of included and budget-omitted messages; an oversized history is no longer
-discarded wholesale by the CLI transport.
+discarded wholesale when it exceeds the history budget.
 
-Coach calendar/wellness inputs are projected to relevant fields in both transports.
+Coach calendar/wellness inputs are projected to relevant fields in the OpenRouter loop and scoped MCP calls.
 Oversized context sections are marked as omitted independently, preserving other sections
 such as thresholds. The API tool-result budget remains 20,000 characters; compact analysis
 pages avoid passing raw telemetry to the model. Review instructions prioritize per-set
@@ -85,11 +84,11 @@ reviewing an actual coach turn; mocked-provider tests verify evidence delivery a
 (integer bpm, 30–250) and VO2max (ml/kg/min, 5–100). Both thresholds must be ordered when
 present. `GET /api/athlete-scores` reads the current values; authenticated
 `POST /api/athlete-scores` replaces all three, with null clearing an individual value.
-Migration 006 stores these independently of Intervals, so sync cannot overwrite them.
+Migration 007 stores these independently of Intervals, so sync cannot overwrite them.
 These are current benchmarks, not a dated test history. Running LT2 takes precedence over
 LTHR for Run, TrailRun and VirtualRun, but does not change cycling analysis or upstream
 zones. Every new coach turn receives all three scores; the coach has no tool to edit them.
-Migration 007 adds optional personal running `hr_zones`: exactly five Z1–Z5 objects with
+Migration 008 adds optional personal running `hr_zones`: exactly five Z1–Z5 objects with
 inclusive integer `min_bpm`/`max_bpm` limits (30–250), consecutive without overlaps or gaps.
 Submitting null clears zones; omitting the field preserves them for older clients.
 Workout analysis calculates time in these personal zones from recorded HR/time streams,

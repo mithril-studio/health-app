@@ -8,6 +8,7 @@ from psycopg.types.json import Jsonb
 
 from coach.intervals import UpstreamError
 from coach.models import READ_TOOLS, validate_tool
+from coach.sessions import combined_activities
 from coach.sync import SyncService
 from coach.workout import EVENT_FIELDS, analyze_workout, pick
 
@@ -47,7 +48,7 @@ class ToolService:
         values = args.model_dump(mode="json", exclude_none=True)
         if name == "get_calendar":
             return {
-                "activities": await self.store.range("activities", args.oldest, args.newest),
+                "activities": await combined_activities(self.store, args.oldest, args.newest),
                 "events": await self.store.range("events", args.oldest, args.newest),
             }
         if name in ("get_fitness", "get_wellness"):
@@ -142,6 +143,12 @@ class ToolService:
         return await self.execute_write(operation_id)
 
     async def activity(self, id, streams=False):
+        for prefix, table in (("local-", "local_sessions"), ("whoop-", "whoop_workouts")):
+            if id.startswith(prefix):
+                row = await self.store.get(table, id)
+                if row is None:
+                    raise ToolError("Activity not found", 404)
+                return {"available": False} if streams else {**row, "intervals": []}
         row = await self.store.get("activities", id)
         if row is None:
             # Restrict lazy activity access to this athlete's cached index.

@@ -178,7 +178,7 @@ sudo systemctl enable --now coach-reachy-relay.service
 The unit mounts the application read-only except for `state/`, drops
 capabilities, and runs without privilege escalation. Ensure `boxd` can traverse
 and read `ops/` and its venv. No access to `/home/boxd` is required by this service;
-the backend owns Claude credentials and agent execution.
+the backend owns OpenRouter credentials and coaching execution.
 
 Exit codes: `0` clean completion, `1` fatal internal/startup connectivity failure,
 `75` lock already held, `78` invalid config/webhook/polling conflict. Systemd

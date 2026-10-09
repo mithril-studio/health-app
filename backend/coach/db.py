@@ -9,7 +9,9 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 from psycopg_pool import AsyncConnectionPool
 
-DATED = frozenset({"activities", "events", "wellness", "fitness_daily"})
+DATED = frozenset(
+    {"activities", "events", "wellness", "fitness_daily", "local_sessions", "whoop_workouts"}
+)
 CACHED = frozenset({"sport_settings", "activity_intervals", "activity_streams", "curve_cache"})
 
 

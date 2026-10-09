@@ -94,17 +94,19 @@ test("chat history docks against the main sidebar and fills the remaining height
   expect(Math.abs(history!.y + history!.height - 900)).toBeLessThan(2);
   await expect(page.getByLabel("Message your coach")).toBeInViewport();
   await page.getByRole("button", { name: "Collapse navigation" }).click();
-  // Read both edges in one browser frame while the sidebar width animates.
+  // Measure both rectangles in one frame after the collapse animation settles.
   await expect
-    .poll(() =>
+    .poll(async () =>
       page.evaluate(() => {
         const sidebar = document
           .querySelector(".sidebar")!
           .getBoundingClientRect();
-        const docked = document
+        const history = document
           .querySelector(".conversation-menu")!
           .getBoundingClientRect();
-        return Math.abs(docked.x - sidebar.right);
+        return (
+          Math.abs(history.x - sidebar.right) + Math.abs(sidebar.width - 64)
+        );
       }),
     )
     .toBeLessThan(1);
