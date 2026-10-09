@@ -1,4 +1,6 @@
-## Release preparation — 9 October 2026
+## Live workout release — 9 October 2026
+
+Release commit `9e49c49` was pushed to `origin/main` and deployed to https://coach-reachy.boxd.sh/workouts. API, web, relay, and nginx are active; migration `006_workouts.sql` applied. Live checks passed for anonymous access rejection, authenticated dashboard/MCP reads, logout, workout page accessibility and widths 320/390/1440, stretch transitions, pause/reload/resume, meditation completion, and draft cleanup. No live workout records were created. The coach still reports OpenRouter transport; no paid coaching request was sent. Release checks also passed: 81 backend tests, 22 frontend unit tests, 43 Chrome scenarios, TypeScript, Ruff, and production builds locally and on boxd. The prior workout WebKit run passed 35 scenarios.
 
 The boxd source comparison found a deployed OpenRouter migration absent from this branch and `origin/main`. The workout release preserves that live agent, its error handling, and the chat retry behavior; it does not revert to Claude CLI login. Source and PostgreSQL backups were created on the VM under `state/backups/workouts-20261009/` before deployment. Tests for the obsolete provider were replaced with coverage of the deployed provider, tool limits, read-only restrictions, retry identity, safe errors, and reasoning-state continuity. Full backend suite: 81 passed. Physical iPhone speaker/lock-screen verification remains outstanding.
 
