@@ -184,8 +184,8 @@ TOOL_DESCRIPTIONS = {
     "get_calendar": "Cached planned events and completed activities. Inclusive local ISO dates.",
     "get_activity": "Cached raw activity and lazy intervals; unavailable data remains missing.",
     "get_activity_analysis": "Use for workout reviews: compact individual sets with measured "
-    "pace, average HR and timestamp-weighted seconds strictly above LT2. Uses saved personal "
-    "running LT2 before activity LTHR, then current sport LTHR as a proxy; pass lt2_hr only "
+    "pace, average HR and timestamp-weighted seconds strictly above LT2. Uses recorded "
+    "activity LTHR, then current sport LTHR as a proxy; pass lt2_hr only "
     "for a user-supplied LT2 override. "
     "Follow next_offset until null for all sets. Never turn grouped averages into individual reps.",
     "get_fitness": "CTL, ATL and form from Intervals wellness. No inferred fitness values.",

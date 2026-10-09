@@ -40,3 +40,25 @@ async def test_summary_uses_calendar_sources_and_deduplication():
     assert result["periods"][0]["sessions"] == len(calendar["activities"]) == 3
     assert result["periods"][0]["sources"] == {"intervals": 1, "app": 1, "whoop": 1}
     assert result["freshness"]["last_success"] == "2026-10-05T12:00:00Z"
+
+
+async def test_analysis_uses_intervals_threshold_without_reading_app_scores():
+    class Store:
+        async def get(self, table, id, **kwargs):
+            return {
+                "activities": {"id": id, "type": "Run", "elapsed_time": 10},
+                "activity_intervals": [],
+                "activity_streams": [{"type": "time", "data": [0, 10]},
+                                     {"type": "heartrate", "data": [170, 170]}],
+            }[table]
+
+        async def settings(self):
+            return {"Run": {"lthr": 175}}
+
+        async def query(self, *args):
+            return []
+
+    result = await ToolService(Store(), None).call("get_activity_analysis", {"id": "a"})
+    assert result["threshold"] == {"bpm": 175, "source": "current_sport_settings.lthr", "is_proxy": True}
+    assert result["session"]["above_lt2_seconds"] == 0
+    assert "personal_hr_zones" not in result

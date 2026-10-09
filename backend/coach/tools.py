@@ -91,7 +91,6 @@ class ToolService:
                 streams,
                 settings,
                 lt2_hr=args.lt2_hr,
-                scores=await self.store.athlete_scores(),
                 offset=args.offset,
                 limit=args.limit,
             )
