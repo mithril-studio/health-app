@@ -221,12 +221,14 @@ def training_summary(activities, wellness, oldest, newest, group_by="week"):
                 "period": period_label(start, group_by),
                 "start": str(max(start, oldest)),
                 "sessions": 0,
-                "distance_km": 0.0,
-                "moving_time_min": 0.0,
-                "load": 0.0,
+                "distance_km": None,
+                "moving_time_min": None,
+                "load": None,
                 "missing_load": 0,
                 "restricted": 0,
                 "by_sport": {},
+                "sources": {},
+                "coverage": {},
                 "_wellness": defaultdict(list),
                 "_fitness": None,
             },
@@ -246,7 +248,7 @@ def training_summary(activities, wellness, oldest, newest, group_by="week"):
             restriction_notes.add(str(row["_note"])[:200])
         sport = agg["by_sport"].setdefault(
             row.get("type") or ("Restricted source" if restricted else "Unknown"),
-            {"sessions": 0, "distance_km": 0.0, "moving_time_min": 0.0, "load": 0.0},
+            {"sessions": 0, "distance_km": None, "moving_time_min": None, "load": None},
         )
         agg["sessions"] += 1
         sport["sessions"] += 1
@@ -255,16 +257,19 @@ def training_summary(activities, wellness, oldest, newest, group_by="week"):
             number(row.get("moving_time")),
             number(row.get("icu_training_load")),
         )
-        if distance is not None:
-            agg["distance_km"] += distance / 1000
-            sport["distance_km"] += distance / 1000
-        if moving is not None:
-            agg["moving_time_min"] += moving / 60
-            sport["moving_time_min"] += moving / 60
-        if load is not None:
-            agg["load"] += load
-            sport["load"] += load
-        else:
+        source = row.get("source") or "intervals"
+        agg["sources"][source] = agg["sources"].get(source, 0) + 1
+        for key, value, scale in (
+            ("distance_km", distance, 1 / 1000),
+            ("moving_time_min", moving, 1 / 60),
+            ("load", load, 1),
+        ):
+            coverage = agg["coverage"].setdefault(key, {"observed": 0, "missing": 0})
+            coverage["observed" if value is not None else "missing"] += 1
+            if value is not None:
+                agg[key] = (agg[key] or 0) + value * scale
+                sport[key] = (sport[key] or 0) + value * scale
+        if load is None:
             agg["missing_load"] += 1
 
     for row in wellness:
@@ -302,10 +307,10 @@ def training_summary(activities, wellness, oldest, newest, group_by="week"):
         samples = agg.pop("_wellness")
         fitness = agg.pop("_fitness")
         for key in ("distance_km", "moving_time_min", "load"):
-            agg[key] = round(agg[key], 1)
+            agg[key] = round(agg[key], 1) if agg[key] is not None else None
         for sport in agg["by_sport"].values():
             for key in ("distance_km", "moving_time_min", "load"):
-                sport[key] = round(sport[key], 1)
+                sport[key] = round(sport[key], 1) if sport[key] is not None else None
         wellness_summary = {"days": len(samples["days"])}
         for key in ("hrv", "resting_hr", "sleep_hours", "readiness", "weight_kg"):
             value = mean(samples[key])
@@ -321,7 +326,7 @@ def training_summary(activities, wellness, oldest, newest, group_by="week"):
         "newest": str(newest),
         "periods": result,
         "restriction_notes": sorted(restriction_notes),
-        "note": "Totals include only recorded values; missing_load counts sessions without a "
+        "note": "No observations means null, not zero. WHOOP elapsed duration is not moving time. Totals include only recorded values; missing_load counts sessions without a "
         "load and restricted counts sessions whose source withholds detail "
         "(see restriction_notes).",
     }

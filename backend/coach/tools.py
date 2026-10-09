@@ -65,13 +65,15 @@ class ToolService:
                 "wellness", await self.store.range("wellness", args.oldest, args.newest)
             )
         if name == "get_training_summary":
-            return training_summary(
-                await self.store.range("activities", args.oldest, args.newest),
+            result = training_summary(
+                await combined_activities(self.store, args.oldest, args.newest),
                 await self.store.range("wellness", args.oldest, args.newest),
                 args.oldest,
                 args.newest,
                 args.group_by,
             )
+            result["freshness"] = await self.store.sync_status()
+            return result
         if name == "get_activity":
             return await self.activity(args.id)
         if name == "get_activity_analysis":
@@ -89,7 +91,6 @@ class ToolService:
                 streams,
                 settings,
                 lt2_hr=args.lt2_hr,
-                scores=await self.store.athlete_scores(),
                 offset=args.offset,
                 limit=args.limit,
             )
