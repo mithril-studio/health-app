@@ -78,6 +78,8 @@ Direct WHOOP API/OAuth routes and the importer are removed. Historical credentia
 
 Every task uses the same deterministic brief builder. Workout briefs page through ordered intervals with bounded pages/characters and explicit continuation/coverage, include recorded paired plans and structured aggregate comparisons, prior same-sport sessions and recent cross-sport workload. Daily briefs select today's plan, recent workload and wellness. Weekly briefs compare the last seven days with recorded plans and include the upcoming week. Profile plan context describes user intent, not proof of activity pairing. Missing values remain unknown; real zero remains recorded zero.
 
+Relay and Worker schedule weekly reviews Sunday at 20:00 Europe/Amsterdam. Morning/evening use daily briefs; activity jobs use workout briefs. All scheduled tasks remain read-only. This branch does not deploy the schedules.
+
 Request identity includes message, conversation, mode, activity and read-only status. A changed task under an existing Idempotency-Key returns 409 before returning a cached reply. Profile, records and source text are untrusted evidence and cannot override permission rules. Conversation history stays isolated, bounded to 12 messages and a 15,000-character budget; evidence omissions must be disclosed.
 
 ## Persistence and retries

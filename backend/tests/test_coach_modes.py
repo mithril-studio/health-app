@@ -111,3 +111,30 @@ async def test_selected_workout_evidence_reaches_provider_and_key_cannot_change_
         with pytest.raises(ToolError):
             await agent.respond("Review", key="selected", mode="workout", activity_id="other")
     assert len(prompts) == 1
+
+
+async def test_zone_write_tool_is_retired_everywhere(web):  # noqa: F811
+    from coach.models import TOOL_DESCRIPTIONS, TOOL_MODELS
+
+    client, app = web
+    assert "update_zones" not in TOOL_MODELS
+    assert "update_zones" not in TOOL_DESCRIPTIONS
+    headers = {
+        "Authorization": "Bearer mcp-secret",
+        "Accept": "application/json, text/event-stream",
+    }
+    listing = await client.post(
+        "/mcp",
+        headers=headers,
+        json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+    )
+    assert "update_zones" not in {t["name"] for t in listing.json()["result"]["tools"]}
+    with pytest.raises(ValueError):
+        await app.state.tools.call("update_zones", {"sport": "Run", "ftp": 250})
+    rejected = await client.post(
+        "/api/tools/update_zones",
+        headers={"Authorization": "Bearer api-secret"},
+        json={"sport": "Run", "ftp": 250},
+    )
+    assert rejected.status_code == 422
+    assert app.state.tools.source.calls == []

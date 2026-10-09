@@ -30,7 +30,8 @@ async def test_stateless_mcp_initialize_list_call_and_strict_validation(web):
     assert init.status_code == 200, init.text
     assert "mcp-session-id" not in init.headers
     tools = (await rpc(c, "tools/list")).json()["result"]["tools"]
-    assert len(tools) == 11 and "confirm_delete" not in [t["name"] for t in tools]
+    assert len(tools) == 11
+    assert not {"confirm_delete", "update_zones"} & {t["name"] for t in tools}
     assert {"get_activity_analysis", "get_training_summary"} <= {t["name"] for t in tools}
     assert all(t["inputSchema"]["additionalProperties"] is False for t in tools)
     result = await rpc(

@@ -79,7 +79,7 @@ bash deploy/update.sh
 
 Service logs are private under `/opt/coach-reachy/state/` and rotate after seven daily archives. Journald was unavailable on this VM, so systemd writes to those files directly.
 
-Verification: **58 backend tests, 33 relay tests, 10 Worker tests, 18 frontend unit tests, 25 core Chrome browser tests, 5 WebKit login regression tests**. Production build and live API/MCP smoke checks passed. Real-browser checks found no accessibility violations on all four surfaces and no page overflow at 320/768/1440px. Screenshots contain private data and remain ignored in `artifacts/`. See `VERIFICATION.md` for live status and remaining external setup.
+Current single-coach integration: **142 backend, 34 ops (+4 subtests), 11 Worker, 22 frontend unit and 58 Chrome browser tests passed**, plus typecheck, Ruff and production build. See `VERIFICATION.md` for exact scope and unrun checks. This branch has not been deployed.
 
 Changes are maintained in Git with local verification; deployment is a separate operation.
 
