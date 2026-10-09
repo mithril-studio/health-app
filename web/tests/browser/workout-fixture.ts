@@ -33,4 +33,16 @@ export async function mockWorkouts(
   });
 }
 
-export const emptyProfile = {goals:'',target_date:null,background:'',availability:'',other_sports:'',equipment:'',constraints:'',preferences:'',plan_context:'',updated_at:null,revision:0};
+export const emptyProfile = {
+  goals: "",
+  target_date: null,
+  background: "",
+  availability: "",
+  other_sports: "",
+  equipment: "",
+  constraints: "",
+  preferences: "",
+  plan_context: "",
+  updated_at: null,
+  revision: 0,
+};
