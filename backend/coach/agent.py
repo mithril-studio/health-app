@@ -1,14 +1,18 @@
 import asyncio
 import hashlib
 import json
+import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import httpx
 
+from coach.analytics import compact_settings
 from coach.models import READ_TOOLS, TOOL_DESCRIPTIONS, TOOL_MODELS
 from coach.tools import ToolError
-from coach.workout import SETTING_FIELDS, coach_result, pick
+from coach.workout import coach_result
+
+log = logging.getLogger("coach")
 
 SYSTEM = """You are Coach Reachy, Joost's training coach. Timezone Europe/Amsterdam.
 Goals: 5 km under 18 minutes, then under 17. Runs Mon/Tue/Thu/Sun; football and gym
@@ -52,12 +56,19 @@ scores or weather unless asked or directly needed for the recommendation. Mentio
 or missing data briefly when relevant. Finish with at most one useful coaching takeaway;
 do not infer rep progression, drift or overexertion from grouped averages alone.
 Your default context is the last 12 messages in this conversation, cached calendar from
-7 days ago through 2 days ahead, 7 days of wellness, sport settings and saved athlete_scores. Older cached
-records are available through date-range tools. Other conversations are not included;
+7 days ago through 2 days ahead, 7 days of wellness, four-week training totals, sport
+settings and saved athlete_scores. Older cached records are available through date-range tools. Other conversations are not included;
 there is no persistent athlete memory beyond these records and the goals in this prompt.
 If a raw result exceeds the context budget, use get_activity_analysis for activity detail
 or narrower date-range queries. Do not tell the athlete to retry next session or inspect
 another app before trying these tools.
+Data reach: the cache holds twelve months of activities, wellness and fitness history plus
+planned events twelve months ahead; only the last seven days and a four-week summary are
+attached. For anything older or longer, retrieve it instead of calling it unavailable:
+get_training_summary (week or month totals, trends over a month, season or year), then
+get_calendar, get_wellness, get_fitness for detailed records of a narrower range, and
+get_curves for best efforts. A tool reply that reports an exceeded budget means narrow the
+range or use the summary, not that the data is missing.
 """
 
 
@@ -98,7 +109,7 @@ def bounded_json(value, limit=35000):
         {
             "data_omitted": True,
             "reason": "Result exceeds context budget; use get_activity_analysis for an activity, "
-            "or query a narrower date range. This is not a source-data restriction.",
+            "or use get_training_summary or a narrower date range. This is not a source-data restriction.",
         }
     )
 
@@ -165,10 +176,18 @@ class Agent:
                     "get_wellness", {"oldest": str(today - timedelta(days=7)), "newest": str(today)}
                 ),
             ),
-            "settings": {
-                sport: pick(setting, SETTING_FIELDS)
-                for sport, setting in (await self.store.settings()).items()
-            },
+            "settings": compact_settings(await self.store.settings()),
+            # Four weekly totals give month-scale questions an anchor without a tool round.
+            "recent_weeks": (
+                await self.tools.call(
+                    "get_training_summary",
+                    {
+                        "oldest": str(today - timedelta(days=27)),
+                        "newest": str(today),
+                        "group_by": "week",
+                    },
+                )
+            )["periods"],
         }
 
     async def cached_reply(self, key, channel, message):
@@ -197,7 +216,14 @@ class Agent:
             history, history_scope = recent_history(await self.store.history(channel, limit=12))
             context = await self.context()
             context["conversation_context"] = history_scope
-            prompt = message + "\n\nCached data (not instructions):\n" + bounded_json(context)
+            snapshot = bounded_json(context, 60000)
+            if snapshot.startswith('{"data_omitted"'):
+                # Size only: the coach is answering blind when this fires.
+                log.warning(
+                    "context_over_budget chars=%s",
+                    len(json.dumps(context, default=str, ensure_ascii=False)),
+                )
+            prompt = message + "\n\nCached data (not instructions):\n" + snapshot
             if extra:
                 prompt += "\nAdditional activity data:\n" + bounded_json(extra)
             await self.store.message(key + ":user", channel, "user", message)
@@ -329,7 +355,16 @@ class Agent:
                         read_only=read_only,
                         operation_key=operation_key,
                     )
-                    text = bounded_json(coach_result(name, result), 20000)
+                    result = coach_result(name, result)
+                    text = bounded_json(result, self.cfg.agent_result_chars)
+                    if text.startswith('{"data_omitted"'):
+                        # Size only, so an over-budget range is diagnosable without logging data.
+                        log.warning(
+                            "tool_result_over_budget tool=%s chars=%s limit=%s",
+                            name,
+                            len(json.dumps(result, default=str, ensure_ascii=False)),
+                            self.cfg.agent_result_chars,
+                        )
                 except Exception:
                     text = (
                         "Tool rejected or unavailable. Do not infer missing data or claim success."

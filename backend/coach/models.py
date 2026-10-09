@@ -42,6 +42,10 @@ class DateRange(StrictModel):
         return self
 
 
+class SummaryInput(DateRange):
+    group_by: Literal["week", "month"] = "week"
+
+
 class ActivityInput(StrictModel):
     id: Identifier
 
@@ -168,6 +172,7 @@ TOOL_MODELS = {
     "get_fitness": DateRange,
     "get_wellness": DateRange,
     "get_curves": CurvesInput,
+    "get_training_summary": SummaryInput,
     "plan_workout": PlanInput,
     "move_workout": MoveInput,
     "update_workout": UpdateInput,
@@ -186,6 +191,9 @@ TOOL_DESCRIPTIONS = {
     "get_fitness": "CTL, ATL and form from Intervals wellness. No inferred fitness values.",
     "get_wellness": "Cached wellness and recovery records. Inclusive local ISO dates.",
     "get_curves": "Cached best pace (Run/Swim) or power (Ride) curves. Period is days.",
+    "get_training_summary": "Weekly or monthly totals over any cached range (up to two years): "
+    "sessions, distance, time and load per sport, wellness averages, end-of-period CTL/ATL/form. "
+    "Use for month, season or year analysis before requesting detailed records.",
     "plan_workout": "Create a planned workout using Intervals text format.",
     "move_workout": "Move an existing planned workout to a local date, preserving its time.",
     "update_workout": "Update only the name or description of an existing planned workout.",

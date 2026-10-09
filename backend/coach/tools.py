@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 from psycopg.types.json import Jsonb
 
+from coach.analytics import compact_records, training_summary
 from coach.intervals import UpstreamError
 from coach.models import READ_TOOLS, validate_tool
 from coach.sessions import combined_activities
@@ -47,13 +48,29 @@ class ToolService:
             raise ToolError("Writes are disabled for scheduled advice", 403)
         values = args.model_dump(mode="json", exclude_none=True)
         if name == "get_calendar":
+            # Model-facing tools return training-relevant fields so long ranges stay readable;
+            # the dashboard API keeps the raw records.
             return {
-                "activities": await combined_activities(self.store, args.oldest, args.newest),
-                "events": await self.store.range("events", args.oldest, args.newest),
+                "activities": compact_records(
+                    "activities", await combined_activities(self.store, args.oldest, args.newest)
+                ),
+                "events": compact_records(
+                    "events", await self.store.range("events", args.oldest, args.newest)
+                ),
             }
-        if name in ("get_fitness", "get_wellness"):
-            return await self.store.range(
-                "fitness_daily" if name == "get_fitness" else "wellness", args.oldest, args.newest
+        if name == "get_fitness":
+            return await self.store.range("fitness_daily", args.oldest, args.newest)
+        if name == "get_wellness":
+            return compact_records(
+                "wellness", await self.store.range("wellness", args.oldest, args.newest)
+            )
+        if name == "get_training_summary":
+            return training_summary(
+                await self.store.range("activities", args.oldest, args.newest),
+                await self.store.range("wellness", args.oldest, args.newest),
+                args.oldest,
+                args.newest,
+                args.group_by,
             )
         if name == "get_activity":
             return await self.activity(args.id)

@@ -1,6 +1,6 @@
 """Compact, measured workout evidence for the coach; raw API records stay intact."""
 
-from coach.analytics import number
+from coach.analytics import compact_records, number
 
 
 def pick(record, fields):
@@ -13,12 +13,6 @@ ACTIVITY_FIELDS = (
     "description icu_rpe feel source source_error interval_summary session_duration whoop_strain"
 )
 EVENT_FIELDS = "id name type start_date_local category description paired_activity_id moving_time"
-WELLNESS_FIELDS = "id ctl atl hrv sleepSecs restingHR weight soreness fatigue stress mood"
-SETTING_FIELDS = "id types lthr threshold_pace ftp hr_zones max_hr"
-
-
-def compact_records(rows, fields):
-    return [pick(row, fields) for row in rows]
 
 
 def coach_result(name, result):
@@ -31,11 +25,11 @@ def coach_result(name, result):
         }
     if name == "get_calendar":
         return {
-            "activities": compact_records(result["activities"], ACTIVITY_FIELDS),
-            "events": compact_records(result["events"], EVENT_FIELDS),
+            "activities": compact_records("activities", result["activities"]),
+            "events": compact_records("events", result["events"]),
         }
     if name == "get_wellness":
-        return compact_records(result, WELLNESS_FIELDS)
+        return compact_records("wellness", result)
     return result
 
 
