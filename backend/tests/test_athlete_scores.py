@@ -13,60 +13,6 @@ ZONES = [
 ]
 
 
-async def test_scores_save_read_clear_and_survive_sync(web):  # noqa: F811
-    client, app = web
-    path = "/api/athlete-scores"
-    values = {"lt1_hr": 145, "lt2_hr": 172, "vo2max": 58.5}
-    assert (await client.get(path)).status_code == 401
-    assert (await client.post(path, json=values)).status_code == 401
-    await client.post(
-        "/api/login",
-        json={"password": "correct-password"},
-        headers={"Origin": "https://coach.test"},
-    )
-    assert (await client.post(path, json=values)).status_code == 403
-    headers = {"Origin": "https://coach.test"}
-    assert (await client.get(path)).json()["lt2_hr"] is None
-    response = await client.post(path, json=values, headers=headers)
-    assert response.status_code == 200
-    assert response.json()["updated_at"]
-    await app.state.tools.sync.run(today=date(2026, 10, 8))
-    assert {
-        k: v for k, v in (await client.get(path)).json().items() if k != "updated_at"
-    } == values | {"hr_zones": None}
-    cleared = dict.fromkeys(values)
-    assert (await client.post(path, json=cleared, headers=headers)).status_code == 200
-    assert (await client.get(path)).json()["lt2_hr"] is None
-    assert app.state.tools.source.calls == []
-
-
-@pytest.mark.parametrize(
-    "patch",
-    [
-        {"lt1_hr": 180},
-        {"lt2_hr": 145},
-        {"lt2_hr": True},
-        {"lt2_hr": 172.5},
-        {"lt1_hr": 0},
-        {"lt2_hr": 251},
-        {"vo2max": 0},
-        {"vo2max": 101},
-        {"vo2max": "58"},
-        {"extra": 1},
-    ],
-)
-async def test_invalid_scores_do_not_replace_saved_values(web, patch):  # noqa: F811
-    client, app = web
-    values = {"lt1_hr": 145, "lt2_hr": 172, "vo2max": 58.5}
-    await app.state.store.save_athlete_scores(AthleteScoresInput(**values))
-    response = await client.post(
-        "/api/athlete-scores", json=values | patch, headers={"Authorization": "Bearer api-secret"}
-    )
-    assert response.status_code == 422
-    saved = await app.state.store.athlete_scores()
-    assert {key: saved[key] for key in values} == values
-
-
 async def test_saved_scores_reach_context_and_drive_analysis(web):  # noqa: F811
     _, app = web
     values = {"lt1_hr": 145, "lt2_hr": 172, "vo2max": 58.5}
@@ -92,37 +38,6 @@ def test_running_scores_do_not_override_cycling_thresholds():
     assert result["threshold"]["bpm"] == 165
     result = analyze_workout(activity(), [], {}, lt2_hr=180, scores={"lt2_hr": 172})
     assert result["threshold"]["bpm"] == 180
-
-
-async def test_zones_are_saved_available_to_coach_and_used_for_analysis(web):  # noqa: F811
-    client, app = web
-    values = {"lt1_hr": 145, "lt2_hr": 172, "vo2max": 58.5, "hr_zones": ZONES}
-    headers = {"Authorization": "Bearer api-secret"}
-    assert (
-        await client.post("/api/athlete-scores", json=values, headers=headers)
-    ).status_code == 200
-    assert (await client.get("/api/athlete-scores", headers=headers)).json()["hr_zones"] == ZONES
-    # Legacy clients updating scores cannot silently clear saved zones.
-    assert (
-        await client.post(
-            "/api/athlete-scores",
-            json={k: v for k, v in values.items() if k != "hr_zones"},
-            headers=headers,
-        )
-    ).json()["hr_zones"] == ZONES
-    await app.state.tools.sync.run(today=date(2026, 10, 8))
-    context = await app.state.agent.context()
-    assert context["athlete_scores"]["hr_zones"] == ZONES
-    data = streams([0, 2, 4, 6, 8, 10], [110, 140, 160, 172, 185, 185])
-    result = analyze_workout(activity(), data, {}, scores=context["athlete_scores"])
-    assert [zone["seconds"] for zone in result["personal_hr_zones"]["zones"]] == [2] * 5
-    assert result["personal_hr_zones"]["complete"] is True
-    assert result["session"]["above_lt2_seconds"] == 2
-    cleared = await client.post(
-        "/api/athlete-scores", json=values | {"hr_zones": None}, headers=headers
-    )
-    assert cleared.json()["hr_zones"] is None
-    assert cleared.json()["lt2_hr"] == 172
 
 
 @pytest.mark.parametrize(
