@@ -121,6 +121,7 @@ async def build_brief(store, tools, *, mode="chat", activity_id=None, today=None
         "settings": bounded_evidence(compact_settings(await store.settings()), 3000),
     }
     records = await store.coaching_records()
+    brief["coaching_record_coverage"] = await store.coaching_record_coverage(records)
     for status in ("proposed", "accepted", "dismissed", "completed"):
         brief["coaching_records"][status] = bounded_evidence(
             [r for r in records if r["status"] == status], 1000

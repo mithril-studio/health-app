@@ -269,7 +269,8 @@ def create_app(settings=None, *, store=None, source=None):
 
     @app.get("/api/coaching-records")
     async def coaching_records():
-        return {"records": await db.coaching_records()}
+        records = await db.coaching_records()
+        return {"records": records, "coverage": await db.coaching_record_coverage(records)}
 
     @app.post("/api/coaching-records", status_code=201)
     async def create_coaching_record(body: CoachingRecordInput, request: Request):

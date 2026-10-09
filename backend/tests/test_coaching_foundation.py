@@ -168,7 +168,7 @@ async def test_record_validation_dismissal_missing_and_concurrent_updates(web):
         {"text": 5},
     ]:
         assert (await c.post(path, json=body | patch)).status_code == 422
-    assert (await c.get(path)).json() == {"records": []}
+    assert (await c.get(path)).json()["records"] == []
     assert (
         await c.patch(
             path + "/" + body["id"], json={"revision": 1, "status": "accepted", "outcome": ""}

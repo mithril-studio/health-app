@@ -146,7 +146,8 @@ async def test_conversation_history_is_persistent_and_isolated(web, store, monke
     async def sync():
         pass
 
-    async def respond(message, *, key, channel):
+    async def respond(message, *, key, channel, mode="chat", activity_id=None):
+        assert mode == "chat" and activity_id is None
         await store.message(key + ":user", channel, "user", message)
         await store.message(key + ":reply", channel, "assistant", "A focused reply")
         return "A focused reply"

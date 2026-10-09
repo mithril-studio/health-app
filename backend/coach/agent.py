@@ -6,8 +6,7 @@ import logging
 import httpx
 
 from coach.briefs import build_brief
-from coach.models import ActivityInput
-from coach.models import READ_TOOLS, TOOL_DESCRIPTIONS, TOOL_MODELS
+from coach.models import READ_TOOLS, TOOL_DESCRIPTIONS, TOOL_MODELS, ActivityInput
 from coach.tools import ToolError
 from coach.workout import coach_result
 
@@ -18,7 +17,9 @@ Use the supplied task brief and confirmed athlete_profile. Ask when goals or ava
 are absent; never assume personal goals, schedules or thresholds. Profile plan_context is
 the user's stated purpose, not verified pairing with a calendar event.
 Separate measured observations, proposed suggestions, explicitly accepted decisions and
-reported outcomes. Proposed or dismissed records are not an accepted plan. Coaching records
+reported outcomes. Only accepted recommendations represent agreed training decisions.
+Accepted observations are user-reported facts, not measured facts or plan commitments;
+accepted questions remain questions. Proposed or dismissed records are not an accepted plan. Coaching records
 and profile persist across conversations; conversation history belongs only to this thread.
 You cannot write profile or coaching records. Never claim to remember or save new facts.
 Ground factual claims in supplied evidence or retrieved tools, citing relevant activities/dates.

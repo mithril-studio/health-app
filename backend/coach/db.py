@@ -227,9 +227,23 @@ class Store:
 
     async def coaching_records(self):
         rows = await self.query(
-            "SELECT * FROM coaching_records ORDER BY created_at DESC,id LIMIT 50"
+            "SELECT * FROM coaching_records ORDER BY (status='accepted') DESC,created_at DESC,id LIMIT 50"
         )
         return [self._coaching_record(row) for row in rows]
+
+    async def coaching_record_coverage(self, records):
+        counts = await self.query(
+            "SELECT count(*) AS total,count(*) FILTER (WHERE status='accepted') AS accepted_total "
+            "FROM coaching_records",
+            one=True,
+        )
+        return counts | {
+            "included": len(records),
+            "omitted": max(0, counts["total"] - len(records)),
+            "accepted_included": sum(r["status"] == "accepted" for r in records),
+            "limit": 50,
+            "selection": "Outstanding accepted records first, then newest; further brief budget omissions are marked per section.",
+        }
 
     async def create_coaching_record(self, body):
         from coach.athlete import CoachingConflict, CoachingRecordInput

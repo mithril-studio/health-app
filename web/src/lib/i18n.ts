@@ -179,7 +179,7 @@ export const en = {
     coachAction: "Talk to your coach",
     recovery: "Recovery",
     recoveryDetail: "Listen to the other half of training.",
-    goalTitle: "5 km goal",
+    goalTitle: "5 km history",
     goalDetail: "5 km · one milestone at a time",
   },
   calendar: {
@@ -261,7 +261,7 @@ export const en = {
     noRecovery: "No recovery readings in this period.",
     recoveryNote:
       "Wearable gaps stay visible. These are recorded readings, not a readiness score.",
-    goal: "5 km progress",
+    goal: "5 km history",
     goalDetail: "Two milestones. One consistent practice.",
     sub18: "Sub 18",
     sub17: "Sub 17",
@@ -333,7 +333,7 @@ export const en = {
       "How should I approach today’s session?",
       "Review my training this week",
       "What does my recovery say?",
-      "Help me work toward a sub-18 5 km",
+      "Help me plan training around my saved goals",
     ],
     noReply: "No reply was returned. Reload the conversation before retrying.",
     restore: "Reload conversation",

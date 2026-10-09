@@ -1,6 +1,6 @@
 "use client";
 import { useTraining } from "./workspace";
-import { Flag, ArrowUpRight, Check } from "lucide-react";
+import { Flag, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { goalResults, thresholdHistory, type Dashboard } from "@/lib/data";
 import { copy } from "@/lib/i18n";
@@ -44,41 +44,7 @@ export function GoalCard({
             )
           )}
         </div>
-        <div className="goal-targets">
-          {[
-            {
-              target: 1080,
-              label: copy.insights.sub18,
-              pace: copy.insights.goal18,
-            },
-            {
-              target: 1020,
-              label: copy.insights.sub17,
-              pace: copy.insights.goal17,
-            },
-          ].map((goal, index) => (
-            <div className="goal-target" key={goal.target}>
-              <span className="goal-step">
-                {benchmark && benchmark.seconds < goal.target ? (
-                  <Check size={12} aria-hidden="true" />
-                ) : (
-                  `0${index + 1}`
-                )}
-              </span>
-              <div>
-                <strong>{goal.label}</strong>
-                <span>{goal.pace}</span>
-              </div>
-              {benchmark && (
-                <small>
-                  {benchmark.seconds < goal.target
-                    ? copy.insights.achieved
-                    : `${raceTime(benchmark.seconds - goal.target)} ${copy.insights.remaining}`}
-                </small>
-              )}
-            </div>
-          ))}
-        </div>
+
       </div>
       {!benchmark && !runCurve.loading && (
         <p className="goal-empty">
@@ -96,10 +62,6 @@ export function GoalCard({
             title={copy.insights.goalHistory}
             empty={copy.insights.noWholeRun}
             yFormat={raceTime}
-            references={[
-              { value: 1080, label: copy.insights.sub18 },
-              { value: 1020, label: copy.insights.sub17 },
-            ]}
             height={220}
           />
           <div className="threshold-section">

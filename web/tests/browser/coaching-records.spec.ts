@@ -2,6 +2,19 @@ import { test, expect } from "@playwright/test";
 import { mockWorkouts } from "./workout-fixture";
 import type { CoachingRecord } from "../../src/lib/athlete";
 
+test("record view discloses omitted context and does not invent personal goals", async ({ page }) => {
+  await mockWorkouts(page);
+  await page.route("**/api/coaching-records", route => route.fulfill({
+    json: { records: [], coverage: { omitted: 7 } },
+  }));
+  await page.goto("/athlete");
+  await page.getByRole("tab", { name: "Coaching record", exact: true }).click();
+  await expect(page.getByText(/7 older records are outside/)).toBeVisible();
+  await page.goto("/insights");
+  await expect(page.getByText("Sub 18", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Sub 17", { exact: true })).toHaveCount(0);
+});
+
 test("proposal retries use one UUID, acceptance is separate, completion retains outcome and history", async ({
   page,
 }) => {

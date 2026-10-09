@@ -20,9 +20,9 @@ The dashboard uses a private password/session login. The generated password is `
 
 **To link Telegram:** use **Telegram in the top-right bar → Connect Telegram**, follow the one-time link and press **Start**. The supplied `TELEGRAM_CHAT_ID` is the bot's own ID; a real send test returned `403: the bot can't send messages to the bot`. The app rejects this invalid target. Pairing requires your dashboard session, expires after ten minutes, is single-use, and binds only your private human chat. The binding persists in Postgres and overrides the stale environment value. No arbitrary first sender can take ownership. Reports/notifications wait until you link your chat; real Telegram delivery has not yet been verified.
 
-The coach sees the last week in detail plus four weekly totals on every message, and can retrieve the whole twelve-month cache on request through weekly or monthly summaries and detailed range tools. MCP uses `Authorization: Bearer <MCP_AUTH_TOKEN>` from `.env`, Streamable HTTP at `/mcp`. Use a client supporting custom bearer headers (e.g. Claude Code). Browser sessions cannot authenticate MCP. The same tool layer supports calendar, activity, fitness, wellness, curves, workout planning/moves/updates, zone settings and separately confirmed deletion. Workout writes are echoed to the configured Telegram chat.
+The coach sees the last week in detail plus four weekly totals on every message, and can retrieve the whole twelve-month cache on request through weekly or monthly summaries and detailed range tools. MCP uses `Authorization: Bearer <MCP_AUTH_TOKEN>` from `.env`, Streamable HTTP at `/mcp`. Use a client supporting custom bearer headers (e.g. Claude Code). Browser sessions cannot authenticate MCP. The same tool layer supports calendar, activity, fitness, wellness, curves, workout planning/moves/updates and separately confirmed deletion. Workout writes are echoed to the configured Telegram chat.
 
-Coaching uses the server's **OpenRouter API key** and `OPENROUTER_MODEL`. The live VM had already switched providers before the workout release; that behavior is preserved in this checkout. Only the application's validated training tools are exposed, with bounded tool rounds, read-only scheduled coaching, and idempotent writes. Provider credentials never reach the browser.
+Coaching uses the server's **OpenRouter API key** and `OPENROUTER_MODEL`. The live VM had already switched providers before the workout release; that behavior is preserved in this checkout. Only the application's validated training tools are exposed, with bounded tool rounds, read-only scheduled coaching and explicit workout/daily/weekly reviews, and idempotent writes. Provider credentials never reach the browser.
 
 If coaching fails, the chat reports a safe provider-specific error for missing/rejected credentials, exhausted credits, rate limits, model errors, or timeouts. Update `OPENROUTER_API_KEY` or `OPENROUTER_MODEL` in the private server environment as appropriate and restart `coach-reachy-api`. Scheduled work stays queued on failures. The older Claude CLI login script is historical and is not used by the current provider.
 
@@ -61,7 +61,7 @@ cd ..
 make test
 make build-web
 python3 deploy/smoke.py            # live read-only auth/data/MCP checks
-python3 deploy/smoke.py --chat     # additionally exercise one OAuth coaching reply
+python3 deploy/smoke.py --chat     # additionally exercise one paid coaching reply (explicit opt-in)
 ```
 
 See `backend/IMPLEMENTATION.md`, `web/IMPLEMENTATION.md` and `ops/README.md` for component-specific details and tests. Automated tests use synthetic fixtures, not committed personal health data. Live smoke tests print statuses/counts, never passwords or workout payloads. No destructive real workout mutation is used in verification.
@@ -81,7 +81,7 @@ Service logs are private under `/opt/coach-reachy/state/` and rotate after seven
 
 Verification: **58 backend tests, 33 relay tests, 10 Worker tests, 18 frontend unit tests, 25 core Chrome browser tests, 5 WebKit login regression tests**. Production build and live API/MCP smoke checks passed. Real-browser checks found no accessibility violations on all four surfaces and no page overflow at 320/768/1440px. Screenshots contain private data and remain ignored in `artifacts/`. See `VERIFICATION.md` for live status and remaining external setup.
 
-The git history contains incremental local checkpoints. No remote repository was configured or created.
+Changes are maintained in Git with local verification; deployment is a separate operation.
 
 ## Web workout beta
 
@@ -96,23 +96,18 @@ Timers continue across in-app navigation and recover after reload or browser evi
 
 Sound is on by default, with a remembered mute control. Stretch changes play a short chime; both timer types play a distinct completion chime. After recovery, tap **Enable sound** or **Resume** if prompted. Missed cues are not replayed. The app requests a screen wake lock where supported, but screen-lock sound is best effort and there are no background notifications. A completion must be saved explicitly; ending early does not record a completed session.
 
-### WHOOP through Intervals.icu
+### Retained historical data
 
-No new developer app is needed for WHOOP wellness data. Connect WHOOP in [Intervals.icu settings](https://intervals.icu/settings) and choose the metrics you want synced. Coach Reachy already reads Intervals’ wellness endpoint, including sleep duration, HRV and resting heart rate. The selected source is managed in Intervals; this app does not independently choose between Garmin and WHOOP wellness values.
+Direct WHOOP connection, OAuth callback handling, import endpoints and scheduled import are retired. Existing credentials and imported workout history remain in PostgreSQL for preservation; retained credentials do not activate an integration. Wellness continues to come through Intervals, whose source settings remain authoritative.
 
-The native WHOOP integration does **not currently import workout activities**, according to the [Intervals.icu maintainer’s explanation](https://forum.intervals.icu/t/no-whoop-activities/115164). Its [integration announcement](https://forum.intervals.icu/t/whoop-integration-added/69075) describes the supported wellness metrics. This distinction was checked on 8 October 2026. Any accessible activity that does reach Intervals is already included by our existing activity sync; there is no Garmin-only filter.
+Intervals and manually logged sessions take priority over matching historical WHOOP workouts. Matching requires compatible sports, start times within ten minutes and at least 80% overlap of the longer duration. Matching is recalculated when reading data, so later uploads avoid double counting without deleting history. Missing timestamps/durations cannot establish a match. WHOOP strain is never Intervals load; its duration is elapsed time, not moving time.
 
-For workouts absent from Intervals, use **Log a workout**, or enable the optional direct WHOOP workout importer below. The direct importer does not request or replace WHOOP wellness data.
+Migrations 006–008 remain historical schema steps. Saved score rows and former personal zones are retained but no longer override Intervals evidence. Zones and thresholds are managed in Intervals; there is no app zone-write tool.
 
-### Optional direct WHOOP workout import
+### Shared athlete context
 
-1. Create a personal application in the [WHOOP developer dashboard](https://developer-dashboard.whoop.com/). Register the exact redirect URL **`https://coach-reachy.boxd.sh/workouts`** (or your configured `APP_ORIGIN` plus `/workouts`).
-2. Add `WHOOP_CLIENT_ID` and `WHOOP_CLIENT_SECRET` to the private server environment, then restart the API. Keep the secret out of browser variables, chat and git.
-3. Open **Workouts → Connect WHOOP** and authorize your own account in the browser. The integration requests only `read:workout` and `offline`, following [WHOOP OAuth documentation](https://developer.whoop.com/docs/developing/oauth/).
-4. After sign-in, the first sync imports the last 90 days using the [official v2 workout API](https://developer.whoop.com/api/). Background jobs check every 20 minutes while the service is running. **Sync workouts** refreshes immediately. Connection errors remain visible and can be retried or reconnected.
+**Athlete → Profile** holds explicitly saved goals, target date, background, availability, other sports, equipment, constraints, preferences and plan context. Defaults are empty. Revision conflicts require reloading and reconciling your draft.
 
-WHOOP authorization state is single-use, expires after ten minutes and is tied to the signed-in browser session. Tokens stay in private PostgreSQL storage; refreshes are serialized to avoid rotating-token races. Disconnect revokes access and stops imports, retaining previously imported history. Reconnecting replaces the WHOOP import set so different accounts cannot be mixed.
+**Athlete → Coaching record** separates observations, recommendations and questions. Saving creates a proposal; acceptance is a separate explicit action. Accepted records can be completed with an outcome or dismissed. Completed outcomes can be updated. The coach reads this shared context across conversations; chat transcripts are not automatically promoted to memory.
 
-Matching Intervals or manually recorded sessions take priority over WHOOP. A match requires compatible sports, start times within ten minutes, and at least 80% overlap of the longer duration. Matching is recalculated when reading data, so a later Garmin upload also removes double counting. WHOOP records remain available in **Recent WHOOP imports**, including the matching status. Missing timestamps/durations cannot be matched reliably and remain included. WHOOP strain is shown separately and is never converted to Intervals training load; WHOOP duration is elapsed time, not claimed moving time. Failed or incomplete imports leave the previous cache untouched.
-
-Migration `006_workouts.sql` runs automatically on API startup. The workout beta was deployed on 9 October 2026 with live authentication, timer, recovery, and accessibility checks. The optional direct WHOOP importer still needs developer credentials and a real consent/import check; existing WHOOP routing was not changed.
+One coach and the existing provider serve chat, workout, daily and weekly modes. Task reviews are read-only. Selecting a workout opens a draft; submitting sends the request. Technical validation uses synthetic data and mocked providers; it does not establish the quality of advice for the athlete's real conversations.

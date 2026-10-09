@@ -18,7 +18,7 @@ Use independent `APP_PASSWORD`, `API_AUTH_TOKEN` (optional), `MCP_AUTH_TOKEN`, a
 
 ## Agent data reach
 
-- The cache holds twelve months of activities, wellness and fitness plus planned events twelve months ahead. Every chat attaches the last seven days of calendar and wellness, sport settings, manually saved athlete scores, sync status and four weekly totals (`recent_weeks`).
+- The cache holds twelve months of activities, wellness and fitness plus planned events twelve months ahead. Every chat attaches the last seven days of calendar and wellness, sport settings, the shared athlete profile and coaching records, sync status and four weekly totals (`recent_weeks`).
 - `get_training_summary(oldest, newest, group_by=week|month)` aggregates any cached range (up to 730 days): sessions, distance, time and load per sport, wellness averages, end-of-period CTL/ATL/form and `missing_load`. Only recorded values are summed.
 - `get_calendar` and `get_wellness` return training-relevant fields (see `analytics.COMPACT_FIELDS`), so a full year of wellness is about 55 KB. One tool result may use `AGENT_RESULT_CHARS` characters (default 80000); larger results tell the model the data exists and to summarise or narrow the range.
 
@@ -58,49 +58,27 @@ paired descriptions reduce the interval page size automatically so they cannot e
 the individual sets from the normal tool budget. Agent calls to the legacy raw activity
 tool receive a compact summary and a pointer to the analysis tool.
 
-Threshold precedence is explicit user-supplied LT2, saved personal running LT2, activity `lthr`, then current matching
-sport-settings `lthr`. The latter two are labeled LTHR proxies, with their provenance.
-Durations use recorded time deltas and the HR at each interval's left timestamp, clipped
-to session/interval bounds. Values equal to the threshold are excluded. Missing HR,
-gaps longer than ten seconds and the unrecorded tail are excluded; incomplete coverage
-is labeled as a measured subtotal. Missing thresholds or streams produce null, not zero.
-This measures time above a heart-rate threshold, not time at VO2max. Field names follow
-the official [Intervals API schema](https://intervals.icu/api/v1/docs).
+Threshold precedence is explicit user-supplied LT2, activity `lthr`, then current matching sport-settings `lthr`. Both LTHR sources are labeled proxies, not measured LT2. Saved app scores and personal zones are ignored. Durations use recorded time deltas and HR at the left timestamp, clipped to session/interval bounds. Values equal to the threshold, missing HR, gaps longer than ten seconds and unrecorded tails are excluded. Partial coverage is a measured subtotal; absent evidence is null, not zero. Time above a heart-rate threshold is not time at VO2max.
 
-Each coach turn starts with up to 12 messages from its own channel/conversation, the
-calendar from seven days ago through two days ahead, wellness from seven days ago through
-today, sport settings, saved personal scores and sync status. The system prompt contains the 5 km sub-18/sub-17
-goals and Mon/Tue/Thu/Sun running schedule plus football/gym. There is no cross-conversation
-athlete conversation memory. Manually saved scores and zones are shared across chats.
-Older cached records require explicit tool queries. The coach uses a
-15,000-character history budget: newest messages are retained in order, and very long
-messages preserve their beginning/end with an explicit omission marker. Context includes
-the count of included and budget-omitted messages; an oversized history is no longer
-discarded wholesale when it exceeds the history budget.
+### Shared profile and record lifecycle
 
-Coach calendar/wellness inputs are projected to relevant fields in the OpenRouter loop and scoped MCP calls.
-Oversized context sections are marked as omitted independently, preserving other sections
-such as thresholds. The API tool-result budget remains 20,000 characters; compact analysis
-pages avoid passing raw telemetry to the model. Review instructions prioritize per-set
-execution and threshold time, suppress routine metadata and prohibit unsupported claims
-about rep progression or cooldown identity. Production response quality still requires
-reviewing an actual coach turn; mocked-provider tests verify evidence delivery and calculations.
+Migration 009 adds the singleton athlete profile and coaching records without deleting legacy score rows, WHOOP credentials, OAuth state or workouts. Profile GET returns empty text fields, null target date/updated_at and revision 0 before the first save. POST replaces editable fields using atomic optimistic revision checks (409 on conflict). Eight text fields each permit 2,000 characters; target date is an ISO date. Unknown fields are rejected.
 
-`Settings > Zones & scores` lets the athlete save, edit and clear running LT1/LT2 heart rates
-(integer bpm, 30–250) and VO2max (ml/kg/min, 5–100). Both thresholds must be ordered when
-present. `GET /api/athlete-scores` reads the current values; authenticated
-`POST /api/athlete-scores` replaces all three, with null clearing an individual value.
-Migration 007 stores these independently of Intervals, so sync cannot overwrite them.
-These are current benchmarks, not a dated test history. Running LT2 takes precedence over
-LTHR for Run, TrailRun and VirtualRun, but does not change cycling analysis or upstream
-zones. Every new coach turn receives all three scores; the coach has no tool to edit them.
-Migration 008 adds optional personal running `hr_zones`: exactly five Z1–Z5 objects with
-inclusive integer `min_bpm`/`max_bpm` limits (30–250), consecutive without overlaps or gaps.
-Submitting null clears zones; omitting the field preserves them for older clients.
-Workout analysis calculates time in these personal zones from recorded HR/time streams,
-reports samples outside the configured ranges and marks partial coverage. It never
-relabels the upstream zone totals or infers LT1/LT2 from a zone boundary. The existing
-dashboard zone charts still display upstream zone totals.
+Record lists are bounded to 50, prioritizing outstanding accepted records before other recent records. API and brief coverage disclose stored totals, included/omitted counts and accepted-record coverage; per-section budget markers disclose any further reduction.
+
+Record POST requires UUID `id`, `kind`, `text`, and `rationale`, and always creates status `proposed`, revision 1, empty outcome. Kinds are observation/recommendation/question. Text is capped at 4,000 characters; rationale/outcome at 2,000. Identical-ID retries return the current record; different input returns 409. PATCH requires revision/status/outcome: proposed → accepted/dismissed, accepted → completed/dismissed, completed → completed for outcome changes. Stale revisions or invalid transitions return 409; missing IDs return 404. Concurrent transitions cannot both succeed.
+
+Profile and record writes require a browser session and matching Origin. Reads use normal authenticated API access. Models have no write tools for these records. Shared records are explicit user-authored context, distinct from per-conversation transcript history; accepting an observation does not turn it into a training decision.
+
+Direct WHOOP API/OAuth routes and the importer are removed. Historical credentials and workouts are retained, not active integration state. Migrations 006–008 remain unchanged. Queued WHOOP sync and zone writes settle without upstream calls. Score routes and the app zone-write tool are retired; historical score storage exists only for preservation.
+
+### Prepared tasks and retry identity
+
+`POST /api/chat` adds `mode` (chat default, workout, daily, weekly) and `activity_id` (required for workout). Modes are explicit request fields, never inferred from keywords. Workout/daily/weekly modes enforce read-only tool access independently of model instructions. Generic chat retains existing validated workout tools.
+
+Every task uses the same deterministic brief builder. Workout briefs page through ordered intervals with bounded pages/characters and explicit continuation/coverage, include recorded paired plans and structured aggregate comparisons, prior same-sport sessions and recent cross-sport workload. Daily briefs select today's plan, recent workload and wellness. Weekly briefs compare the last seven days with recorded plans and include the upcoming week. Profile plan context describes user intent, not proof of activity pairing. Missing values remain unknown; real zero remains recorded zero.
+
+Request identity includes message, conversation, mode, activity and read-only status. A changed task under an existing Idempotency-Key returns 409 before returning a cached reply. Profile, records and source text are untrusted evidence and cannot override permission rules. Conversation history stays isolated, bounded to 12 messages and a 15,000-character budget; evidence omissions must be disclosed.
 
 ## Persistence and retries
 
@@ -116,7 +94,7 @@ Tests are written before each feature/race fix, with the initial failures observ
 
 ```sh
 # Set a disposable/local Postgres connection with schema creation permissions.
-TEST_DATABASE_URL=postgresql://localhost:65431/postgres .venv/bin/pytest -q
+TEST_DATABASE_URL=postgresql://localhost:65431/postgres .venv/bin/python -m pytest -q
 .venv/bin/ruff check coach tests scripts
 .venv/bin/ruff format --check coach tests scripts
 # Explicit read-only upstream probe, output limited to schema keys/counts/timings:
@@ -124,7 +102,7 @@ TEST_DATABASE_URL=postgresql://localhost:65431/postgres .venv/bin/pytest -q
   --database-url postgresql://localhost:65431/postgres
 ```
 
-Latest full suite: **40 passed**, including independent deployment-agent MCP/OAuth/migration tests. Ruff lint and formatting checks pass; `uv pip check` confirms all 47 installed pinned packages are compatible. A cancelled running job was also verified to resume without losing dedup state. Real read-only full sync into an isolated temporary schema completed in **0.241 s** (backfill) and **0.078 s** (incremental): **50 activities, 256 wellness rows, 256 fitness rows, 20 events, 4 sport settings**. The probe then dropped only its temporary schema. Counts can change as the source changes. Upstream docs were consulted at <https://intervals.icu/api/v1/docs>; the official [MCP SDK](https://github.com/modelcontextprotocol/python-sdk), [Claude CLI](https://code.claude.com/docs/en/cli-reference), and [authentication documentation](https://code.claude.com/docs/en/authentication) informed transport choices.
+Current integration test counts and limitations are recorded in `../VERIFICATION.md`. Tests use isolated schemas and synthetic fixtures; actual coach-quality review remains separate.
 
 ## Known limits
 
@@ -132,4 +110,4 @@ Latest full suite: **40 passed**, including independent deployment-agent MCP/OAu
 - Telegram has no send-message idempotency key. A process death after Telegram accepts a send but before its local receipt commits can duplicate one chunk. Delivery is explicitly at least once; successful chunks are otherwise not resent.
 - Intervals has no transaction spanning its service and Postgres. If a process dies after an external write but before recording its success, the stable UID/idempotent operation reconciles by replay. External manual edits made during that uncertainty window can be overwritten by that same approved operation. Definite 4xx rejections remain visible for review.
 - Cache freshness depends on the service running. The external wake/scheduler and deployment are owned by the main/worker agents. Backend read endpoints render existing cache immediately and enqueue refresh; a newly created empty cache may render empty until initial sync finishes. Data before the 12-month retained window is not automatically backfilled.
-- Live Claude tool execution and real Telegram delivery require deployment integration checks; the backend local suite intentionally avoids paid messages and external sends. Long-term PII retention/export policy and production backup encryption must be configured by the owner; local caches/history/outbox contain sensitive training data and require restricted database access.
+- Live coach response quality and real Telegram delivery require deployment integration checks; the backend local suite intentionally avoids paid messages and external sends. Long-term PII retention/export policy and production backup encryption must be configured by the owner; local caches/history/outbox contain sensitive training data and require restricted database access.

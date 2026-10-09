@@ -27,6 +27,9 @@ class Store:
             },
         ]
 
+    async def coaching_record_coverage(self, records):
+        return {"total": len(records), "included": len(records), "omitted": 0}
+
     async def settings(self):
         return {"Run": {"lthr": 170}}
 

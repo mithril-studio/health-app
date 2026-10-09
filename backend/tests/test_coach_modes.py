@@ -6,7 +6,7 @@ from test_agent import completion
 from test_guards import web  # noqa: F401
 from test_tools import WritableSource
 
-from coach.agent import Agent, SYSTEM
+from coach.agent import SYSTEM, Agent
 from coach.config import Settings
 from coach.models import ChatInput
 from coach.tools import ToolError, ToolService
@@ -78,8 +78,9 @@ async def test_chat_route_forwards_mode_and_validates_selection(web):  # noqa: F
 
 
 async def test_selected_workout_evidence_reaches_provider_and_key_cannot_change_activity(store):
-    from test_workout import activity, streams
     from datetime import date
+
+    from test_workout import activity, streams
 
     a = activity() | {"start_date_local": "2026-10-08"}
     a["intervals"]["icu_intervals"] *= 15

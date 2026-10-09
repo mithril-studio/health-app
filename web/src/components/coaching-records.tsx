@@ -20,14 +20,18 @@ export function CoachingRecords() {
   const [version, setVersion] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [omitted, setOmitted] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    api<{ records: CoachingRecord[] }>("/api/coaching-records", {
+    api<{ records: CoachingRecord[]; coverage?: { omitted: number } }>("/api/coaching-records", {
       signal: controller.signal,
     })
-      .then((result) => setRecords(result.records.slice(0, 50)))
+      .then((result) => {
+        setRecords(result.records.slice(0, 50));
+        setOmitted(result.coverage?.omitted ?? 0);
+      })
       .catch((e) => {
         if (!controller.signal.aborted) setError(errorMessage(e));
       })
@@ -63,6 +67,12 @@ export function CoachingRecords() {
         />
         {error && (
           <ErrorNotice message={error} retry={() => setVersion((v) => v + 1)} />
+        )}
+        {omitted > 0 && (
+          <p className="athlete-caption" role="status">
+            Showing up to 50 records, with outstanding accepted records first.
+            {" "}{omitted} older records are outside this view and the coach's context.
+          </p>
         )}
         {loading ? (
           <Skeleton compact />

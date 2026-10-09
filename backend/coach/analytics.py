@@ -99,7 +99,7 @@ def insights(activities, wellness, settings):
         "time_in_zones": [zones[k] for k in sorted(zones)],
         "recovery": wellness,
         "goals": {
-            "targets_seconds": [1080, 1020],
+            "targets_seconds": [],
             "best_5k_seconds": None,
             "threshold_pace_history": thresholds,
             "note": "Exact 5 km best efforts require pace curves; no whole-run estimate.",
