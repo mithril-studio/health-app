@@ -178,6 +178,109 @@ class Store:
             one=True,
         )
 
+    async def athlete_profile(self):
+        from coach.athlete import AthleteProfileInput
+
+        row = await self.query(
+            "SELECT data,revision,updated_at FROM athlete_profile WHERE id=1", one=True
+        )
+        if row:
+            return row["data"] | {
+                "revision": row["revision"],
+                "updated_at": row["updated_at"].isoformat(),
+            }
+        return AthleteProfileInput(revision=0).model_dump(mode="json") | {"updated_at": None}
+
+    async def save_athlete_profile(self, body):
+        from coach.athlete import AthleteProfileInput, CoachingConflict
+
+        body = AthleteProfileInput.model_validate(body)
+        data = body.model_dump(mode="json", exclude={"revision"})
+        row = (
+            await self.query(
+                "INSERT INTO athlete_profile(id,data,revision) SELECT 1,%s,1 WHERE %s=0 "
+                "ON CONFLICT(id) DO UPDATE SET data=excluded.data,revision=athlete_profile.revision+1,updated_at=now() "
+                "WHERE athlete_profile.revision=%s RETURNING data,revision,updated_at",
+                (Jsonb(data), body.revision, body.revision),
+                one=True,
+            )
+            if body.revision == 0
+            else await self.query(
+                "UPDATE athlete_profile SET data=%s,revision=revision+1,updated_at=now() "
+                "WHERE id=1 AND revision=%s RETURNING data,revision,updated_at",
+                (Jsonb(data), body.revision),
+                one=True,
+            )
+        )
+        if not row:
+            raise CoachingConflict("Profile changed; reload before saving")
+        return row["data"] | {
+            "revision": row["revision"],
+            "updated_at": row["updated_at"].isoformat(),
+        }
+
+    @staticmethod
+    def _coaching_record(row):
+        return row | {
+            "id": str(row["id"]),
+            "created_at": row["created_at"].isoformat(),
+            "updated_at": row["updated_at"].isoformat(),
+        }
+
+    async def coaching_records(self):
+        rows = await self.query(
+            "SELECT * FROM coaching_records ORDER BY created_at DESC,id LIMIT 50"
+        )
+        return [self._coaching_record(row) for row in rows]
+
+    async def create_coaching_record(self, body):
+        from coach.athlete import CoachingConflict, CoachingRecordInput
+
+        body = CoachingRecordInput.model_validate(body)
+        async with self.lock("coaching-record:" + str(body.id), wait=True) as conn:
+            row = await self.query(
+                "INSERT INTO coaching_records(id,kind,text,rationale) VALUES (%s,%s,%s,%s) "
+                "ON CONFLICT(id) DO NOTHING RETURNING *",
+                (body.id, body.kind, body.text, body.rationale),
+                conn=conn,
+                one=True,
+            )
+            if not row:
+                row = await self.query(
+                    "SELECT * FROM coaching_records WHERE id=%s", (body.id,), conn=conn, one=True
+                )
+                if any(row[key] != getattr(body, key) for key in ("kind", "text", "rationale")):
+                    raise CoachingConflict("Record ID already used for different input")
+            return self._coaching_record(row)
+
+    async def update_coaching_record(self, identifier, body):
+        from coach.athlete import CoachingConflict, CoachingRecordMissing, CoachingRecordUpdate
+
+        body = CoachingRecordUpdate.model_validate(body)
+        row = await self.query(
+            "UPDATE coaching_records SET status=%s,outcome=%s,revision=revision+1,updated_at=now() "
+            "WHERE id=%s AND revision=%s AND ((status='proposed' AND %s IN ('accepted','dismissed')) "
+            "OR (status='accepted' AND %s IN ('completed','dismissed')) "
+            "OR (status='completed' AND %s='completed')) RETURNING *",
+            (
+                body.status,
+                body.outcome,
+                identifier,
+                body.revision,
+                body.status,
+                body.status,
+                body.status,
+            ),
+            one=True,
+        )
+        if not row:
+            if not await self.query(
+                "SELECT 1 FROM coaching_records WHERE id=%s", (identifier,), one=True
+            ):
+                raise CoachingRecordMissing()
+            raise CoachingConflict("Record changed or transition is invalid")
+        return self._coaching_record(row)
+
     async def sync_status(self):
         row = await self.query(
             "SELECT last_success,error FROM sync_state WHERE resource='all'", one=True

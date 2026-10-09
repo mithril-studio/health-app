@@ -14,6 +14,13 @@ from pydantic import ValidationError
 
 from coach.agent import Agent, AgentUnavailable
 from coach.analytics import insights
+from coach.athlete import (
+    AthleteProfileInput,
+    CoachingConflict,
+    CoachingRecordInput,
+    CoachingRecordMissing,
+    CoachingRecordUpdate,
+)
 from coach.auth import COOKIE, Auth, Guard, LoginRateLimited, digest
 from coach.config import Settings
 from coach.db import Store
@@ -22,7 +29,6 @@ from coach.jobs import Jobs
 from coach.mcp_server import create_mcp
 from coach.models import (
     ActivityInput,
-    AthleteScoresInput,
     ChatInput,
     ConversationId,
     CurvesInput,
@@ -33,7 +39,6 @@ from coach.models import (
 from coach.sessions import SessionInput, combined_activities
 from coach.telegram_link import TelegramLink
 from coach.tools import ToolError, ToolService
-from coach.whoop import OAuthInput, Whoop
 
 
 def create_app(settings=None, *, store=None, source=None):
@@ -49,8 +54,6 @@ def create_app(settings=None, *, store=None, source=None):
     tools = ToolService(db, source, telegram_link=telegram_link)
     agent = Agent(cfg, db, tools, client)
     jobs = Jobs(cfg, db, tools, agent, client, telegram_link=telegram_link)
-    whoop = Whoop(cfg, db, client)
-    jobs.whoop = whoop
     mcp = create_mcp(tools, cfg)
     # Network libraries can log request URLs containing the Telegram bot token.
     for logger in ("httpx", "httpcore", "mcp", "psycopg.pool"):
@@ -86,7 +89,6 @@ def create_app(settings=None, *, store=None, source=None):
     app.state.store, app.state.tools, app.state.jobs = db, tools, jobs
     app.state.agent, app.state.auth, app.state.settings = agent, auth, cfg
     app.state.telegram_link = telegram_link
-    app.state.whoop = whoop
     app.add_middleware(Guard, auth=auth)
 
     @app.exception_handler(RequestValidationError)
@@ -244,51 +246,40 @@ def create_app(settings=None, *, store=None, source=None):
         await db.execute("DELETE FROM local_sessions WHERE id=%s", (ActivityInput(id=id).id,))
         return {"deleted": True}
 
-    @app.get("/api/whoop")
-    async def whoop_status(request: Request):
-        user_session(request)
-        return await whoop.status()
-
-    @app.post("/api/whoop/authorize")
-    async def whoop_authorize(request: Request):
-        user_session(request)
-        return await whoop.authorize(request.state.session_token)
-
-    @app.post("/api/whoop/connect")
-    async def whoop_connect(body: OAuthInput, request: Request):
-        user_session(request)
-        result = await whoop.connect(body, request.state.session_token)
-        await db.enqueue("whoop-connect:" + uuid.uuid4().hex, "whoop_sync", {})
-        jobs.wakeup.set()
-        return result
-
-    @app.post("/api/whoop/sync")
-    async def whoop_sync(request: Request):
-        user_session(request)
-        return await whoop.sync()
-
-    @app.post("/api/whoop/disconnect")
-    async def whoop_disconnect(request: Request):
-        user_session(request)
-        return await whoop.disconnect()
-
-    @app.get("/api/whoop/workouts")
-    async def whoop_workouts(request: Request, oldest: date, newest: date):
-        user_session(request)
-        dates = DateRange(oldest=oldest, newest=newest)
-        return {"workouts": await combined_activities(db, dates.oldest, dates.newest, review=True)}
-
     @app.get("/api/activity/{id}")
     async def activity(id: str):
         return await tools.call("get_activity", ActivityInput(id=id).model_dump())
 
-    @app.get("/api/athlete-scores")
-    async def athlete_scores():
-        return await db.athlete_scores()
+    @app.exception_handler(CoachingConflict)
+    async def coaching_conflict(request, exc):
+        return JSONResponse({"detail": str(exc)}, status_code=409)
 
-    @app.post("/api/athlete-scores")
-    async def save_athlete_scores(body: AthleteScoresInput):
-        return await db.save_athlete_scores(body)
+    @app.exception_handler(CoachingRecordMissing)
+    async def coaching_missing(request, exc):
+        return JSONResponse({"detail": "Record not found"}, status_code=404)
+
+    @app.get("/api/athlete-profile")
+    async def athlete_profile():
+        return await db.athlete_profile()
+
+    @app.post("/api/athlete-profile")
+    async def save_athlete_profile(body: AthleteProfileInput, request: Request):
+        user_session(request)
+        return await db.save_athlete_profile(body)
+
+    @app.get("/api/coaching-records")
+    async def coaching_records():
+        return {"records": await db.coaching_records()}
+
+    @app.post("/api/coaching-records", status_code=201)
+    async def create_coaching_record(body: CoachingRecordInput, request: Request):
+        user_session(request)
+        return await db.create_coaching_record(body)
+
+    @app.patch("/api/coaching-records/{id}")
+    async def update_coaching_record(id: uuid.UUID, body: CoachingRecordUpdate, request: Request):
+        user_session(request)
+        return await db.update_coaching_record(id, body)
 
     @app.get("/api/activity/{id}/streams")
     async def streams(id: str):
