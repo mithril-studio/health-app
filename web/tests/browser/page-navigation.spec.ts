@@ -93,9 +93,22 @@ test("chat history docks against the main sidebar and fills the remaining height
   expect(Math.abs(history!.y + history!.height - 900)).toBeLessThan(2);
   await expect(page.getByLabel("Message your coach")).toBeInViewport();
   await page.getByRole("button", { name: "Collapse navigation" }).click();
-  const collapsed = await page.locator(".sidebar").boundingBox();
-  const docked = await page.locator(".conversation-menu").boundingBox();
-  expect(Math.abs(docked!.x - collapsed!.width)).toBeLessThan(1);
+  // Measure both rectangles in one frame after the collapse animation settles.
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const sidebar = document
+          .querySelector(".sidebar")!
+          .getBoundingClientRect();
+        const history = document
+          .querySelector(".conversation-menu")!
+          .getBoundingClientRect();
+        return (
+          Math.abs(history.x - sidebar.right) + Math.abs(sidebar.width - 64)
+        );
+      }),
+    )
+    .toBeLessThan(1);
   await page.setViewportSize({ width: 320, height: 900 });
   await expect(
     page.getByRole("button", { name: "Show chat history" }),

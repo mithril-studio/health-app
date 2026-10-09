@@ -41,6 +41,20 @@ export async function api<T = unknown>(
     if (!response.ok) {
       if (response.status === 401 && !path.endsWith("/login"))
         window.dispatchEvent(new Event("reachy:unauthorized"));
+      if (response.status === 503 && path.split("?")[0] === "/api/chat") {
+        const body = record(await response.json().catch(() => null));
+        if (
+          typeof body.code === "string" &&
+          Object.hasOwn(copy.errors.coaching, body.code)
+        ) {
+          throw new ApiError(
+            response.status,
+            copy.errors.coaching[
+              body.code as keyof typeof copy.errors.coaching
+            ],
+          );
+        }
+      }
       throw new ApiError(
         response.status,
         response.status === 401

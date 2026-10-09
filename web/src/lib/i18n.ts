@@ -1,5 +1,7 @@
 // All authored product copy lives here. Locale formatting is in dates.ts and format.ts.
+import { workoutCopy } from "./workout-copy";
 export const en = {
+  workouts: workoutCopy,
   brand: "Coach Reachy",
   brandShort: "Reachy",
   tagline: "A little more intentional.",
@@ -8,6 +10,7 @@ export const en = {
     calendar: "Calendar",
     insights: "Insights",
     coach: "Chats",
+    workouts: "Workouts",
   },
   common: {
     workspace: "TRAINING SPACE",
@@ -73,6 +76,24 @@ export const en = {
     offline:
       "Couldn’t reach your training service. Check your connection and try again.",
     generic: "The request couldn’t be completed. Please try again.",
+    coaching: {
+      openrouter_not_configured:
+        "Coaching needs an OpenRouter API key configured on the server.",
+      openrouter_auth:
+        "OpenRouter rejected the API key. Update the server’s OpenRouter key.",
+      openrouter_credits:
+        "OpenRouter credits are exhausted. Add credits to resume coaching.",
+      openrouter_rate_limit:
+        "OpenRouter is busy or rate limited. Please try again shortly.",
+      openrouter_model:
+        "The configured OpenRouter model is unavailable or does not support this request.",
+      openrouter_unavailable:
+        "OpenRouter is temporarily unavailable. Please try again shortly.",
+      openrouter_invalid_response:
+        "OpenRouter returned an incomplete response. Please try again.",
+      openrouter_timeout:
+        "The coaching request timed out. Please retry your message.",
+    },
     unauthorized: "Your session has ended. Sign in to continue.",
     rateLimit: "Too many requests. Give it a moment and try again.",
     invalid: "The service returned data we couldn’t read. Please refresh.",
@@ -314,9 +335,6 @@ export const en = {
       "Help me work toward a sub-18 5 km",
     ],
     noReply: "No reply was returned. Reload the conversation before retrying.",
-    unavailable: "Your coach is offline right now.",
-    unavailableDetail:
-      "The server can’t reach Claude. Your messages will be answered again once the connection is restored.",
     restore: "Reload conversation",
     pending: "A change needs your confirmation",
     deleteTitle: "Delete this planned workout?",
@@ -333,8 +351,13 @@ export const en = {
   sports: {
     run: "Running",
     ride: "Cycling",
-    football: "Football",
-    gym: "Gym & strength",
+    football: "Soccer / football",
+    gym: "Fitness & strength",
+    home: "Home workouts",
+    stretch: "Stretching & yoga",
+    meditation: "Meditation",
+    golf: "Golf",
+    tennis: "Tennis",
     swim: "Swimming",
     other: "Other / unspecified",
   },

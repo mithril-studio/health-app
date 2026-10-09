@@ -4,12 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ConversationMenu } from "./conversation-menu";
 import { ArrowUp, ArrowUpRight, MessageCircle, RotateCcw } from "lucide-react";
 import { api, errorMessage } from "@/lib/api";
-import {
-  agentStatus,
-  chatMessages,
-  type AgentStatus,
-  type ChatMessage,
-} from "@/lib/chat";
+import { chatMessages, type ChatMessage } from "@/lib/chat";
 import { record, text } from "@/lib/data";
 import { timestampLabel } from "@/lib/dates";
 import { copy } from "@/lib/i18n";
@@ -66,7 +61,6 @@ function Conversation({
   const [historyError, setHistoryError] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [agent, setAgent] = useState<AgentStatus | null>(null);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [version, setVersion] = useState(0);
   const [confirmVersion, setConfirmVersion] = useState(0);
@@ -89,10 +83,7 @@ function Conversation({
     setLoading(true);
     setHistoryError("");
     api(historyPath, { signal: controller.signal })
-      .then((result) => {
-        setMessages(chatMessages(result));
-        setAgent(agentStatus(result));
-      })
+      .then((result) => setMessages(chatMessages(result)))
       .catch((e) => {
         if (!controller.signal.aborted) setHistoryError(errorMessage(e));
       })
@@ -104,9 +95,8 @@ function Conversation({
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "instant", block: "nearest" });
   }, [messages, busy]);
-  const offline = agent !== null && !agent.configured;
   async function send(retry?: Attempt) {
-    if (busy || loading || historyError || offline) return;
+    if (busy || loading || historyError) return;
     const next = retry ?? { message: input.trim(), key: crypto.randomUUID() };
     if (!next.message) return;
     setBusy(true);
@@ -145,10 +135,7 @@ function Conversation({
       // Reconcile with persisted history without turning a successful reply into a failed send.
       try {
         const history = await api(historyPath);
-        if (mounted.current) {
-          setMessages(chatMessages(history));
-          setAgent(agentStatus(history));
-        }
+        if (mounted.current) setMessages(chatMessages(history));
       } catch {
         /* The confirmed reply stays visible; reload remains available. */
       }
@@ -157,13 +144,6 @@ function Conversation({
       if (mounted.current) {
         setError(errorMessage(e));
         setConfirmVersion((v) => v + 1);
-      }
-      // A failed send is often an expired coach login: show the server's reason, not a guess.
-      try {
-        const history = await api(historyPath);
-        if (mounted.current) setAgent(agentStatus(history));
-      } catch {
-        /* The generic error above already covers an unreachable server. */
       }
     } finally {
       if (mounted.current) {
@@ -283,13 +263,7 @@ function Conversation({
         </div>
         <div className="chat-bottom">
           <DeletionConfirmations version={confirmVersion} />
-          {offline && (
-            <div className="chat-error" role="status">
-              <ErrorNotice message={copy.coach.unavailable} />
-              <p>{agent.reason || copy.coach.unavailableDetail}</p>
-            </div>
-          )}
-          {error && !offline && (
+          {error && (
             <div className="chat-error">
               <ErrorNotice message={error} />
               <p>{copy.coach.retryNote}</p>
@@ -323,7 +297,7 @@ function Conversation({
               value={input}
               maxLength={8000}
               rows={2}
-              disabled={busy || loading || !!historyError || offline}
+              disabled={busy || loading || !!historyError}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (
@@ -340,9 +314,7 @@ function Conversation({
               type="submit"
               size="icon"
               aria-label={copy.coach.send}
-              disabled={
-                !input.trim() || busy || loading || !!historyError || offline
-              }
+              disabled={!input.trim() || busy || loading || !!historyError}
             >
               <ArrowUp size={17} aria-hidden="true" />
             </Button>

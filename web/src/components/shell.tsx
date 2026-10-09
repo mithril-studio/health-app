@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  Timer,
   CalendarDays,
   ChartNoAxesCombined,
   MessageCircle,
@@ -14,6 +15,7 @@ import {
   RefreshCw,
   LogOut,
 } from "lucide-react";
+import { TimerBanner } from "./workout-timer";
 import { SourceNotice } from "./source-notice";
 import { TelegramConnection } from "./telegram-connection";
 import { copy } from "@/lib/i18n";
@@ -23,6 +25,7 @@ import { Button, ErrorNotice, Mark, Modal, cn } from "./ui";
 const nav = [
   { href: "/", key: "overview", Icon: LayoutDashboard },
   { href: "/coach", key: "coach", Icon: MessageCircle },
+  { href: "/workouts", key: "workouts", Icon: Timer },
   { href: "/calendar", key: "calendar", Icon: CalendarDays },
   { href: "/insights", key: "insights", Icon: ChartNoAxesCombined },
 ] as const;
@@ -208,7 +211,12 @@ export function Shell({
             <TelegramConnection />
           </div>
         </header>
-        <div id="page-menu" className="page-menu" />
+        <div
+          id="page-menu"
+          className="page-menu"
+          role="region"
+          aria-label={copy.nav[title]}
+        />
         <div
           className={cn("main-scroll", pathname === "/coach" && "chat-scroll")}
         >
@@ -235,6 +243,7 @@ export function Shell({
               />
             )}
             {data && pathname !== "/coach" && <SourceNotice data={data} />}
+            {pathname !== "/workouts" && <TimerBanner />}
             {children}
           </main>
         </div>

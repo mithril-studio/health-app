@@ -15,6 +15,7 @@ import { copy } from "@/lib/i18n";
 import { dateLabel } from "@/lib/dates";
 import { metric, duration, pace } from "@/lib/format";
 import {
+  Button,
   Badge,
   Empty,
   ErrorNotice,
@@ -23,6 +24,7 @@ import {
   Skeleton,
   SportIcon,
 } from "./ui";
+import { useTraining } from "./workspace";
 import { ZoneBars } from "./zone-bars";
 export function ActivityDialog({
   id,
@@ -31,6 +33,9 @@ export function ActivityDialog({
   id: string | null;
   onClose: () => void;
 }) {
+  const { refresh } = useTraining();
+  const [removing, setRemoving] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [intervals, setIntervals] = useState<Raw[]>([]);
   const [error, setError] = useState("");
@@ -40,6 +45,7 @@ export function ActivityDialog({
     if (!id) return;
     const controller = new AbortController();
     setActivity(null);
+    setConfirmRemove(false);
     setIntervals([]);
     setError("");
     setLoading(true);
@@ -94,7 +100,16 @@ export function ActivityDialog({
                   ? copy.sources.restrictedBadge
                   : copy.common.done}
               </Badge>
-              <ExternalActivityLink id={activity.id} />
+              {activity.raw.source === "app" ||
+              activity.raw.source === "whoop" ? (
+                <Badge>
+                  {activity.raw.source === "app"
+                    ? copy.workouts.appSource
+                    : copy.workouts.whoopSource}
+                </Badge>
+              ) : (
+                <ExternalActivityLink id={activity.id} />
+              )}
             </div>
             {isRestricted(activity) && (
               <p className="restricted-detail">{copy.sources.explanation}</p>
@@ -129,6 +144,59 @@ export function ActivityDialog({
                 </div>
               ))}
             </dl>
+            {text(activity.raw.description) && (
+              <p>{text(activity.raw.description)}</p>
+            )}
+            {activity.raw.source === "whoop" && (
+              <p>
+                {copy.workouts.strain}:{" "}
+                {metric(number(activity.raw.whoop_strain))}
+              </p>
+            )}
+            {activity.raw.source === "app" && (
+              <div className="workout-remove">
+                {confirmRemove ? (
+                  <>
+                    <p>{copy.workouts.removeDetail}</p>
+                    <Button
+                      disabled={removing}
+                      variant="destructive"
+                      onClick={async () => {
+                        setRemoving(true);
+                        try {
+                          await api(
+                            `/api/sessions/${encodeURIComponent(activity.id)}/delete`,
+                            { method: "POST" },
+                          );
+                          await refresh();
+                          onClose();
+                        } catch (e) {
+                          setError(errorMessage(e));
+                        } finally {
+                          setRemoving(false);
+                        }
+                      }}
+                    >
+                      {copy.workouts.remove}
+                    </Button>{" "}
+                    <Button
+                      variant="ghost"
+                      disabled={removing}
+                      onClick={() => setConfirmRemove(false)}
+                    >
+                      {copy.common.cancel}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    onClick={() => setConfirmRemove(true)}
+                  >
+                    {copy.workouts.remove}
+                  </Button>
+                )}
+              </div>
+            )}
             <h3 className="detail-title">{copy.activity.intervals}</h3>
             {intervals.length ? (
               <div className="table-scroll">

@@ -12,7 +12,7 @@ from pathlib import Path
 p=argparse.ArgumentParser()
 p.add_argument('--url',default='https://coach-reachy.boxd.sh')
 p.add_argument('--env',default=str(Path(__file__).resolve().parents[1]/'.env'))
-p.add_argument('--chat',action='store_true',help='Run one read-only OAuth coaching conversation')
+p.add_argument('--chat',action='store_true',help='Run one read-only OpenRouter coaching conversation')
 args=p.parse_args()
 values={}
 for line in Path(args.env).read_text().splitlines():
@@ -61,6 +61,9 @@ else:
     assert 'get_calendar' in tools
     print('PASS MCP tool catalog (SSE)')
 if args.chat:
+    status,history=request('/api/chat')
+    assert status==200 and history.get('agent',{}).get('transport')=='openrouter', 'Chat must use OpenRouter'
+    assert history['agent']['configured'], 'OpenRouter must be configured'
     curve_status,curves=request('/api/curves?sport=Run&period=84')
     assert curve_status==200, f'Pace curve: {curve_status}'
     measured=None
@@ -76,7 +79,7 @@ if args.chat:
         seconds=round(measured)
         expected=f'{seconds//60}:{seconds%60:02}'
         assert expected in result['reply'], 'Coaching reply must report the measured 5 km tool result'
-    print('PASS OAuth MCP-tool coaching matches measured pace data:',len(result['reply']),'characters;',round(time.monotonic()-started,1),'seconds')
+    print('PASS OpenRouter tool coaching matches measured pace data:',len(result['reply']),'characters;',round(time.monotonic()-started,1),'seconds')
 status,_=request('/api/logout',{})
 assert status in (200,204)
 status,_=request('/api/dashboard')

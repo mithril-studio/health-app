@@ -361,7 +361,7 @@ test("insights switch curves and zones without inventing missing metrics", async
   await expect(
     page
       .locator(".sport-load-row")
-      .getByText("Gym & strength", { exact: true }),
+      .getByText("Fitness & strength", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Power", exact: true }).click();
   await expect(

@@ -5,6 +5,9 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { clsx } from "clsx";
 import {
   Activity,
+  Flower2,
+  PersonStanding,
+  House,
   Bike,
   Dumbbell,
   Footprints,
@@ -115,6 +118,11 @@ const sportIcons = {
   gym: Dumbbell,
   football: CircleDot,
   swim: Waves,
+  stretch: PersonStanding,
+  meditation: Flower2,
+  home: House,
+  golf: CircleDot,
+  tennis: CircleDot,
   other: Activity,
 };
 export function SportIcon({

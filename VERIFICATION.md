@@ -1,3 +1,30 @@
+## Release preparation — 9 October 2026
+
+The boxd source comparison found a deployed OpenRouter migration absent from this branch and `origin/main`. The workout release preserves that live agent, its error handling, and the chat retry behavior; it does not revert to Claude CLI login. Source and PostgreSQL backups were created on the VM under `state/backups/workouts-20261009/` before deployment. Tests for the obsolete provider were replaced with coverage of the deployed provider, tool limits, read-only restrictions, retry identity, safe errors, and reasoning-state continuity. Full backend suite: 81 passed. Physical iPhone speaker/lock-screen verification remains outstanding.
+
+## Stretching and meditation polish — 8 October 2026
+
+Implemented locally; not deployed. Existing routines, app-calendar destination, session API, and WHOOP routing are unchanged.
+
+- A versioned, validated browser draft preserves running/paused/completed timers and the session UUID through reloads. Restore waits for authentication. Save/discard/logout clear the draft; transient failures preserve it. Storage failure shows a warning and leaves the in-memory timer usable. Storage events plus same-origin Web Locks protect against stale tabs and late save responses.
+- Optional synthesized chimes play at stretch changes and completion. Sound defaults on, mute persists, and recovery offers a user-gesture unlock. Background/missed cues are not replayed. Completion text prompts saving until the server confirms success.
+- Validation: 22 frontend unit tests; TypeScript and production build; 43 Chrome browser scenarios; 35 WebKit scenarios (23 desktop, 12 iPhone-emulated); four focused backend tests covering session validation, authorization, and concurrent save idempotency. Backend checks use an isolated PostgreSQL schema; browser tests use synthetic API fixtures. WebKit ran in an isolated Ubuntu 24.04 runtime because this Amazon Linux host lacks its dependencies. Cue counts are checked with a controlled AudioContext; a separate check verifies actual browser AudioContext activation.
+- Browser coverage includes running/paused/completed reload recovery, lost save responses and identical retries, confirmed authentication loss versus transient failure, malformed/blocked storage, tab synchronization and stale actions, replacement sessions during an in-flight save, mute persistence, foreground/background cue behavior, and audio/wake-lock failure. Workout layout/Axe checks pass at phone and desktop sizes. Screenshots in `.context/` contain synthetic data only.
+- Reproduce on a Playwright-supported host: `cd web && npm test && npm run typecheck && npm run build && npx playwright test`; install WebKit with `npx playwright install webkit`, then run `npx playwright test -c playwright.webkit.config.ts` for desktop and iPhone-emulated coverage.
+
+**Physical iPhone smoke test still required:** in Safari and the installed web app, start a stretch session, hear a step chime with device volume on, mute/unmute, pause and reload (remaining time stays fixed), resume and lock/unlock (time catches up), then reload again and enable sound. Complete a one-minute meditation, confirm it is not yet in the calendar, save once, and confirm one entry after reload. Test a failed save with connection loss and retry after reconnection; finally verify sign-out removes an unfinished draft. WebKit emulation does not verify device speaker output, OS eviction, or screen-lock behavior. Recovery is specific to each browser/installation; no physical iPhone is attached to this cloud workspace.
+
+## Web workout beta — 8 October 2026
+
+Implemented locally; not deployed and no live WHOOP grant or workout writes were used.
+
+- Added stretching/meditation timers, completed-session logging, app-session removal, sport categories, and the official WHOOP v2 integration.
+- Backend: 72 tests passed in the full suite. Subsequent focused checks passed after the coach source guidance and session-lock changes; the 10 new workout tests cover session/origin guards, validation, retry/concurrent idempotency, sync survival, calendar/tool/detail consistency, WHOOP pagination, rotating-token concurrency, partial failure rollback, deletion reconciliation, OAuth state binding/expiry/replay, disconnect, and late-Garmin deduplication.
+- Web: 21 unit tests passed, TypeScript and production build passed. Existing browser scenarios plus six workout scenarios passed across the full run and targeted reruns. The old sidebar-collapse test now waits for the animation to settle and measures both rectangles in one frame.
+- New Chrome browser coverage: layouts at 320/390/1440px; Axe scans of the workout page and active timer; automatic stretch transitions after suspension; pause/resume and route navigation; same-ID save retries; home-workout/soccer logging; temporary session-check failure recovery and logout cleanup; WHOOP callback URL cleanup and duplicate visibility.
+- Screenshots: `.context/workouts-desktop.png`, `.context/workouts-iphone.png`, `.context/stretch-timer-iphone.png`. These use empty/synthetic API fixtures and are gitignored.
+- Remaining external verification: WHOOP developer credentials and browser consent, a real import against Garmin records, production deployment, and physical-iPhone checks. Timer recovery and WebKit coverage were added in the polish pass below; background notifications remain out of scope.
+
 # Live verification — 1 October 2026
 
 ## Working and verified
