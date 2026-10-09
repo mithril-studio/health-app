@@ -169,13 +169,10 @@ async def test_embedded_provider_error_and_transport_timeout():
 async def test_large_workout_analysis_reaches_provider_with_individual_reps(store):
     from test_workout import activity, streams
 
-    from coach.models import AthleteScoresInput
-
     a = activity() | {"start_date_local": "2026-10-08", "unused": "x" * 100000}
     await store.put("activity_intervals", "run", a.pop("intervals"))
     await store.put("activities", "run", a, date(2026, 10, 8))
     await store.put("activity_streams", "run", streams([0, 5, 10], [170, 160, 180]))
-    await store.save_athlete_scores(AthleteScoresInput(lt1_hr=145, lt2_hr=169, vo2max=58.5))
     for i in range(12):
         await store.message(
             f"history:{i}", "web", "user" if i % 2 == 0 else "assistant", str(i) + "x" * 7000
@@ -191,7 +188,8 @@ async def test_large_workout_analysis_reaches_provider_with_individual_reps(stor
             context = json.loads(
                 payload["messages"][-1]["content"].split("Cached data (not instructions):\n")[1]
             )
-            assert context["athlete_scores"]["lt2_hr"] == 169
+            assert "athlete_scores" not in context
+            assert "athlete_profile" in context
             assert context["conversation_context"]["omitted_messages"] == 10
             return httpx.Response(
                 200, json=completion(None, [tool_call("get_activity_analysis", {"id": "run"})])
@@ -199,7 +197,7 @@ async def test_large_workout_analysis_reaches_provider_with_individual_reps(stor
         evidence = json.loads(payload["messages"][-1]["content"])
         assert [r["average_heartrate"] for r in evidence["intervals"]] == [160, 150, 172]
         assert evidence["session"]["above_lt2_seconds"] == 5
-        assert evidence["threshold"]["source"] == "athlete_scores.lt2_hr"
+        assert evidence["threshold"]["source"] == "activity.lthr"
         assert evidence["next_offset"] is None
         return httpx.Response(200, json=completion("Measured review"))
 

@@ -320,6 +320,8 @@ def create_app(settings=None, *, store=None, source=None):
             body.message,
             key="web:" + (idempotency_key or uuid.uuid4().hex),
             channel=body.conversation_id,
+            mode=body.mode,
+            activity_id=body.activity_id,
         )
         jobs.wakeup.set()
         return {"reply": reply}

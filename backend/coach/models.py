@@ -151,6 +151,14 @@ ConversationId = Annotated[str, StringConstraints(pattern=r"^(web|web:[a-f0-9]{3
 class ChatInput(StrictModel):
     message: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8000)]
     conversation_id: ConversationId = "web"
+    mode: Literal["chat", "workout", "daily", "weekly"] = "chat"
+    activity_id: Identifier | None = None
+
+    @model_validator(mode="after")
+    def selected_workout(self):
+        if self.mode == "workout" and not self.activity_id:
+            raise ValueError("workout mode requires activity_id")
+        return self
 
 
 class JobInput(StrictModel):
