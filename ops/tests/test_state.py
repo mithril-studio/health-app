@@ -36,7 +36,8 @@ class ScheduleTests(unittest.TestCase):
                 before = utc(day + 'T' + morning + ':00').timestamp() - 1
                 self.assertEqual(due_jobs(datetime.fromtimestamp(before, timezone.utc), started), [])
                 self.assertEqual(len(due_jobs(utc(day + 'T' + morning + ':00'), started)), 1)
-                self.assertEqual(len(due_jobs(utc(day + 'T' + evening + ':00'), started)), 2)
+                self.assertEqual(len(due_jobs(utc(day + 'T' + evening + ':00'), started)),
+                                 3 if started.weekday() == 6 else 2)
 
 
 class StateTests(unittest.TestCase):

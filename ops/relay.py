@@ -24,7 +24,10 @@ def due_jobs(now, started_at, start_date=None):
     if start_date and day.isoformat() < start_date:
         return []
     result = []
-    for kind, slot in [('morning', time(8, 30)), ('evening', time(21))]:
+    slots = [('morning', time(8, 30)), ('evening', time(21))]
+    if day.weekday() == 6:
+        slots.append(('weekly', time(20)))
+    for kind, slot in slots:
         scheduled = datetime.combine(day, slot, AMSTERDAM)
         if started_at < scheduled <= now:
             result.append({'kind': kind, 'key': f'{kind}:{day.isoformat()}'})

@@ -107,3 +107,38 @@ async def test_unavailable_provider_keeps_jobs_queued(store):
         assert (await jobs.process("job:evening:2026-10-05"))["status"] == "retry"
     retrying = await store.query("SELECT key FROM work_items WHERE status='retry' ORDER BY key")
     assert [r["key"] for r in retrying] == ["job:evening:2026-10-05", "job:morning:2026-10-05"]
+
+
+@pytest.mark.parametrize(
+    "kind,mode,activity_id",
+    [
+        ("morning", "daily", None),
+        ("evening", "daily", None),
+        ("weekly", "weekly", None),
+        ("activity", "workout", "i42"),
+    ],
+)
+async def test_scheduled_jobs_select_shared_brief_mode(store, kind, mode, activity_id):
+    agent = FakeAgent()
+    jobs = Jobs(Settings(_env_file=None), store, ToolService(store, WritableSource()), agent, None)
+    payload = {"kind": kind, "key": "synthetic"}
+    if activity_id:
+        payload["activity_id"] = activity_id
+    await jobs.accept_job(payload)
+    result = await jobs.process(f"job:{kind}:synthetic")
+    assert result["status"] == "succeeded"
+    assert agent.calls[0]["mode"] == mode
+    assert agent.calls[0]["activity_id"] == activity_id
+    assert agent.calls[0]["read_only"] is True
+    assert "extra" not in agent.calls[0]
+
+
+async def test_retired_whoop_jobs_complete_without_upstream_access(store):
+    jobs = Jobs(Settings(_env_file=None), store, None, None, None)
+    await store.enqueue("old-whoop", "whoop_sync", {})
+    result = await jobs.process("old-whoop")
+    assert result["status"] == "succeeded"
+    assert result["result"] == {
+        "status": "retired",
+        "reason": "Direct WHOOP sync removed; retained history is unchanged",
+    }

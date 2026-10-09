@@ -1,8 +1,8 @@
-const formatter = new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Amsterdam', year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+const formatter = new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Amsterdam', weekday:'short',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 export function scheduledJob(now) {
   const p=Object.fromEntries(formatter.formatToParts(now).map(x=>[x.type,x.value]));
   const time=`${p.hour}:${p.minute}`;
-  const kind=time==='08:30'?'morning':time==='21:00'?'evening':null;
+  const kind=time==='08:30'?'morning':time==='21:00'?'evening':time==='20:00' && p.weekday==='Sun'?'weekly':null;
   return kind ? {kind,key:`${kind}:${p.year}-${p.month}-${p.day}`} : null;
 }
 export const activityKey = a => `activity:${a.id}`;
