@@ -142,15 +142,17 @@ class Agent:
 
     def status(self):
         configured = bool(self.cfg.openrouter_api_key.get_secret_value())
+        if self.auth_rejected:
+            reason = AGENT_ERRORS["openrouter_auth"]
+        elif not configured:
+            reason = AGENT_ERRORS["openrouter_not_configured"]
+        else:
+            reason = None
         return {
             "configured": configured and not self.auth_rejected,
             "transport": "openrouter",
             "model": self.cfg.openrouter_model,
-            "reason": AGENT_ERRORS["openrouter_auth"]
-            if self.auth_rejected
-            else None
-            if configured
-            else AGENT_ERRORS["openrouter_not_configured"],
+            "reason": reason,
         }
 
     async def context(self):
