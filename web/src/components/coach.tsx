@@ -227,7 +227,7 @@ function Conversation({
               </option>
             </select>
           </div>
-          {(mode === "daily" || mode === "weekly") && <p>{taskCopy.advice}</p>}
+          {mode !== "chat" && <p>{taskCopy.advice}</p>}
           {mode === "workout" && (
             <p>
               {activityId

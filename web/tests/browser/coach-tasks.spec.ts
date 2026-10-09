@@ -24,6 +24,11 @@ for (const mode of ["daily", "weekly", "workout"] as const) {
       `/coach?chat=synthetic-thread&mode=${mode}${mode === "workout" ? "&activity_id=synthetic-run" : ""}`,
     );
     await expect(page.getByLabel("Message your coach")).toBeVisible();
+    await expect(
+      page.getByText("Advice only. Your calendar will not be changed.", {
+        exact: true,
+      }),
+    ).toBeVisible();
     expect(attempts).toHaveLength(0);
     await page.getByLabel("Message your coach").fill("Review this task");
     await page
