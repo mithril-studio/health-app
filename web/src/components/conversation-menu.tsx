@@ -1,10 +1,11 @@
 "use client";
 import "./conversation-menu.css";
 import { useEffect, useState } from "react";
-import { ChevronDown, MessageCircle, Plus } from "lucide-react";
+import { ChevronDown, FileText, MessageCircle, Plus } from "lucide-react";
 import { api, errorMessage } from "@/lib/api";
 import { record, text } from "@/lib/data";
 import { copy } from "@/lib/i18n";
+import { REPORTS } from "@/lib/reports";
 import { Button, ErrorNotice, cn } from "./ui";
 import { PageMenu } from "./page-menu";
 
@@ -99,6 +100,21 @@ export function ConversationMenu({
         </div>
       </PageMenu>
       <div id="conversation-list" className="conversation-list">
+        <div className="conversation-pinned">
+          <button
+            type="button"
+            title={copy.reports.nav}
+            className={cn("conversation-item", active === REPORTS && "active")}
+            aria-current={active === REPORTS ? "page" : undefined}
+            onClick={() => {
+              setExpanded(false);
+              onSelect(REPORTS);
+            }}
+          >
+            <FileText size={15} aria-hidden="true" />
+            <span>{copy.reports.nav}</span>
+          </button>
+        </div>
         {error && (
           <ErrorNotice message={error} retry={() => setRetry((v) => v + 1)} />
         )}

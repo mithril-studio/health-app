@@ -55,7 +55,7 @@ async def test_sync_atomic_and_deleted_events_removed(store):
 
 async def test_durable_dedup_is_concurrent_safe_and_failed_attempt_retries(store):
     await asyncio.gather(
-        *(store.enqueue("telegram:123", "telegram", {"text": "hello"}) for _ in range(8))
+        *(store.enqueue("job:123", "job", {"text": "hello"}) for _ in range(8))
     )
     attempts = []
 
@@ -64,22 +64,22 @@ async def test_durable_dedup_is_concurrent_safe_and_failed_attempt_retries(store
         await asyncio.sleep(0.04)
         raise RuntimeError("never save this private payload")
 
-    await asyncio.gather(*(store.process("telegram:123", failing) for _ in range(8)))
+    await asyncio.gather(*(store.process("job:123", failing) for _ in range(8)))
     assert len(attempts) == 1
-    state = await store.work_status("telegram:123")
+    state = await store.work_status("job:123")
     assert state["status"] == "retry" and state["attempts"] == 1
     assert state["error"] == "RuntimeError"
     async with store.pool.connection() as c:
-        await c.execute("UPDATE work_items SET available_at=now() WHERE key='telegram:123'")
+        await c.execute("UPDATE work_items SET available_at=now() WHERE key='job:123'")
 
     async def successful(key, payload):
         attempts.append(1)
         return {"ok": True}
 
-    await asyncio.gather(*(store.process("telegram:123", successful) for _ in range(8)))
+    await asyncio.gather(*(store.process("job:123", successful) for _ in range(8)))
     assert len(attempts) == 2
-    assert (await store.work_status("telegram:123"))["status"] == "succeeded"
-    await store.process("telegram:123", successful)
+    assert (await store.work_status("job:123"))["status"] == "succeeded"
+    await store.process("job:123", successful)
     assert len(attempts) == 2
 
 
@@ -90,22 +90,22 @@ async def test_duplicate_key_cannot_replace_payload(store):
 
 
 async def test_cancelled_running_job_recovers_without_losing_dedup(store):
-    await store.enqueue("telegram:crash", "telegram", {"text": "hello"})
+    await store.enqueue("job:crash", "job", {"text": "hello"})
     entered = asyncio.Event()
 
     async def interrupted(key, payload):
         entered.set()
         await asyncio.Future()
 
-    task = asyncio.create_task(store.process("telegram:crash", interrupted))
+    task = asyncio.create_task(store.process("job:crash", interrupted))
     await entered.wait()
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
-    assert (await store.work_status("telegram:crash"))["status"] == "running"
+    assert (await store.work_status("job:crash"))["status"] == "running"
 
     async def recovered(key, payload):
         return {"ok": True}
 
-    assert (await store.process("telegram:crash", recovered))["status"] == "succeeded"
-    assert (await store.work_status("telegram:crash"))["attempts"] == 2
+    assert (await store.process("job:crash", recovered))["status"] == "succeeded"
+    assert (await store.work_status("job:crash"))["attempts"] == 2

@@ -29,18 +29,11 @@ test.beforeEach(async ({ page }) => {
     if (path === "/api/conversations")
       body = { conversations: [{ id: "web", title: "Earlier chats" }] };
     if (path === "/api/confirmations") body = { pending: [] };
-    if (path === "/api/telegram")
-      body = { connected: false, bot_username: "coachreachybot" };
-    if (path === "/api/telegram/pairing")
-      body = {
-        url: "https://t.me/coachreachybot?start=synthetic_pairing_token",
-        expires_at: new Date(Date.now() + 600000).toISOString(),
-      };
     await route.fulfill({ json: body });
   });
 });
 
-test("chat is second, markdown is rendered, and Telegram moves into the header", async ({
+test("chat is second in the nav and renders markdown safely", async ({
   page,
 }) => {
   await page.goto("/coach");
@@ -59,27 +52,6 @@ test("chat is second, markdown is rendered, and Telegram moves into the header",
   await expect(
     page.getByText("Private workspace", { exact: true }),
   ).toHaveCount(0);
-  const telegram = page
-    .locator(".topbar")
-    .getByRole("link", { name: "Telegram", exact: true });
-  await expect(telegram).toBeVisible();
-  const header = await page.locator(".topbar").boundingBox();
-  const link = await telegram.boundingBox();
-  expect(
-    Math.abs(link!.y + link!.height / 2 - header!.y - header!.height / 2),
-  ).toBeLessThan(2);
-  expect(link!.x).toBeGreaterThan(header!.x + header!.width / 2);
-  await telegram.click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await dialog
-    .getByRole("button", { name: "Connect Telegram", exact: true })
-    .click();
-  await expect(
-    dialog.getByRole("link", { name: "Open Coach Reachy in Telegram" }),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(dialog).toHaveCount(0);
   expect(
     (
       await new AxeBuilder({ page })
@@ -89,26 +61,10 @@ test("chat is second, markdown is rendered, and Telegram moves into the header",
   ).toEqual([]);
 });
 
-test("Telegram stays available and the chat does not overflow on mobile", async ({
-  page,
-}) => {
+test("the chat does not overflow on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto("/coach");
-  await expect(
-    page
-      .locator(".topbar")
-      .getByRole("link", { name: "Telegram", exact: true }),
-  ).toBeVisible();
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
-  await page
-    .locator(".topbar")
-    .getByRole("link", { name: "Telegram", exact: true })
-    .click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.locator(".chat-composer textarea")).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

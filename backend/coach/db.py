@@ -280,3 +280,13 @@ class Store:
             (channel, limit),
         )
         return list(reversed(rows))
+
+    async def reports(self, limit=50):
+        # Scheduled reports keep message_key 'job:{kind}:...:reply'; the kind is the
+        # second segment. The web layer maps anything unexpected to a generic report.
+        return await self.query(
+            "SELECT id, split_part(message_key, ':', 2) AS kind, content, created_at "
+            "FROM agent_messages WHERE channel='scheduled' AND role='assistant' "
+            "ORDER BY id DESC LIMIT %s",
+            (limit,),
+        )

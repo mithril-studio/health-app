@@ -95,16 +95,42 @@ class StateTests(unittest.TestCase):
             pass
 
     def test_retry_state_survives_restart(self):
-        self.db.fail('telegram', self.now)
+        self.db.fail('intervals', self.now)
         self.restart()
-        self.assertFalse(self.db.can_try('telegram', self.now))
-        self.assertTrue(self.db.can_try('telegram', utc('2026-10-01T06:01:00')))
-        self.db.succeeded('telegram')
-        self.assertTrue(self.db.can_try('telegram', self.now))
+        self.assertFalse(self.db.can_try('intervals', self.now))
+        self.assertTrue(self.db.can_try('intervals', utc('2026-10-01T06:01:00')))
+        self.db.succeeded('intervals')
+        self.assertTrue(self.db.can_try('intervals', self.now))
 
     def test_retry_frequency_remains_capped_after_many_failures(self):
         for _ in range(100):
-            self.db.fail('telegram', self.now)
+            self.db.fail('intervals', self.now)
         self.restart()
-        self.assertFalse(self.db.can_try('telegram', utc('2026-10-01T06:59:59')))
-        self.assertTrue(self.db.can_try('telegram', utc('2026-10-01T07:00:00')))
+        self.assertFalse(self.db.can_try('intervals', utc('2026-10-01T06:59:59')))
+        self.assertTrue(self.db.can_try('intervals', utc('2026-10-01T07:00:00')))
+
+    def test_old_relay_sqlite_telegram_state_is_cleaned(self):
+        import sqlite3
+        old = Path(self.tmp.name) / 'old.sqlite'
+        conn = sqlite3.connect(old)
+        conn.executescript('''
+            CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            CREATE TABLE retries (name TEXT PRIMARY KEY, attempts INTEGER NOT NULL, next_attempt REAL NOT NULL);
+            CREATE TABLE inbox (update_id INTEGER PRIMARY KEY, payload TEXT);
+            INSERT INTO meta VALUES ('telegram_offset', '42');
+            INSERT INTO meta VALUES ('started_at', '2026-10-01T06:00:00+00:00');
+            INSERT INTO retries VALUES ('telegram', 3, 0);
+            INSERT INTO retries VALUES ('intervals', 1, 0);
+            INSERT INTO inbox VALUES (1, '{}');
+        ''')
+        conn.commit()
+        conn.close()
+        db = State(old)
+        self.addCleanup(db.close)
+        # The removed Telegram relay state is swept, but scheduler state is preserved.
+        self.assertIsNone(db.get('telegram_offset'))
+        self.assertEqual(db.get('started_at'), '2026-10-01T06:00:00+00:00')
+        names = {row['name'] for row in db.db.execute('SELECT name FROM retries')}
+        self.assertEqual(names, {'intervals'})
+        tables = {row[0] for row in db.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        self.assertNotIn('inbox', tables)

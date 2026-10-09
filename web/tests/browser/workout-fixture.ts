@@ -20,7 +20,6 @@ export async function mockWorkouts(
     if (path === "/api/session") body = { authenticated: true };
     else if (path === "/api/dashboard") body = dashboard;
     else if (path === "/api/curves") body = { list: [] };
-    else if (path === "/api/telegram/status") body = { connected: false };
     else if (path === "/api/whoop")
       body = {
         configured: false,

@@ -132,7 +132,7 @@ async def test_conversation_history_is_persistent_and_isolated(web, store, monke
     headers = {"Authorization": "Bearer api-secret", "Origin": "https://coach.test"}
     assert (await c.get("/api/conversations")).status_code == 401
     await store.message("legacy:user", "web", "user", "Existing conversation")
-    await store.message("telegram:user", "telegram", "user", "Private Telegram thread")
+    await store.message("scheduled:user", "scheduled", "user", "Scheduled report thread")
     listing = (await c.get("/api/conversations", headers=headers)).json()["conversations"]
     assert len(listing) == 1 and listing[0]["id"] == "web"
     assert listing[0]["title"] == "Existing conversation"
@@ -165,9 +165,11 @@ async def test_conversation_history_is_persistent_and_isolated(web, store, monke
     assert [m["content"] for m in legacy] == ["Existing conversation"]
     listing = (await c.get("/api/conversations", headers=headers)).json()["conversations"]
     assert listing[0]["id"] == thread and listing[0]["title"] == "New question"
-    assert (
-        await c.get("/api/chat", params={"conversation_id": "telegram"}, headers=headers)
-    ).status_code == 422
+    # Reserved channels never parse as conversation ids, so they can never receive posts.
+    for reserved in ("scheduled", "reports"):
+        assert (
+            await c.get("/api/chat", params={"conversation_id": reserved}, headers=headers)
+        ).status_code == 422
     assert (
         await c.get("/api/chat", params={"conversation_id": "web:" + "0" * 32}, headers=headers)
     ).status_code == 404
@@ -199,15 +201,32 @@ async def test_confirmation_rejects_all_service_tokens(web):
         assert r.status_code in (401, 403)
 
 
-async def test_telegram_chat_lock_happens_before_queue(web, store):
-    c, app = web
-    r = await c.post(
-        "/api/internal/telegram",
-        headers={"Authorization": "Bearer worker-secret"},
-        json={"update_id": 1, "message": {"chat": {"id": 999}, "text": "hello"}},
-    )
-    assert r.status_code == 403
-    assert await store.query("SELECT * FROM work_items") == []
+async def test_removed_telegram_routes_return_404(web):
+    c, _ = web
+    api = {"Authorization": "Bearer api-secret", "Origin": "https://coach.test"}
+    worker = {"Authorization": "Bearer worker-secret", "Origin": "https://coach.test"}
+    assert (await c.get("/api/telegram", headers=api)).status_code == 404
+    assert (await c.post("/api/telegram/pairing", headers=api)).status_code == 404
+    assert (await c.get("/api/internal/telegram-target", headers=worker)).status_code == 404
+    assert (await c.post("/api/internal/telegram", headers=worker, json={})).status_code == 404
+
+
+async def test_reports_endpoint_lists_scheduled_assistant_rows(web, store):
+    c, _ = web
+    api = {"Authorization": "Bearer api-secret"}
+    # Anonymous callers are rejected by the shared session guard.
+    assert (await c.get("/api/reports")).status_code == 401
+    await store.message("job:morning:2026-10-01:reply", "scheduled", "assistant", "Morning")
+    await store.message("job:evening:2026-10-01:reply", "scheduled", "assistant", "Evening")
+    await store.message("job:morning:2026-10-01:user", "scheduled", "user", "prompt")
+    await store.message("web:x:reply", "web", "assistant", "chat reply")
+    rows = (await c.get("/api/reports", headers=api)).json()["reports"]
+    assert [r["kind"] for r in rows] == ["evening", "morning"]  # newest first by id
+    assert {r["content"] for r in rows} == {"Evening", "Morning"}
+    # Limit must stay within 1..100.
+    assert (await c.get("/api/reports?limit=0", headers=api)).status_code == 422
+    assert (await c.get("/api/reports?limit=101", headers=api)).status_code == 422
+    assert (await c.get("/api/reports?limit=1", headers=api)).json()["reports"] == [rows[0]]
 
 
 async def test_generic_health_checks_database_readiness(web, monkeypatch):

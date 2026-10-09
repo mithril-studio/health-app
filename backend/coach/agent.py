@@ -341,7 +341,7 @@ class Agent:
             for call in calls:
                 count += 1
                 if count > self.cfg.agent_max_tools:
-                    return "The tool limit was reached. Please ask a narrower question; review any confirmed changes in Telegram."
+                    return "The tool limit was reached. Please ask a narrower question; check your calendar to review any confirmed changes."
                 try:
                     name = call["function"]["name"]
                     arguments = json.loads(call["function"]["arguments"])
@@ -370,4 +370,4 @@ class Agent:
                         "Tool rejected or unavailable. Do not infer missing data or claim success."
                     )
                 messages.append({"role": "tool", "tool_call_id": call["id"], "content": text})
-        return "The agent turn limit was reached. Please ask a narrower question; review any confirmed changes in Telegram."
+        return "The agent turn limit was reached. Please ask a narrower question; check your calendar to review any confirmed changes."

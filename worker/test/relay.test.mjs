@@ -1,31 +1,17 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{pollActivities,isPairingUpdate} from '../src/index.mjs';
+import worker,{pollActivities} from '../src/index.mjs';
 function store(){const data=new Map();return {data,get:async k=>data.get(k),put:async(k,v)=>data.set(k,v),delete:async k=>data.delete(k),list:async({prefix})=>({keys:[...data.keys()].filter(k=>k.startsWith(prefix)).map(name=>({name}))})};}
-const env=()=>({BOX_URL:'https://coach-reachy.boxd.sh',BOX_SHARED_SECRET:'test',TELEGRAM_WEBHOOK_SECRET:'test-secret',TELEGRAM_CHAT_ID:'123',INTERVALS_ATHLETE_ID:'test',INTERVALS_API_KEY:'test',STATE:store()});
-test('rejects webhook without secret before touching box',async()=>{
- const response=await worker.fetch(new Request('https://worker.example/telegram',{method:'POST',body:'{}'}),env());
- assert.equal(response.status,401);
+const env=()=>({BOX_URL:'https://coach-reachy.boxd.sh',BOX_SHARED_SECRET:'test',INTERVALS_ATHLETE_ID:'test',INTERVALS_API_KEY:'test',STATE:store()});
+test('health reports the scheduler service',async()=>{
+ const response=await worker.fetch(new Request('https://worker.example/health'),env());
+ assert.equal(response.status,200);
+ assert.deepEqual(await response.json(),{ok:true,service:'coach-reachy-scheduler'});
 });
-test('pairing update shape is restricted to private chats and one-time links',()=>{
- assert.equal(isPairingUpdate({message:{chat:{id:456,type:'private'},text:'/start synthetic_secure_pairing_token'}}),true);
- assert.equal(isPairingUpdate({message:{chat:{id:456,type:'private'},text:'hi'}}),false);
- assert.equal(isPairingUpdate({message:{chat:{id:456,type:'group'},text:'/start synthetic_secure_pairing_token'}}),false);
-});
-test('linked target overrides stale environment chat and invalid pairing does not retry',async t=>{
- let forwarded=0;
- t.mock.method(globalThis,'fetch',async (url)=>{
-  if(String(url).endsWith('/telegram-target'))return Response.json({chat_id:'456'});
-  forwarded++;return new Response('',{status:403});
- });
- const request=new Request('https://worker.example/telegram',{method:'POST',headers:{'X-Telegram-Bot-Api-Secret-Token':'test-secret'},body:JSON.stringify({update_id:1,message:{chat:{id:456,type:'private'},text:'hello'}})});
- assert.equal((await worker.fetch(request,env())).status,200);
- assert.equal(forwarded,1);
-});
-test('failed forwarding remains retryable',async t=>{
- t.mock.method(globalThis,'fetch',async()=>new Response('Unavailable',{status:503}));
- const response=await worker.fetch(new Request('https://worker.example/telegram',{method:'POST',headers:{'X-Telegram-Bot-Api-Secret-Token':'test-secret'},body:JSON.stringify({update_id:1,message:{chat:{id:123,type:'private'},text:'hello'}})}),env());
- assert.equal(response.status,503);
+test('every route other than health returns 404',async()=>{
+ assert.equal((await worker.fetch(new Request('https://worker.example/telegram',{method:'POST',body:'{}'}),env())).status,404);
+ assert.equal((await worker.fetch(new Request('https://worker.example/'),env())).status,404);
+ assert.equal((await worker.fetch(new Request('https://worker.example/health',{method:'POST'}),env())).status,404);
 });
 test('activity poll baselines history and only acknowledges successful reports',async t=>{
  const e=env();let activities=[{id:'old'}],calls=0,fail=true;

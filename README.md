@@ -2,14 +2,14 @@
 
 A private training dashboard and data-grounded coach on Intervals.icu.
 
-**App:** https://coach-reachy.boxd.sh · **Telegram:** https://t.me/coachreachybot · **MCP:** https://coach-reachy.boxd.sh/mcp
+**App:** https://coach-reachy.boxd.sh · **MCP:** https://coach-reachy.boxd.sh/mcp
 
 ## Architecture
 
 - `web/`: Next.js/React dashboard; overview, calendar, insights, coaching chat.
 - `backend/`: FastAPI, PostgreSQL cache, Intervals client, shared coaching tools and authenticated MCP.
-- `worker/`: Cloudflare cron + authenticated Telegram webhook relay. Amsterdam-local morning/evening slots, 20-minute activity polling, retry state in KV.
-- `ops/`: durable VM scheduler and Telegram long-polling fallback when Cloudflare is unavailable.
+- `worker/`: Cloudflare cron scheduler. Amsterdam-local morning/evening slots, 20-minute activity polling, retry state in KV. Its only HTTP route is `/health`.
+- `ops/`: durable VM scheduler fallback when Cloudflare is unavailable.
 - `deploy/`: systemd units, private-loopback PostgreSQL bootstrap, nginx and live smoke tests.
 
 Intervals remains the source of truth for Garmin/imported activities and planned workouts. The cache backfills twelve months; planned-workout writes go upstream and refresh the cache. App-recorded sessions and WHOOP workouts live in separate tables, alongside that cache. No demo workouts or fabricated missing measurements.
@@ -18,9 +18,9 @@ Intervals remains the source of truth for Garmin/imported activities and planned
 
 The dashboard uses a private password/session login. The generated password is `APP_PASSWORD` in the local ignored `.env`; the deployed environment is root-owned `/opt/coach-reachy/.env` with mode 600 and loaded by systemd. Never put secrets in browser environment variables.
 
-**To link Telegram:** use **Telegram in the top-right bar → Connect Telegram**, follow the one-time link and press **Start**. The supplied `TELEGRAM_CHAT_ID` is the bot's own ID; a real send test returned `403: the bot can't send messages to the bot`. The app rejects this invalid target. Pairing requires your dashboard session, expires after ten minutes, is single-use, and binds only your private human chat. The binding persists in Postgres and overrides the stale environment value. No arbitrary first sender can take ownership. Reports/notifications wait until you link your chat; real Telegram delivery has not yet been verified.
+**Scheduled reports:** morning (08:30), evening (21:00) and post-workout reviews are generated on the VM/Worker schedule and stored read-only. Read them in the **Reports** view on the Coach page (`/coach?chat=reports`); the scheduled channel never accepts posts, so it has no composer.
 
-The coach sees the last week in detail plus four weekly totals on every message, and can retrieve the whole twelve-month cache on request through weekly or monthly summaries and detailed range tools. MCP uses `Authorization: Bearer <MCP_AUTH_TOKEN>` from `.env`, Streamable HTTP at `/mcp`. Use a client supporting custom bearer headers (e.g. Claude Code). Browser sessions cannot authenticate MCP. The same tool layer supports calendar, activity, fitness, wellness, curves, workout planning/moves/updates, zone settings and separately confirmed deletion. Workout writes are echoed to the configured Telegram chat.
+The coach sees the last week in detail plus four weekly totals on every message, and can retrieve the whole twelve-month cache on request through weekly or monthly summaries and detailed range tools. MCP uses `Authorization: Bearer <MCP_AUTH_TOKEN>` from `.env`, Streamable HTTP at `/mcp`. Use a client supporting custom bearer headers (e.g. Claude Code). Browser sessions cannot authenticate MCP. The same tool layer supports calendar, activity, fitness, wellness, curves, workout planning/moves/updates, zone settings and separately confirmed deletion. Workout writes go straight to Intervals; every write is recorded in `write_audit`, and deletions still require a separate confirmation in the web app.
 
 Coaching uses the server's **OpenRouter API key** and `OPENROUTER_MODEL`. The live VM had already switched providers before the workout release; that behavior is preserved in this checkout. Only the application's validated training tools are exposed, with bounded tool rounds, read-only scheduled coaching, and idempotent writes. Provider credentials never reach the browser.
 
@@ -32,18 +32,17 @@ The VM's bot protection must be **off** for authenticated API/MCP/Worker traffic
 
 The connected athlete's 50 historical activities currently return Intervals' restriction: `STRAVA activities are not available via the API`. Planned events, wellness/fitness history and the aggregate running pace curve are accessible. Individual activity details, interval comparisons, per-sport loads and zones cannot be manufactured from restricted records. Connect Garmin directly to Intervals or upload original activity files there to make future detailed data available. The app does not bypass Strava's restriction.
 
-Cloudflare's CLI currently reports **not authenticated**. Consequently the Worker is implemented/tested but **not deployed**; VM scheduling/Telegram polling is the operational fallback. The VM must remain awake in this mode. Cloudflare Access is not provisioned; the dashboard's own authenticated session is the active protection.
+Cloudflare's CLI currently reports **not authenticated**. Consequently the Worker is implemented/tested but **not deployed**; VM scheduling is the operational fallback. The VM must remain awake in this mode. Cloudflare Access is not provisioned; the dashboard's own authenticated session is the active protection.
 
 ## Cloudflare cutover
 
 1. Authenticate the account: `cd worker && npx wrangler login`.
 2. From the project root run `python3 deploy/publish-worker.py`. It creates/reuses KV and uploads only required Worker secrets via stdin, not command-line arguments.
 3. Verify the returned Worker URL's `/health`; run `npm test` in `worker/`.
-4. Stop the VM polling relay before configuring Telegram's webhook. Set the webhook to `https://<deployed-worker>/telegram` with the matching `TELEGRAM_WEBHOOK_SECRET`. Preserve pending updates (`drop_pending_updates=false`). Do not run polling and webhooks simultaneously.
-5. Verify a real bot reply and an authenticated Worker-to-box job. The backend's persistent job keys deduplicate overlap across the fallback and Worker.
-6. Disable the fallback service. Then configure `boxd machine config set coach-reachy auto-suspend.timeout 300`. Keep auto-hibernate off until cold-start behavior is verified. Incoming HTTP wake-up has been verified with boxd bot protection disabled.
+4. Verify an authenticated Worker-to-box job. The backend's persistent job keys deduplicate overlap across the fallback and Worker.
+5. Disable the fallback service. Then configure `boxd machine config set coach-reachy auto-suspend.timeout 300`. Keep auto-hibernate off until cold-start behavior is verified. Incoming HTTP wake-up has been verified with boxd bot protection disabled.
 
-Never enable sleep while relying on in-VM cron/long polling: sleeping clocks cannot execute scheduled jobs.
+Never enable sleep while relying on in-VM cron scheduling: sleeping clocks cannot execute scheduled jobs.
 
 ## Development and verification
 

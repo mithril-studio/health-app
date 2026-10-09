@@ -48,7 +48,7 @@ async def test_agent_loop_is_bounded_and_scheduled_writes_rejected(store):
         )
 
     settings = Settings(_env_file=None, openrouter_api_key="fake", agent_max_rounds=2)
-    service = ToolService(store, WritableSource(), telegram_configured=True)
+    service = ToolService(store, WritableSource())
     async with httpx.AsyncClient(transport=httpx.MockTransport(remote)) as client:
         agent = Agent(settings, store, service, client)
         reply = await agent.respond("suggest adjustments", key="job1", read_only=True)

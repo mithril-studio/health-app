@@ -34,7 +34,7 @@ class WritableSource(Source):
 @pytest.fixture
 async def tool_service(store):
     source = WritableSource()
-    return ToolService(store, source, telegram_configured=True)
+    return ToolService(store, source)
 
 
 async def test_delete_request_never_deletes_and_confirmation_only_once(tool_service, store):
@@ -47,7 +47,8 @@ async def test_delete_request_never_deletes_and_confirmation_only_once(tool_serv
     assert all(r["status"] == "done" for r in results)
     assert [r[0] for r in tool_service.source.calls] == ["DELETE"]
     assert len(await store.query("SELECT * FROM write_audit")) == 2
-    assert len(await store.query("SELECT * FROM work_items WHERE kind='notification'")) == 1
+    # Writes reach Intervals directly now; no notification is queued.
+    assert await store.query("SELECT * FROM work_items WHERE kind='notification'") == []
 
 
 async def test_delete_expiry_and_changed_event_require_new_confirmation(tool_service, store):

@@ -12,39 +12,31 @@ from ops.relay import main, run
 
 
 class ProcessTests(unittest.IsolatedAsyncioTestCase):
-    async def test_once_performs_one_nonblocking_poll_and_scheduler_pass(self):
+    async def test_once_performs_one_scheduler_pass(self):
         relay = type('FakeRelay', (), {})()
         relay.start = AsyncMock()
         relay.scheduler_step = AsyncMock()
-        relay.telegram_step = AsyncMock()
         await run(relay, once=True)
         relay.start.assert_awaited_once()
-        relay.scheduler_step.assert_awaited_once()
-        relay.telegram_step.assert_awaited_once_with(timeout=0)
+        relay.scheduler_step.assert_awaited_once_with()
 
-    async def test_scheduler_continues_while_telegram_is_slow_and_stop_cancels(self):
+    async def test_scheduler_loop_runs_until_stop_cancels(self):
         stop = asyncio.Event()
-        telegram_entered = asyncio.Event()
-        scheduler_ran = asyncio.Event()
+        scheduler_entered = asyncio.Event()
         cancelled = asyncio.Event()
 
-        async def telegram_step():
-            telegram_entered.set()
+        async def scheduler_step():
+            scheduler_entered.set()
             try:
                 await asyncio.Event().wait()
             finally:
                 cancelled.set()
 
-        async def scheduler_step():
-            await telegram_entered.wait()
-            scheduler_ran.set()
-
         relay = type('FakeRelay', (), {})()
         relay.start = AsyncMock()
         relay.scheduler_step = scheduler_step
-        relay.telegram_step = telegram_step
         task = asyncio.create_task(run(relay, stop=stop))
-        await asyncio.wait_for(scheduler_ran.wait(), 1)
+        await asyncio.wait_for(scheduler_entered.wait(), 1)
         stop.set()
         await asyncio.wait_for(task, 1)
         self.assertTrue(cancelled.is_set())

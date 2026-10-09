@@ -34,6 +34,16 @@
   min-height: 0;
   padding: 12px;
 }
+.conversation-pinned {
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.conversation-pinned .conversation-item {
+  margin-bottom: 0;
+  color: var(--foreground);
+  font-weight: 550;
+}
 .conversation-item {
   border: 0;
   background: transparent;

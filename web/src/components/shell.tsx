@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { TimerBanner } from "./workout-timer";
 import { SourceNotice } from "./source-notice";
-import { TelegramConnection } from "./telegram-connection";
 import { copy } from "@/lib/i18n";
 import { timestampLabel } from "@/lib/dates";
 import { useTraining } from "./workspace";
@@ -210,7 +209,6 @@ export function Shell({
                 aria-hidden="true"
               />
             </Button>
-            <TelegramConnection />
           </div>
         </header>
         <div

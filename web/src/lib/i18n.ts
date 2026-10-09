@@ -407,22 +407,22 @@ export const en = {
     curveUnavailable:
       "The 5 km curve effort is unavailable. Showing eligible whole-run results only.",
   },
-  telegram: {
-    nav: "Telegram",
-    title: "Your coach, in Telegram",
-    detail:
-      "Morning at 08:30, evening at 21:00, and feedback after workouts. Amsterdam time.",
-    connected: "Connected to your private chat",
-    disconnected: "Link your own chat to enable reports and two-way coaching.",
-    checking: "Checking connection…",
-    connect: "Connect Telegram",
-    reconnect: "Link another chat",
-    connecting: "Creating secure link…",
-    open: "Open Coach Reachy in Telegram",
-    instruction:
-      "Open the link and press Start in Telegram. This one-time link expires after 10 minutes.",
-    refresh: "Check connection",
-    failed: "Could not load Telegram connection. Try again.",
+  reports: {
+    nav: "Reports",
+    title: "Reports",
+    subtitle: "Scheduled check-ins",
+    description: "Your scheduled check-ins, newest first.",
+    refresh: "Refresh reports",
+    loading: "Loading reports…",
+    failed: "Couldn’t load your reports.",
+    empty: "Reports arrive at 08:30, 21:00 and after workouts.",
+    history: "Scheduled reports",
+    kinds: {
+      morning: "Morning check",
+      evening: "Evening report",
+      activity: "Workout review",
+      report: "Report",
+    },
   },
   notFound: {
     title: "This route is off the plan.",

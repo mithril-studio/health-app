@@ -2437,10 +2437,6 @@ td {
   border-top: 1px solid var(--border);
   margin: 1rem 0;
 }
-.telegram-topbar {
-  gap: 0.5rem;
-  white-space: nowrap;
-}
 .user .message-text {
   background: var(--muted);
   padding: 12px 15px;

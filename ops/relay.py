@@ -1,4 +1,4 @@
-"""Coach Reachy's local scheduler and Telegram polling relay."""
+"""Coach Reachy's local scheduler relay."""
 from __future__ import annotations
 
 import fcntl
@@ -83,8 +83,12 @@ class State:
             CREATE TABLE IF NOT EXISTS seen_activities (id TEXT PRIMARY KEY, first_seen REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS retries (
                 name TEXT PRIMARY KEY, attempts INTEGER NOT NULL, next_attempt REAL NOT NULL);
-            CREATE TABLE IF NOT EXISTS inbox (update_id INTEGER PRIMARY KEY, payload TEXT);
         ''')
+        # One-time cleanup of the removed Telegram polling relay's state.
+        with self.db:
+            self.db.execute('DROP TABLE IF EXISTS inbox')
+            self.db.execute("DELETE FROM meta WHERE key='telegram_offset'")
+            self.db.execute("DELETE FROM retries WHERE name='telegram'")
 
     def close(self):
         self.db.close()
@@ -165,47 +169,6 @@ class State:
         with self.db:
             self.db.execute('DELETE FROM retries WHERE name=?', (name,))
 
-    @property
-    def offset(self):
-        return int(self.get('telegram_offset', 0))
-
-    def save_updates(self, updates, chat_id):
-        with self.db:
-            for update in updates:
-                if update['update_id'] >= self.offset:
-                    # Persist authorized input for outages beyond Telegram's retention;
-                    # unwanted updates retain only an ID, never someone else's message.
-                    payload = json.dumps(update) if authorized_update(update, chat_id) else None
-                    self.db.execute('INSERT OR IGNORE INTO inbox VALUES (?, ?)',
-                                    (update['update_id'], payload))
-
-    def pending_updates(self):
-        return self.db.execute('SELECT * FROM inbox ORDER BY update_id').fetchall()
-
-    def acknowledge(self, update_id):
-        with self.db:
-            self._set('telegram_offset', max(self.offset, update_id + 1))
-            self.db.execute('DELETE FROM inbox WHERE update_id=?', (update_id,))
-
-
-def authorized_update(update, chat_id):
-    message = update.get('message')
-    if not isinstance(message, dict):
-        return False
-    chat = message.get('chat')
-    return (chat_id is not None and isinstance(chat, dict) and chat.get('type') == 'private'
-            and str(chat.get('id')) == str(chat_id) and isinstance(message.get('text'), str))
-
-
-def pairing_update(update):
-    message = update.get('message')
-    if not isinstance(message, dict):
-        return False
-    chat, text = message.get('chat'), message.get('text')
-    return (isinstance(chat, dict) and chat.get('type') == 'private'
-            and type(chat.get('id')) is int and chat['id'] > 0
-            and isinstance(text, str) and text.startswith('/start '))
-
 
 class StartupRefused(Exception):
     """A safe operator-facing reason; never include remote bodies or URLs."""
@@ -217,8 +180,6 @@ class RemoteFailure(Exception):
 
 class Config:
     def __init__(self, env):
-        self.token = env['TELEGRAM_BOT_TOKEN']
-        self.chat_id = env.get('TELEGRAM_CHAT_ID', '')
         self.shared_secret = env['BOX_SHARED_SECRET']
         self.intervals_key = env['INTERVALS_API_KEY']
         self.athlete_id = env['INTERVALS_ATHLETE_ID']
@@ -226,17 +187,9 @@ class Config:
 
     @classmethod
     def from_env(cls, env):
-        import re
-        if env.get('TELEGRAM_TRANSPORT') != 'polling':
-            raise StartupRefused('TELEGRAM_TRANSPORT must be polling')
-        required = ['TELEGRAM_BOT_TOKEN', 'BOX_SHARED_SECRET',
-                    'INTERVALS_API_KEY', 'INTERVALS_ATHLETE_ID']
+        required = ['BOX_SHARED_SECRET', 'INTERVALS_API_KEY', 'INTERVALS_ATHLETE_ID']
         if any(not env.get(key, '').strip() for key in required):
             raise StartupRefused('required relay environment settings are missing')
-        if env.get('TELEGRAM_CHAT_ID') and not re.fullmatch(r'[1-9][0-9]*', env['TELEGRAM_CHAT_ID']):
-            raise StartupRefused('TELEGRAM_CHAT_ID must identify a private user chat')
-        if not re.fullmatch(r'[0-9]+:[A-Za-z0-9_-]+', env['TELEGRAM_BOT_TOKEN']):
-            raise StartupRefused('TELEGRAM_BOT_TOKEN has invalid format')
         start_date = env.get('RELAY_START_DATE')
         if start_date:
             try:
@@ -252,48 +205,22 @@ class Endpoints:
         self.config = config
         self.client = client
 
-    async def request(self, method, url, *, ignore_forbidden=False, **kwargs):
+    async def request(self, method, url, **kwargs):
         import httpx
         try:
             response = await self.client.request(method, url, follow_redirects=False, **kwargs)
-            if ignore_forbidden and response.status_code == 403:
-                return {'status': 'ignored'}
-            if response.status_code == 409 and url.startswith('https://api.telegram.org/'):
-                raise StartupRefused('Telegram polling conflict; stop competing transport before restart')
             response.raise_for_status()
             result = response.json()
         except (httpx.HTTPError, ValueError):
             raise RemoteFailure('remote request failed') from None
         return result
 
-    async def telegram(self, method, payload, timeout=30):
-        result = await self.request('POST', f'https://api.telegram.org/bot{self.config.token}/{method}',
-                                    json=payload, timeout=timeout)
-        if not isinstance(result, dict) or result.get('ok') is not True or 'result' not in result:
-            raise RemoteFailure('invalid Telegram response')
-        return result['result']
-
-    async def verify_polling(self):
-        info = await self.telegram('getWebhookInfo', {})
-        if not isinstance(info, dict) or not isinstance(info.get('url'), str):
-            raise RemoteFailure('invalid Telegram webhook response')
-        if info['url']:
-            raise StartupRefused('existing Telegram webhook detected; polling refused; webhook unchanged')
-
-    async def updates(self, offset, timeout):
-        result = await self.telegram('getUpdates', {'offset': offset, 'timeout': timeout,
-                                      'limit': 100, 'allowed_updates': ['message']}, timeout=timeout + 15)
-        if (not isinstance(result, list) or any(not isinstance(item, dict)
-                or type(item.get('update_id')) is not int or item['update_id'] < 0 for item in result)):
-            raise RemoteFailure('invalid Telegram updates')
-        return sorted(result, key=lambda item: item['update_id'])
-
     async def backend(self, path, payload):
-        # The backend generates the agent response and owns Telegram delivery.
-        # Replaying the same job key or update_id must be idempotent there.
+        # The backend generates and durably stores the agent report; replaying the same
+        # job key must be idempotent there.
         result = await self.request('POST', 'http://127.0.0.1:8001/api/internal/' + path,
                                     headers={'Authorization': f'Bearer {self.config.shared_secret}'},
-                                    json=payload, timeout=180, ignore_forbidden=path == 'telegram')
+                                    json=payload, timeout=180)
         if (not isinstance(result, dict) or result.get('ok') is False
                 or result.get('status') in ('retry', 'failed', 'error', 'processing', 'running', 'pending')):
             raise RemoteFailure('backend did not acknowledge work')
@@ -301,23 +228,6 @@ class Endpoints:
 
     async def job(self, payload):
         return await self.backend('job', payload)
-
-    async def forward_update(self, payload):
-        return await self.backend('telegram', payload)
-
-    async def target(self):
-        import re
-        result = await self.request('GET', 'http://127.0.0.1:8001/api/internal/telegram-target',
-                                    headers={'Authorization': f'Bearer {self.config.shared_secret}'},
-                                    timeout=20)
-        if not isinstance(result, dict) or 'chat_id' not in result:
-            raise RemoteFailure('invalid Telegram target response')
-        target = result['chat_id']
-        if target is None:
-            return None
-        if type(target) not in (str, int) or not re.fullmatch(r'[1-9][0-9]*', str(target)):
-            raise RemoteFailure('invalid Telegram target response')
-        return str(target)
 
     async def activities(self, now):
         from urllib.parse import quote
@@ -344,8 +254,6 @@ class Relay:
         self.started_at = None
 
     async def start(self):
-        # Refuse a webhook before initializing scheduling or forwarding anything.
-        await self.endpoints.verify_polling()
         self.started_at = self.state.initialize(self.clock())
 
     async def scheduler_step(self):
@@ -378,51 +286,13 @@ class Relay:
                 self.state.complete(row['key'])
                 logging.info('Backend job acknowledged')
 
-    async def telegram_step(self, timeout=30):
-        import logging
-        if not self.state.can_try('telegram', self.clock()):
-            return
-
-        async def drain():
-            for row in self.state.pending_updates():
-                if row['payload'] is not None:
-                    update = json.loads(row['payload'])
-                    # Never fall back to config or a cached target after lookup failure.
-                    target = await self.endpoints.target()
-                    if authorized_update(update, target):
-                        await self.endpoints.forward_update(update)
-                self.state.acknowledge(row['update_id'])
-
-        try:
-            if self.state.pending_updates():
-                await drain()
-            else:
-                updates = await self.endpoints.updates(self.state.offset, timeout)
-                while updates:
-                    # Pairing capabilities never enter the SQLite inbox. Process each
-                    # directly, then refresh authorization for the rest of this batch.
-                    split = next((i for i, item in enumerate(updates) if pairing_update(item)), len(updates))
-                    if split:
-                        target = await self.endpoints.target()
-                        self.state.save_updates(updates[:split], target)
-                        await drain()
-                    if split < len(updates):
-                        pairing = updates[split]
-                        await self.endpoints.forward_update(pairing)
-                        self.state.acknowledge(pairing['update_id'])
-                    updates = updates[split + 1:]
-            self.state.succeeded('telegram')
-        except RemoteFailure:
-            self.state.fail('telegram', self.clock())
-            logging.warning('Telegram relay failed; retry scheduled; offset preserved')
-
 
 def dry_run(path, now, start_date=None):
     """Offline inspection; never creates state, contacts providers, or acknowledges updates."""
     path = Path(path)
     started = now
     done = set()
-    pending_jobs = pending_updates = 0
+    pending_jobs = 0
     baseline = False
     if path.exists():
         db = sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True)
@@ -431,14 +301,13 @@ def dry_run(path, now, start_date=None):
             started = datetime.fromisoformat(meta.get('started_at', now.isoformat()))
             done = {row[0] for row in db.execute("SELECT key FROM jobs WHERE status='sent'")}
             pending_jobs = db.execute("SELECT count(*) FROM jobs WHERE status='pending'").fetchone()[0]
-            pending_updates = db.execute('SELECT count(*) FROM inbox').fetchone()[0]
             baseline = 'activities_initialized' in meta
         finally:
             db.close()
     return {'mode': 'dry-run', 'network': 'disabled', 'timezone': 'Europe/Amsterdam',
             'eligible_scheduled_jobs': [job['key'] for job in due_jobs(now, started, start_date)
                                         if job['key'] not in done],
-            'pending_jobs': pending_jobs, 'pending_telegram_updates': pending_updates,
+            'pending_jobs': pending_jobs,
             'activity_baseline_initialized': baseline}
 
 
@@ -447,7 +316,6 @@ async def run(relay, once=False, stop=None):
     await relay.start()
     if once:
         await relay.scheduler_step()
-        await relay.telegram_step(timeout=0)
         return
     stop = stop or asyncio.Event()
 
@@ -460,12 +328,11 @@ async def run(relay, once=False, stop=None):
                 pass
 
     tasks = [asyncio.create_task(loop(relay.scheduler_step, 30)),
-             asyncio.create_task(loop(relay.telegram_step, 1)),
              asyncio.create_task(stop.wait())]
     try:
         done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         for task in done:
-            task.result()  # Fatal transport conflicts must stop both loops.
+            task.result()  # Surface a fatal scheduler failure instead of hanging.
     finally:
         for task in tasks:
             task.cancel()
@@ -475,6 +342,7 @@ async def run(relay, once=False, stop=None):
 async def serve(config, state, once):
     import asyncio
     import signal
+
     import httpx
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -499,7 +367,7 @@ def main(argv=None):
     parser.add_argument('--dry-run', action='store_true', help='offline read-only plan; no API calls or state changes')
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
-    # HTTP debug/info records can contain the Telegram bot token in the URL.
+    # HTTP debug/info records can contain API keys in the request URL.
     for name in ('httpx', 'httpcore'):
         logging.getLogger(name).setLevel(logging.CRITICAL)
     try:

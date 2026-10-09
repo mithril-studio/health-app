@@ -8,10 +8,12 @@ import { chatMessages, type ChatMessage } from "@/lib/chat";
 import { record, text } from "@/lib/data";
 import { timestampLabel } from "@/lib/dates";
 import { copy } from "@/lib/i18n";
+import { REPORTS } from "@/lib/reports";
 import { useTraining } from "./workspace";
 import { Button, ErrorNotice, Mark, Skeleton } from "./ui";
 import { DeletionConfirmations } from "./deletion-confirmations";
 import { ChatMarkdown } from "./chat-markdown";
+import { Reports } from "./reports";
 type Attempt = { message: string; key: string };
 export function Coach() {
   const router = useRouter();
@@ -32,12 +34,16 @@ export function Coach() {
           busy={busy}
           version={version}
         />
-        <Conversation
-          key={conversationId}
-          conversationId={conversationId}
-          onBusyChange={setBusy}
-          onHistoryChange={changed}
-        />
+        {conversationId === REPORTS ? (
+          <Reports />
+        ) : (
+          <Conversation
+            key={conversationId}
+            conversationId={conversationId}
+            onBusyChange={setBusy}
+            onHistoryChange={changed}
+          />
+        )}
       </div>
     </>
   );

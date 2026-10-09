@@ -1,5 +1,5 @@
 [Unit]
-Description=Coach Reachy local scheduler and Telegram relay
+Description=Coach Reachy local scheduler relay
 Wants=network-online.target
 After=network-online.target
 StartLimitIntervalSec=0
