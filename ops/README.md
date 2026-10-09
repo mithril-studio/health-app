@@ -188,3 +188,9 @@ Fix the underlying conflict/configuration before an explicit service restart.
 For a Cloudflare cutover, stop this service first, preserve SQLite, then let the
 main agent establish the intended webhook and Worker schedule. Never remove an
 existing webhook automatically to make the fallback start.
+
+Weekly coaching is queued Sundays at 20:00 Europe/Amsterdam (DST-aware), in addition to
+morning/evening reports. Both the VM relay and Worker use `weekly:YYYY-MM-DD` keys;
+the backend deduplicates overlap and routes the request through the same read-only weekly
+brief as on-demand chat. The existing 20-minute Worker cron covers this slot. Changes
+require the normal deployment process; implementing this trigger does not deploy it.

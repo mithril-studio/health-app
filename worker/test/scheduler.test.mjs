@@ -22,3 +22,8 @@ test('telegram chat and sender shape are locked down',()=>{
  assert.equal(authorizedUpdate({message:{chat:{id:123,type:'group'},text:'hi'}},'123'),false);
  assert.equal(authorizedUpdate({edited_message:{chat:{id:123},text:'hi'}},'123'),false);
 });
+test('weekly Sunday review respects Amsterdam time and stable key',()=>{
+ assert.deepEqual(scheduledJob(new Date('2026-07-05T18:00:00Z')), {kind:'weekly',key:'weekly:2026-07-05'});
+ assert.deepEqual(scheduledJob(new Date('2026-12-06T19:00:00Z')), {kind:'weekly',key:'weekly:2026-12-06'});
+ assert.equal(scheduledJob(new Date('2026-07-06T18:00:00Z')),null);
+});

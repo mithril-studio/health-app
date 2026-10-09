@@ -162,7 +162,7 @@ class ChatInput(StrictModel):
 
 
 class JobInput(StrictModel):
-    kind: Literal["morning", "evening", "activity"]
+    kind: Literal["morning", "evening", "activity", "weekly"]
     key: Annotated[str, StringConstraints(min_length=1, max_length=200)]
     activity_id: Identifier | None = None
 

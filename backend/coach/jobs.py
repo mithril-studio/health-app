@@ -70,7 +70,10 @@ class Jobs:
             if row["kind"] == "write":
                 return await self.tools.execute_write(payload["operation_id"])
             if row["kind"] == "whoop_sync":
-                return await self.whoop.sync()
+                return {
+                    "status": "retired",
+                    "reason": "Direct WHOOP sync removed; retained history is unchanged",
+                }
             if row["kind"] == "sync":
                 result = await self.tools.sync.run()
                 return {
@@ -92,17 +95,22 @@ class Jobs:
             else:
                 kind = payload["kind"]
                 prompts = {
+                    "weekly": "Weekly review: past seven days planned versus completed and the upcoming week, considering confirmed goals, availability, accepted decisions and outcomes.",
                     "morning": "Morning check: today's HRV, sleep, resting HR and planned workout. Assess whether to proceed or suggest an adjustment, without making changes.",
                     "evening": "Evening report: today's load, recovery and tomorrow's planned session. Missing data must be stated, not estimated.",
                     "activity": "Post-workout review: compare planned versus done and measured interval pace against targets where present, then one improvement. State missing detail honestly.",
                 }
-                extra = (
-                    await self.tools.call("get_activity_analysis", {"id": payload["activity_id"]})
-                    if kind == "activity"
-                    else None
-                )
                 reply = await self.agent.respond(
-                    prompts[kind], key=key, channel="scheduled", read_only=True, extra=extra
+                    prompts[kind],
+                    key=key,
+                    channel="scheduled",
+                    read_only=True,
+                    mode="workout"
+                    if kind == "activity"
+                    else "weekly"
+                    if kind == "weekly"
+                    else "daily",
+                    activity_id=payload.get("activity_id"),
                 )
             # Durable outbox: a generated reply remains queued even if Telegram is down.
             await self.store.enqueue("reply:" + key, "notification", {"text": reply})
@@ -153,10 +161,6 @@ class Jobs:
                 now = datetime.now(ZoneInfo("Europe/Amsterdam"))
                 slot = int(now.timestamp()) // self.cfg.sync_interval_seconds
                 await self.store.enqueue(f"sync:{slot}", "sync", {})
-                if getattr(self, "whoop", None) and self.whoop.configured:
-                    await self.store.enqueue(
-                        f"whoop-sync:{int(now.timestamp()) // 1200}", "whoop_sync", {}
-                    )
                 self.wakeup.clear()
                 try:
                     await asyncio.wait_for(self.wakeup.wait(), timeout=5)
