@@ -45,7 +45,7 @@ export const workoutCopy = {
   start: "Started at",
   duration: "Duration (minutes)",
   notes: "Notes (optional)",
-  local: "Saved in Coach Reachy",
+  local: "Saved in Team-Endurance",
   logTitle: "Record a completed workout",
   logDescription:
     "Use the start time in your current device’s timezone. Sessions appear in the Amsterdam calendar.",
@@ -54,7 +54,7 @@ export const workoutCopy = {
   empty: "Your next small win starts here.",
   remove: "Remove session",
   removeTitle: "Remove this app session?",
-  removeDetail: "This removes the session from Coach Reachy and your calendar.",
+  removeDetail: "This removes the session from Team-Endurance and your calendar.",
   whoop: "WHOOP workouts",
   whoopDetail: "Optional import for workouts missing from Intervals.icu.",
   whoopWellness:

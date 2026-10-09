@@ -21,7 +21,7 @@ import { SourceNotice } from "./source-notice";
 import { copy } from "@/lib/i18n";
 import { timestampLabel } from "@/lib/dates";
 import { useTraining } from "./workspace";
-import { Button, ErrorNotice, Mark, Modal, cn } from "./ui";
+import { Button, ErrorNotice, Modal, Wordmark, cn } from "./ui";
 const nav = [
   { href: "/", key: "overview", Icon: LayoutDashboard },
   { href: "/coach", key: "coach", Icon: MessageCircle },
@@ -81,8 +81,7 @@ export function Shell({
           aria-label={copy.brand}
           onClick={() => setMobile(false)}
         >
-          <Mark />
-          <span>{copy.brand}</span>
+          <Wordmark />
         </Link>
         <Button
           className="desktop-toggle"

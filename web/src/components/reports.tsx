@@ -12,7 +12,7 @@ import { api, errorMessage } from "@/lib/api";
 import { timestampLabel } from "@/lib/dates";
 import { copy } from "@/lib/i18n";
 import { parseReports, type Report, type ReportKind } from "@/lib/reports";
-import { Button, ErrorNotice, Mark, Skeleton } from "./ui";
+import { Button, ErrorNotice, Monogram, Skeleton } from "./ui";
 import { ChatMarkdown } from "./chat-markdown";
 const kindIcon: Record<ReportKind, LucideIcon> = {
   morning: Sunrise,
@@ -45,7 +45,7 @@ export function Reports() {
       <div className="chat-topline">
         <div>
           <span className="coach-avatar">
-            <Mark />
+            <Monogram />
           </span>
           <span>
             <strong>{copy.reports.title}</strong>
@@ -97,7 +97,7 @@ export function Reports() {
         ) : (
           <div className="chat-welcome">
             <div className="welcome-mark">
-              <Mark />
+              <Monogram />
             </div>
             <h2>{copy.reports.title}</h2>
             <p>{copy.reports.empty}</p>

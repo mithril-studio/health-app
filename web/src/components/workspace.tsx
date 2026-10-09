@@ -22,7 +22,7 @@ import { copy } from "@/lib/i18n";
 import { Login, type SessionCheck } from "./login";
 import { Shell } from "./shell";
 import { WorkoutTimerProvider, useWorkoutTimer } from "./workout-timer";
-import { ErrorNotice, Mark, Skeleton, Button, Empty } from "./ui";
+import { ErrorNotice, Monogram, Skeleton, Spinner, Button, Empty } from "./ui";
 
 type Context = {
   data: Dashboard | null;
@@ -197,14 +197,14 @@ function WorkspaceSession({ children, theme, sidebarOpen }: WorkspaceProps) {
   if (auth === "checking")
     return (
       <div className="session-screen" role="status">
-        <Mark className="loading-mark" />
+        <Spinner className="session-spinner" />
         <p>{copy.common.checking}</p>
       </div>
     );
   if (auth === "error")
     return (
       <div className="session-screen">
-        <Mark />
+        <Monogram className="session-monogram" />
         <ErrorNotice message={authError} retry={() => void checkSession()} />
       </div>
     );

@@ -227,9 +227,23 @@ label {
 .button-ghost:hover {
   background: var(--muted);
 }
-.mark {
-  width: 30px;
-  height: 30px;
+.wordmark {
+  white-space: nowrap;
+}
+.wordmark-sep {
+  color: var(--primary);
+}
+.monogram {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+.spinner {
+  width: 24px;
+  height: 24px;
 }
 .brand {
   display: flex;
@@ -238,10 +252,6 @@ label {
   font-weight: 600;
   font-size: 17px;
   letter-spacing: -0.6px;
-}
-.brand .mark {
-  width: 29px;
-  height: 29px;
 }
 .app-shell {
   display: flex;
@@ -301,10 +311,6 @@ label {
 .sidebar .brand {
   font-size: 15px;
   gap: 8px;
-}
-.sidebar .brand .mark {
-  width: 24px;
-  height: 24px;
 }
 .sidebar-inner {
   width: 100%;
@@ -433,10 +439,6 @@ label {
   place-items: center;
   border-radius: var(--radius-sm);
   background: var(--secondary);
-}
-.avatar .mark {
-  width: 23px;
-  height: 23px;
 }
 .profile strong {
   display: block;
@@ -696,10 +698,6 @@ label {
   align-items: center;
   gap: 6px;
 }
-.page-footer .mark {
-  width: 16px;
-  height: 16px;
-}
 .footer-dot {
   margin: 0 5px;
 }
@@ -782,6 +780,19 @@ label {
   gap: 16px;
   color: var(--muted-foreground);
   padding: 24px;
+}
+.session-monogram {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 17px;
+}
+.session-spinner {
+  width: 30px;
+  height: 30px;
+  color: var(--primary);
 }
 .skeleton-layout {
   display: grid;
@@ -904,7 +915,7 @@ label {
   justify-content: space-between;
   min-height: 40px;
 }
-.login-submit .mark {
+.login-spinner {
   width: 18px;
   height: 18px;
 }
@@ -939,8 +950,7 @@ label {
   .sidebar {
     transition: width 0.2s ease;
   }
-  .spin,
-  .loading-mark {
+  .spin {
     animation: rotate 1.5s linear infinite;
   }
   .skeleton {
@@ -1272,10 +1282,6 @@ label {
   border-radius: var(--radius-xl);
   padding: 20px;
   flex: 1;
-}
-.coach-callout > .mark {
-  width: 25px;
-  height: 25px;
 }
 .coach-callout h2 {
   font-size: 14px;
@@ -2226,9 +2232,8 @@ td {
   display: grid;
   place-items: center;
 }
-.coach-avatar .mark {
-  width: 24px;
-  height: 24px;
+.coach-avatar .monogram {
+  font-size: 13px;
 }
 .chat-topline strong,
 .chat-topline small {
@@ -2263,6 +2268,9 @@ td {
   place-items: center;
   margin: 0 auto 20px;
   color: var(--primary);
+}
+.welcome-mark .monogram {
+  font-size: 22px;
 }
 .chat-welcome .eyebrow {
   font-size: 9px;
@@ -2320,9 +2328,8 @@ td {
   place-items: center;
   flex-shrink: 0;
 }
-.message-avatar .mark {
-  width: 21px;
-  height: 21px;
+.message-avatar .monogram {
+  font-size: 11px;
 }
 .user .message-avatar {
   background: var(--muted);
@@ -2449,9 +2456,7 @@ td {
   margin: 15px 0;
   color: var(--muted-foreground);
 }
-.thinking-state > .mark {
-  width: 24px;
-  height: 24px;
+.thinking-state > .spinner {
   color: var(--primary);
 }
 .thinking-state strong {

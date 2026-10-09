@@ -2,8 +2,7 @@
 import { workoutCopy } from "./workout-copy";
 export const en = {
   workouts: workoutCopy,
-  brand: "Coach Reachy",
-  brandShort: "Reachy",
+  brand: "Team-Endurance",
   scores: {
     title: "Zones & scores",
     description:
@@ -144,11 +143,11 @@ export const en = {
     submitting: "Signing in…",
     invalid: "That password didn’t work. Please try again.",
     cookieMissing:
-      "Your password was accepted, but no session cookie reached the server (COOKIE_MISSING). Allow site cookies and open https://coach-reachy.boxd.sh in a regular browser tab, not an embedded preview.",
+      "Your password was accepted, but no session cookie reached the server (COOKIE_MISSING). Allow cookies for this site and open it in a regular browser tab, not an embedded preview.",
     cookieRejected:
-      "Your password was accepted, but the browser sent an expired or unrecognized session cookie (COOKIE_REJECTED). Clear site data for coach-reachy.boxd.sh, reload, and sign in again.",
+      "Your password was accepted, but the browser sent an expired or unrecognized session cookie (COOKIE_REJECTED). Clear this site’s data, reload, and sign in again.",
     sessionMissing:
-      "Your password was accepted, but the sign-in session could not be verified. Allow cookies for coach-reachy.boxd.sh and open https://coach-reachy.boxd.sh directly, then try again.",
+      "Your password was accepted, but the sign-in session could not be verified. Allow cookies for this site and open it directly, then try again.",
     rateLimit:
       "Too many incorrect password attempts. Please wait up to 15 minutes before trying again.",
     footer: "A private connection to your Intervals.icu training.",
@@ -206,7 +205,7 @@ export const en = {
     rhythmDetail: "Planned and completed sessions · Amsterdam time",
     coachTitle: "A clearer next step.",
     coachText:
-      "Put your training in context. Ask Reachy about your week, recovery, or next session.",
+      "Put your training in context. Ask your coach about your week, recovery, or next session.",
     coachAction: "Talk to your coach",
     recovery: "Recovery",
     recoveryDetail: "Listen to the other half of training.",
@@ -344,12 +343,12 @@ export const en = {
     description: "A conversation grounded in your training.",
     welcome: "What’s on your mind?",
     intro:
-      "Talk through a session, make sense of your recovery, or shape the week ahead. Reachy works with your recorded training.",
+      "Talk through a session, make sense of your recovery, or shape the week ahead. Your coach works with your recorded training.",
     connected: "Training-aware conversation",
     input: "Message your coach",
     placeholder: "Ask about your training…",
     send: "Send message",
-    thinking: "Reachy is thinking through your training…",
+    thinking: "Your coach is thinking through your training…",
     thinkingDetail: "Checking the context before the next step.",
     error: "Your coach couldn’t finish this response.",
     retry: "Retry response",
@@ -358,7 +357,7 @@ export const en = {
     historyError: "Couldn’t load your conversation.",
     footer: "Grounded in your data. Built around your goals.",
     you: "You",
-    name: "Reachy",
+    name: "Coach",
     history: "Training conversation",
     chips: [
       "How should I approach today’s session?",

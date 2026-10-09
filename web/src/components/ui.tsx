@@ -16,6 +16,7 @@ import {
   X,
   ArrowUpRight,
   AlertCircle,
+  LoaderCircle,
 } from "lucide-react";
 import { copy } from "@/lib/i18n";
 import type { Sport } from "@/lib/data";
@@ -52,22 +53,23 @@ export function Button({
     />
   );
 }
-export function Mark({ className }: { className?: string }) {
+export function Wordmark({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 32 32"
-      fill="none"
-      className={cn("mark", className)}
-      aria-hidden="true"
-    >
-      <path
-        d="M6 23V9h8.5a6 6 0 0 1 0 12H12m2-6 12 12M20 5h7v7"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <span className={cn("wordmark", className)}>
+      Team<span className="wordmark-sep">-</span>Endurance
+    </span>
+  );
+}
+export function Monogram({ className }: { className?: string }) {
+  return (
+    <span className={cn("monogram", className)} aria-hidden="true">
+      TE
+    </span>
+  );
+}
+export function Spinner({ className }: { className?: string }) {
+  return (
+    <LoaderCircle className={cn("spinner spin", className)} aria-hidden="true" />
   );
 }
 export function Card({ className, ...props }: ComponentProps<"section">) {

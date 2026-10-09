@@ -10,7 +10,7 @@ import { timestampLabel } from "@/lib/dates";
 import { copy } from "@/lib/i18n";
 import { REPORTS } from "@/lib/reports";
 import { useTraining } from "./workspace";
-import { Button, ErrorNotice, Mark, Skeleton } from "./ui";
+import { Button, ErrorNotice, Monogram, Skeleton, Spinner } from "./ui";
 import { DeletionConfirmations } from "./deletion-confirmations";
 import { ChatMarkdown } from "./chat-markdown";
 import { Reports } from "./reports";
@@ -165,7 +165,7 @@ function Conversation({
         <div className="chat-topline">
           <div>
             <span className="coach-avatar">
-              <Mark />
+              <Monogram />
             </span>
             <span>
               <strong>{copy.coach.name}</strong>
@@ -207,7 +207,7 @@ function Conversation({
               >
                 <div className="message-avatar">
                   {message.role === "assistant" ? (
-                    <Mark />
+                    <Monogram />
                   ) : (
                     <MessageCircle size={16} aria-hidden="true" />
                   )}
@@ -238,7 +238,7 @@ function Conversation({
           ) : (
             <div className="chat-welcome">
               <div className="welcome-mark">
-                <Mark />
+                <Monogram />
               </div>
               <h2>{copy.coach.welcome}</h2>
               <div className="advice-chips">
@@ -259,7 +259,7 @@ function Conversation({
           )}
           {busy && (
             <div className="thinking-state" role="status">
-              <Mark className="loading-mark" />
+              <Spinner className="thinking-spinner" />
               <div>
                 <strong>{copy.coach.thinking}</strong>
               </div>

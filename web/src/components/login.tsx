@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import { ArrowRight, LockKeyhole, ArrowUpRight } from "lucide-react";
 import { api, ApiError, errorMessage } from "@/lib/api";
 import { copy } from "@/lib/i18n";
-import { Button, ErrorNotice, Mark } from "./ui";
+import { Button, ErrorNotice, Spinner, Wordmark } from "./ui";
 export type SessionCheck = {
   authenticated: boolean;
   cookie_received?: boolean;
@@ -52,9 +52,8 @@ export function Login({ onLogin }: { onLogin: () => Promise<SessionCheck> }) {
   return (
     <main className="login-page">
       <div className="login-art">
-        <a href="/" className="brand">
-          <Mark />
-          <span>{copy.brand}</span>
+        <a href="/" className="brand" aria-label={copy.brand}>
+          <Wordmark />
         </a>
         <div className="track-art" aria-hidden="true">
           <div />
@@ -72,9 +71,8 @@ export function Login({ onLogin }: { onLogin: () => Promise<SessionCheck> }) {
         </div>
       </div>
       <div className="login-panel">
-        <div className="login-mobile-brand brand">
-          <Mark />
-          <span>{copy.brand}</span>
+        <div className="login-mobile-brand brand" aria-label={copy.brand}>
+          <Wordmark />
         </div>
         <div className="login-form-wrap">
           <p className="eyebrow">{copy.login.eyebrow}</p>
@@ -107,7 +105,7 @@ export function Login({ onLogin }: { onLogin: () => Promise<SessionCheck> }) {
             <Button type="submit" disabled={busy} className="login-submit">
               {busy ? copy.login.submitting : copy.login.submit}
               {busy ? (
-                <Mark className="loading-mark" />
+                <Spinner className="login-spinner" />
               ) : (
                 <ArrowRight size={16} aria-hidden="true" />
               )}
