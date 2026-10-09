@@ -48,8 +48,10 @@ async def test_analysis_uses_intervals_threshold_without_reading_app_scores():
             return {
                 "activities": {"id": id, "type": "Run", "elapsed_time": 10},
                 "activity_intervals": [],
-                "activity_streams": [{"type": "time", "data": [0, 10]},
-                                     {"type": "heartrate", "data": [170, 170]}],
+                "activity_streams": [
+                    {"type": "time", "data": [0, 10]},
+                    {"type": "heartrate", "data": [170, 170]},
+                ],
             }[table]
 
         async def settings(self):
@@ -59,6 +61,10 @@ async def test_analysis_uses_intervals_threshold_without_reading_app_scores():
             return []
 
     result = await ToolService(Store(), None).call("get_activity_analysis", {"id": "a"})
-    assert result["threshold"] == {"bpm": 175, "source": "current_sport_settings.lthr", "is_proxy": True}
+    assert result["threshold"] == {
+        "bpm": 175,
+        "source": "current_sport_settings.lthr",
+        "is_proxy": True,
+    }
     assert result["session"]["above_lt2_seconds"] == 0
     assert "personal_hr_zones" not in result
