@@ -146,17 +146,6 @@ class ToolService:
                 body = {"start_date_local": f"{args.date}T{time}"}
             else:
                 body = {k: v for k, v in values.items() if k in ("name", "description")}
-        elif name == "update_zones":
-            settings = await self.store.settings()
-            if args.sport not in settings:
-                for row in await self.source.settings():
-                    await self.store.put("sport_settings", row["id"], row)
-                settings = await self.store.settings()
-            setting = settings.get(args.sport)
-            if not setting:
-                raise ToolError("No matching sport settings exist", 404)
-            path = f"sport-settings/{setting['id']}"
-            body = {k: v for k, v in values.items() if k != "sport"}
         await self.prepare_write(operation_id, name, values, method, path, body)
         return await self.execute_write(operation_id)
 
@@ -292,6 +281,12 @@ class ToolService:
             row = await self.store.query(
                 "SELECT * FROM write_operations WHERE id=%s", (id,), one=True, conn=conn
             )
+            if row["name"] == "update_zones":
+                await conn.execute(
+                    "UPDATE write_operations SET status='rejected',error='retired_tool',updated_at=now() WHERE id=%s",
+                    (id,),
+                )
+                return {"status": "retired", "reason": "Manage zones in Intervals.icu"}
             if row["status"] == "done":
                 return row["result"]
             if row["status"] == "pending":
@@ -339,13 +334,7 @@ class ToolService:
                     "Intervals rejected the write; review the request before trying again", 422
                 )
             # A refresh failure must never reapply an already committed remote write.
-            if row["name"] == "update_zones":
-                settings = await self.source.settings()
-                async with conn.transaction():
-                    await conn.execute("DELETE FROM sport_settings")
-                    for setting in settings:
-                        await self.store.put("sport_settings", setting["id"], setting, conn=conn)
-            elif row["method"] == "DELETE":
+            if row["method"] == "DELETE":
                 await conn.execute("DELETE FROM events WHERE id=%s", (row["args"]["id"],))
             else:
                 event_id = row["result"].get("id") or row["args"].get("id")

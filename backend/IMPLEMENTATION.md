@@ -18,7 +18,7 @@ Use independent `APP_PASSWORD`, `API_AUTH_TOKEN` (optional), `MCP_AUTH_TOKEN`, a
 
 ## Agent data reach
 
-- The cache holds twelve months of activities, wellness and fitness plus planned events twelve months ahead. Every chat attaches the last seven days of calendar and wellness, sport settings, manually saved athlete scores, sync status and four weekly totals (`recent_weeks`).
+- The cache holds twelve months of activities, wellness and fitness plus planned events twelve months ahead. Every chat attaches a deterministic task brief with recent activities/wellness, read-only Intervals sport settings, confirmed athlete profile, coaching records, freshness and four-week totals.
 - `get_training_summary(oldest, newest, group_by=week|month)` aggregates any cached range (up to 730 days): sessions, distance, time and load per sport, wellness averages, end-of-period CTL/ATL/form and `missing_load`. Only recorded values are summed.
 - `get_calendar` and `get_wellness` return training-relevant fields (see `analytics.COMPACT_FIELDS`), so a full year of wellness is about 55 KB. One tool result may use `AGENT_RESULT_CHARS` characters (default 80000); larger results tell the model the data exists and to summarise or narrow the range.
 
@@ -40,67 +40,56 @@ Additional endpoints:
 - `POST /api/confirmations/{token}/confirm`: **user session + matching Origin only**. No body or model-supplied approval flag. Opaque token expires after 10 minutes; changed workouts require a fresh confirmation. The model never receives this capability. Concurrent confirmations produce one remote deletion.
 - `GET /api/jobs`: protected status of pending/retrying work and agent configuration; no payloads or credentials.
 - `GET /api/chat` includes the contract `messages` plus `agent` configuration status. Optional `conversation_id` (also accepted by POST) selects an existing browser thread; IDs cannot select Telegram/scheduled channels. `/api/conversations` lists the 100 most recently updated threads (GET) or creates one (POST). Migration 005 preserves the original `web` channel and adds a conversation catalog and message lookup index. No old messages are rewritten. Titles derive from the first user message, and each thread retains the existing 50-message history window and isolated 12-message agent context. Dashboard `insights.agent` also exposes configuration status.
-- `Idempotency-Key` is supported for `POST /api/chat` and `POST /api/tools/{name}`; clients should reuse the same key only for identical requests.
+- `Idempotency-Key` is supported for `POST /api/chat` and `POST /api/tools/{name}`; clients should reuse the same key only for identical requests. Chat compares persisted task identity (mode, activity ID and read-only scope) as well as message/channel; mismatches return 409. Task metadata uses a private non-conversation channel in the existing message table, requiring no migration.
 - Worker POST routes return **202** after durable enqueue. `key` and Telegram `update_id` are persisted before acknowledgment. A process crash or VM restart resumes unfinished rows. All non-2xx worker responses should be retried upstream with the original stable key.
 
 Raw Intervals records are retained, except credential-named fields are removed defensively. `settings` maps sport name to the raw matching sport-settings object. Fitness is strictly wellness CTL/ATL with `form = ctl - atl`; unknown measurements remain null. Threshold pace units are **metres/second**. Curves return the upstream raw `{list,activities}` structure. Run pace-curve `values` are **seconds at each `distance`**, not pace or speed; an exact 5000 m curve point is a measured best effort. No whole-run 5 km estimate is fabricated.
 
-### Coach workout reviews and context
+### Single-coach task briefs
 
-`get_activity_analysis(id, lt2_hr?, offset=0, limit=30)` returns compact individual intervals,
-including measured average HR, pace in seconds/km, and seconds strictly above the threshold.
-It reads the existing lazy interval/stream caches; raw activity and stream HTTP endpoints
-retain their original response shapes. Follow `next_offset` until null to load all intervals.
-Grouped interval averages are never expanded into fabricated reps. Scheduled post-workout
-reviews also receive this analysis rather than the raw activity payload.
-Analysis includes explicitly paired cached workouts (even if their dates differ). Long
-paired descriptions reduce the interval page size automatically so they cannot evict
-the individual sets from the normal tool budget. Agent calls to the legacy raw activity
-tool receive a compact summary and a pointer to the analysis tool.
+`POST /api/chat` preserves message/conversation fields and adds `mode` (`chat` default,
+`workout`, `daily`, `weekly`) and `activity_id` (required for workout, validated with the
+existing activity identifier constraints). Explicit advice modes are read-only. Generic chat
+retains historical read tools and explicitly requested workout mutations. Zone-write tools
+are retired from REST/model/MCP; current Intervals settings remain readable.
 
-Threshold precedence is explicit user-supplied LT2, saved personal running LT2, activity `lthr`, then current matching
-sport-settings `lthr`. The latter two are labeled LTHR proxies, with their provenance.
-Durations use recorded time deltas and the HR at each interval's left timestamp, clipped
-to session/interval bounds. Values equal to the threshold are excluded. Missing HR,
-gaps longer than ten seconds and the unrecorded tail are excluded; incomplete coverage
-is labeled as a measured subtotal. Missing thresholds or streams produce null, not zero.
-This measures time above a heart-rate threshold, not time at VO2max. Field names follow
-the official [Intervals API schema](https://intervals.icu/api/v1/docs).
+All modes use `briefs.build_brief` and the agreed `Store.athlete_profile()` and
+`Store.coaching_records()` interfaces. No profile or coaching record is written by chat.
+Confirmed goals/availability replace hardcoded personal assumptions. Proposed, accepted,
+dismissed and completed records remain separate. Profile, records and descriptions are
+untrusted evidence, never permission instructions. Profile plan_context is user-stated
+purpose, not proof of a paired calendar event.
 
-Each coach turn starts with up to 12 messages from its own channel/conversation, the
-calendar from seven days ago through two days ahead, wellness from seven days ago through
-today, sport settings, saved personal scores and sync status. The system prompt contains the 5 km sub-18/sub-17
-goals and Mon/Tue/Thu/Sun running schedule plus football/gym. There is no cross-conversation
-athlete conversation memory. Manually saved scores and zones are shared across chats.
-Older cached records require explicit tool queries. The coach uses a
-15,000-character history budget: newest messages are retained in order, and very long
-messages preserve their beginning/end with an explicit omission marker. Context includes
-the count of included and budget-omitted messages; an oversized history is no longer
-discarded wholesale when it exceeds the history budget.
+Workout briefs load selected activity analysis and interval pages (up to 20 pages and an
+18,000-character interval budget). Coverage includes loaded/total counts and continuation;
+partial evidence never claims a full review. Paired plan descriptions, supported structured
+aggregate targets (duration/distance/load), athlete feedback, recent activities across sports
+and up to five prior same-sport duration comparables from 90 days are included. Targets are
+never manufactured from titles or free text. Missing pairing, HR and thresholds are explicit.
+The underlying analysis still supports pagination beyond the brief cap through read tools.
 
-Coach calendar/wellness inputs are projected to relevant fields in the OpenRouter loop and scoped MCP calls.
-Oversized context sections are marked as omitted independently, preserving other sections
-such as thresholds. The API tool-result budget remains 20,000 characters; compact analysis
-pages avoid passing raw telemetry to the model. Review instructions prioritize per-set
-execution and threshold time, suppress routine metadata and prohibit unsupported claims
-about rep progression or cooldown identity. Production response quality still requires
-reviewing an actual coach turn; mocked-provider tests verify evidence delivery and calculations.
+Threshold precedence is explicit user-supplied LT2, recorded activity LTHR, then current
+Intervals sport LTHR. Both LTHR sources are labelled proxies, not measured LT2. Current
+settings do not establish a dated historical threshold; HR-zone boundaries never establish
+LT1/LT2. Duration above threshold uses recorded timestamp deltas and left HR samples,
+excluding gaps over ten seconds and unrecorded tails. Unknown remains null; measured zero
+remains zero. This measures time above an HR threshold, not time at VO2max.
 
-`Settings > Zones & scores` lets the athlete save, edit and clear running LT1/LT2 heart rates
-(integer bpm, 30–250) and VO2max (ml/kg/min, 5–100). Both thresholds must be ordered when
-present. `GET /api/athlete-scores` reads the current values; authenticated
-`POST /api/athlete-scores` replaces all three, with null clearing an individual value.
-Migration 007 stores these independently of Intervals, so sync cannot overwrite them.
-These are current benchmarks, not a dated test history. Running LT2 takes precedence over
-LTHR for Run, TrailRun and VirtualRun, but does not change cycling analysis or upstream
-zones. Every new coach turn receives all three scores; the coach has no tool to edit them.
-Migration 008 adds optional personal running `hr_zones`: exactly five Z1–Z5 objects with
-inclusive integer `min_bpm`/`max_bpm` limits (30–250), consecutive without overlaps or gaps.
-Submitting null clears zones; omitting the field preserves them for older clients.
-Workout analysis calculates time in these personal zones from recorded HR/time streams,
-reports samples outside the configured ranges and marks partial coverage. It never
-relabels the upstream zone totals or infers LT1/LT2 from a zone boundary. The existing
-dashboard zone charts still display upstream zone totals.
+Daily briefs prioritize today's plan plus recent workload, wellness and feedback. Weekly
+briefs include the past seven days, recorded plan pairings and the upcoming seven days,
+with goals/availability and accepted decisions/outcomes in shared context. Both schedulers
+queue weekly reviews Sunday at 20:00 Europe/Amsterdam. Morning/evening use daily mode;
+activity jobs use workout mode with the selected ID. All scheduled coaching stays read-only.
+Old WHOOP sync jobs complete as retired without upstream calls; retained history still
+participates in calendar and summary deduplication. These changes are not deployed.
+
+Conversation history remains isolated (latest 12 messages, 15,000-character budget).
+Brief sections have explicit evidence budgets and omission markers, preserving selected
+workout evidence without dumping raw telemetry. Longer history remains available through
+existing date-range tools. Summaries use the calendar's combined activity source and report
+missing observations, provenance and cache freshness. No live paid LLM evaluation was run:
+tests use representative synthetic evidence and mocked provider responses; no user-supplied
+bad-conversation examples were available for response-quality evaluation.
 
 ## Persistence and retries
 

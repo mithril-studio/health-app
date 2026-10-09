@@ -117,30 +117,6 @@ class UpdateInput(DeleteInput):
         return self
 
 
-class ZonesInput(StrictModel):
-    sport: Sport
-    # Intervals uses metres/second, NOT min/km, for threshold_pace.
-    threshold_pace: Annotated[float, Field(strict=True, gt=0, le=15)] | None = None
-    ftp: Annotated[int, Field(strict=True, ge=30, le=1000)] | None = None
-    hr_zones: (
-        Annotated[
-            list[Annotated[int, Field(strict=True, ge=30, le=250)]],
-            Field(min_length=2, max_length=10),
-        ]
-        | None
-    ) = None
-
-    @model_validator(mode="after")
-    def valid_patch(self):
-        if all(v is None for v in (self.threshold_pace, self.ftp, self.hr_zones)):
-            raise ValueError("provide at least one setting")
-        if self.hr_zones and any(
-            a >= b for a, b in zip(self.hr_zones, self.hr_zones[1:], strict=False)
-        ):
-            raise ValueError("heart rate zones must increase strictly")
-        return self
-
-
 class LoginInput(StrictModel):
     password: Annotated[str, Field(min_length=1, max_length=1024)]
 
@@ -185,7 +161,6 @@ TOOL_MODELS = {
     "move_workout": MoveInput,
     "update_workout": UpdateInput,
     "delete_workout": DeleteInput,
-    "update_zones": ZonesInput,
 }
 READ_TOOLS = frozenset(name for name in TOOL_MODELS if name.startswith("get_"))
 TOOL_DESCRIPTIONS = {
@@ -206,8 +181,6 @@ TOOL_DESCRIPTIONS = {
     "move_workout": "Move an existing planned workout to a local date, preserving its time.",
     "update_workout": "Update only the name or description of an existing planned workout.",
     "delete_workout": "Request deletion; the user must confirm separately in the web app.",
-    "update_zones": "Update sport settings. threshold_pace is METRES PER SECOND; ftp watts; "
-    "hr_zones are increasing BPM upper boundaries.",
 }
 
 

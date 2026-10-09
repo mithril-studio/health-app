@@ -6,8 +6,7 @@ import logging
 import httpx
 
 from coach.briefs import build_brief
-from coach.models import ActivityInput
-from coach.models import READ_TOOLS, TOOL_DESCRIPTIONS, TOOL_MODELS
+from coach.models import READ_TOOLS, TOOL_DESCRIPTIONS, TOOL_MODELS, ActivityInput
 from coach.tools import ToolError
 from coach.workout import coach_result
 
@@ -29,7 +28,8 @@ never expand grouped averages into invented reps. State partial interval or HR c
 Activity LTHR is an activity-specific recorded LT2 proxy; current Intervals sport settings are
 current proxies, not dated historical tests. User-supplied LT2 overrides are labelled explicitly.
 Time strictly above an HR threshold is not time at VO2max. Threshold pace is metres/second.
-Intervals owns sport settings. App sessions are user recorded; retained WHOOP history uses elapsed
+Intervals owns sport settings; manage zones there. Never infer LT1/LT2 from HR-zone boundaries.
+App sessions are user recorded; retained WHOOP history uses elapsed
 session_duration, and WHOOP strain is not Intervals load. All sports contribute workload context.
 Use wellness trends, workload and subjective feedback together. Never automatically adjust
 training solely from a single HRV result. No medical diagnoses. Be concise about uncertainty.

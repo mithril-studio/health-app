@@ -205,3 +205,20 @@ async def test_pending_confirmation_key_cannot_change_target(tool_service):
     await tool_service.call("delete_workout", {"id": "21"}, operation_key="fixed")
     with pytest.raises(ToolError):
         await tool_service.call("delete_workout", {"id": "22"}, operation_key="fixed")
+
+
+async def test_old_queued_zone_write_is_retired_without_upstream_call(tool_service, store):
+    await tool_service.prepare_write(
+        "old-zone",
+        "update_zones",
+        {"sport": "Run", "ftp": 250},
+        "PUT",
+        "sport-settings/1",
+        {"ftp": 250},
+    )
+    result = await tool_service.execute_write("old-zone")
+    assert result["status"] == "retired"
+    assert tool_service.source.calls == []
+    assert (await store.query("SELECT status FROM write_operations WHERE id='old-zone'", one=True))[
+        "status"
+    ] == "rejected"
