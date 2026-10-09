@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     agent_max_tokens: int = Field(default=8192, ge=256, le=32768)
     agent_max_rounds: int = Field(default=6, ge=1, le=10)
     agent_max_tools: int = Field(default=16, ge=1, le=30)
+    # Characters of one tool result handed to the model; larger results ask for a narrower
+    # range or the summary tool instead of being silently truncated.
+    agent_result_chars: int = Field(default=80000, ge=5000, le=400000)
     sync_interval_seconds: int = Field(default=300, ge=30)
     background_enabled: bool = True
 
