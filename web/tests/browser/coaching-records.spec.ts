@@ -132,3 +132,47 @@ test("proposed and accepted records can be dismissed explicitly", async ({
   await page.getByRole("button", { name: "Dismiss", exact: true }).click();
   await expect(page.getByText("Dismissed", { exact: true })).toHaveCount(2);
 });
+
+test("record load retries, bounds history, and remains accessible at narrow widths", async ({
+  page,
+}) => {
+  await mockWorkouts(page);
+  let count = 0;
+  await page.route("**/api/coaching-records", (route) => {
+    count++;
+    return count === 1
+      ? route.fulfill({ status: 503, json: {} })
+      : route.fulfill({
+          json: {
+            records: Array.from({ length: 55 }, (_, i) => ({
+              id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+              kind: "observation",
+              status: "dismissed",
+              text: `Historical observation ${i}`,
+              rationale: "",
+              outcome: "",
+              created_at: "2026-10-09T10:00:00Z",
+              updated_at: "2026-10-09T10:00:00Z",
+              revision: 1,
+            })),
+          },
+        });
+  });
+  await page.goto("/athlete");
+  await page.getByRole("tab", { name: "Coaching record", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(page.locator(".athlete-records li")).toHaveCount(50);
+  await page.setViewportSize({ width: 320, height: 900 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  const { default: AxeBuilder } = await import("@axe-core/playwright");
+  await page.screenshot({
+    path: "artifacts/records-mobile.png",
+    fullPage: true,
+  });
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});

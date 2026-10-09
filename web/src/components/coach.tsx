@@ -12,7 +12,15 @@ import { useTraining } from "./workspace";
 import { Button, ErrorNotice, Mark, Skeleton } from "./ui";
 import { DeletionConfirmations } from "./deletion-confirmations";
 import { ChatMarkdown } from "./chat-markdown";
-type Attempt = { message: string; key: string };
+import { CoachFollowUp } from "./coach-follow-up";
+import { coachMode, taskCopy, type CoachMode } from "@/lib/coach-task";
+import "./coach-task.css";
+type Attempt = {
+  message: string;
+  key: string;
+  mode: CoachMode;
+  activity_id?: string;
+};
 export function Coach() {
   const router = useRouter();
   const conversationId = useSearchParams().get("chat") || "web";
@@ -51,12 +59,16 @@ function Conversation({
   onBusyChange: (busy: boolean) => void;
   onHistoryChange: () => void;
 }) {
+  const searchParams = useSearchParams();
+  const requestedMode = coachMode(searchParams.get("mode"));
+  const activityId = searchParams.get("activity_id") || undefined;
+  const [mode, setMode] = useState<CoachMode>(requestedMode);
   const historyPath =
     conversationId === "web"
       ? "/api/chat"
       : `/api/chat?conversation_id=${encodeURIComponent(conversationId)}`;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(taskCopy.prompts[requestedMode]);
   const [loading, setLoading] = useState(true);
   const [historyError, setHistoryError] = useState("");
   const [error, setError] = useState("");
@@ -68,6 +80,10 @@ function Conversation({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const mounted = useRef(true);
   const { refresh } = useTraining();
+  useEffect(() => {
+    setMode(requestedMode);
+    setInput(taskCopy.prompts[requestedMode]);
+  }, [requestedMode, activityId]);
   useEffect(() => {
     onBusyChange(busy);
     return () => onBusyChange(false);
@@ -97,7 +113,13 @@ function Conversation({
   }, [messages, busy]);
   async function send(retry?: Attempt) {
     if (busy || loading || historyError) return;
-    const next = retry ?? { message: input.trim(), key: crypto.randomUUID() };
+    const next = retry ?? {
+      message: input.trim(),
+      key: crypto.randomUUID(),
+      mode,
+      ...(mode === "workout" ? { activity_id: activityId } : {}),
+    };
+    if (next.mode === "workout" && !next.activity_id) return;
     if (!next.message) return;
     setBusy(true);
     setError("");
@@ -115,7 +137,12 @@ function Conversation({
     try {
       const result = await api("/api/chat", {
         method: "POST",
-        body: { message: next.message, conversation_id: conversationId },
+        body: {
+          message: next.message,
+          conversation_id: conversationId,
+          mode: next.mode,
+          ...(next.mode === "workout" ? { activity_id: next.activity_id } : {}),
+        },
         idempotencyKey: next.key,
         timeout: 180000,
       });
@@ -178,6 +205,37 @@ function Conversation({
             <RotateCcw size={15} aria-hidden="true" />
           </Button>
         </div>
+        <div className="coach-task">
+          <div className="coach-task-select">
+            <label htmlFor="coach-task">{taskCopy.label}</label>
+            <select
+              id="coach-task"
+              value={mode}
+              disabled={busy}
+              onChange={(e) => {
+                const selected = coachMode(e.target.value);
+                setMode(selected);
+                setInput(taskCopy.prompts[selected]);
+                inputRef.current?.focus();
+              }}
+            >
+              <option value="chat">{taskCopy.chat}</option>
+              <option value="daily">{taskCopy.daily}</option>
+              <option value="weekly">{taskCopy.weekly}</option>
+              <option value="workout" disabled={!activityId}>
+                {taskCopy.workout}
+              </option>
+            </select>
+          </div>
+          {(mode === "daily" || mode === "weekly") && <p>{taskCopy.advice}</p>}
+          {mode === "workout" && (
+            <p>
+              {activityId
+                ? `${taskCopy.selected}: ${activityId}`
+                : taskCopy.missing}
+            </p>
+          )}
+        </div>
         <div
           className="chat-history"
           tabIndex={0}
@@ -226,6 +284,9 @@ function Conversation({
                       message.content
                     )}
                   </div>
+                  {message.role === "assistant" && (
+                    <CoachFollowUp text={message.content} />
+                  )}
                 </div>
               </article>
             ))
@@ -314,7 +375,13 @@ function Conversation({
               type="submit"
               size="icon"
               aria-label={copy.coach.send}
-              disabled={!input.trim() || busy || loading || !!historyError}
+              disabled={
+                !input.trim() ||
+                busy ||
+                loading ||
+                !!historyError ||
+                (mode === "workout" && !activityId)
+              }
             >
               <ArrowUp size={17} aria-hidden="true" />
             </Button>

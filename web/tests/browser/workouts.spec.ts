@@ -23,12 +23,12 @@ test("workout page fits iPhone and desktop and passes accessibility scans", asyn
   }
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.screenshot({
-    path: "../.context/workouts-desktop.png",
+    path: "artifacts/workouts-desktop.png",
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({
-    path: "../.context/workouts-iphone.png",
+    path: "artifacts/workouts-iphone.png",
     fullPage: true,
   });
   await page.getByRole("button", { name: "Start stretching" }).click();
@@ -37,7 +37,7 @@ test("workout page fits iPhone and desktop and passes accessibility scans", asyn
   ).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.screenshot({
-    path: "../.context/stretch-timer-iphone.png",
+    path: "artifacts/stretch-timer-iphone.png",
     fullPage: true,
   });
 });

@@ -19,6 +19,10 @@ export async function mockWorkouts(
       status = 200;
     if (path === "/api/session") body = { authenticated: true };
     else if (path === "/api/dashboard") body = dashboard;
+    else if (path === "/api/chat") body = { messages: [] };
+    else if (path === "/api/conversations")
+      body = { conversations: [{ id: "web", title: "Earlier chats" }] };
+    else if (path === "/api/confirmations") body = { pending: [] };
     else if (path === "/api/curves") body = { list: [] };
     else if (path === "/api/telegram/status") body = { connected: false };
     else if (path === "/api/athlete-profile") body = emptyProfile;
