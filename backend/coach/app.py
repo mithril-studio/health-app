@@ -78,7 +78,7 @@ def create_app(settings=None, *, store=None, source=None):
                 await db.close()
 
     app = FastAPI(
-        title="Coach Reachy", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan
+        title="Team-Endurance", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan
     )
     app.state.ready = False
     app.state.store, app.state.tools, app.state.jobs = db, tools, jobs

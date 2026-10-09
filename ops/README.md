@@ -1,4 +1,4 @@
-# Coach Reachy VM fallback
+# Team-Endurance VM fallback
 
 An asyncio process for the period when Cloudflare is unavailable. Python 3.9+
 (with the OS `tzdata` package) and `httpx`; no backend package imports.

@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
-    database_url: SecretStr = SecretStr("postgresql://localhost/coach_reachy")
+    database_url: SecretStr = SecretStr("postgresql://localhost/team_endurance")
     app_password: SecretStr = SecretStr("")
     app_origin: str = "https://localhost:8000"
     api_auth_token: SecretStr = SecretStr("")

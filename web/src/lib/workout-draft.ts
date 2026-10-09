@@ -1,8 +1,29 @@
 import type { TimerState } from "./workouts";
 import { routineById, routineSeconds } from "./stretch-catalogue";
 
-export const DRAFT_KEY = "reachy:workout-draft:v1";
-export const SOUND_KEY = "reachy:workout-sound";
+export const DRAFT_KEY = "team-endurance:workout-draft:v1";
+export const SOUND_KEY = "team-endurance:workout-sound";
+const LEGACY_DRAFT_KEY = "reachy:workout-draft:v1";
+const LEGACY_SOUND_KEY = "reachy:workout-sound";
+
+/** One-time move of the pre-rebrand localStorage keys to the Team-Endurance
+ *  names, so an in-progress draft or sound preference is not lost. Idempotent
+ *  and non-destructive: a value already under the new key is never overwritten. */
+export function migrateLegacyStorage() {
+  try {
+    for (const [from, to] of [
+      [LEGACY_DRAFT_KEY, DRAFT_KEY],
+      [LEGACY_SOUND_KEY, SOUND_KEY],
+    ] as const) {
+      const value = localStorage.getItem(from);
+      if (value === null) continue;
+      if (localStorage.getItem(to) === null) localStorage.setItem(to, value);
+      localStorage.removeItem(from);
+    }
+  } catch {
+    /* Storage unavailable; the app still works for this visit. */
+  }
+}
 
 export function encodeDraft(timer: TimerState) {
   return JSON.stringify({ version: 1, timer });

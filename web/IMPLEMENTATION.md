@@ -1,4 +1,4 @@
-# Coach Reachy frontend
+# Team-Endurance frontend
 
 Production Next.js App Router / TypeScript frontend. All work in this package stays under `web/`; the backend owns authentication, Intervals access, persistence, tools, and synchronization.
 

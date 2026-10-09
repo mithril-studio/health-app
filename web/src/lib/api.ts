@@ -40,7 +40,7 @@ export async function api<T = unknown>(
     });
     if (!response.ok) {
       if (response.status === 401 && !path.endsWith("/login"))
-        window.dispatchEvent(new Event("reachy:unauthorized"));
+        window.dispatchEvent(new Event("team-endurance:unauthorized"));
       if (response.status === 503 && path.split("?")[0] === "/api/chat") {
         const body = record(await response.json().catch(() => null));
         if (

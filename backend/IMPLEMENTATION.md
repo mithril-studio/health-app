@@ -1,4 +1,4 @@
-# Coach Reachy backend
+# Team-Endurance backend
 
 Backend-only implementation; no deployment performed by this agent. Contract endpoints run at `127.0.0.1:8001`, with the official MCP Python SDK 2.2.0 serving stateless Streamable HTTP directly at `/mcp` (no redirect). Backend dependencies, including transitive packages and test tools, are pinned in `requirements.txt`.
 

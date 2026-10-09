@@ -1,4 +1,4 @@
-# Coach Reachy implementation contract
+# Team-Endurance implementation contract
 
 Manual running scores: `GET /api/athlete-scores` returns `{lt1_hr, lt2_hr, vo2max, hr_zones, updated_at}`.
 Authenticated `POST /api/athlete-scores` replaces the three score fields; each is required

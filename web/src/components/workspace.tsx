@@ -179,11 +179,11 @@ function WorkspaceSession({ children, theme, sidebarOpen }: WorkspaceProps) {
         void checkSession();
       }
     };
-    window.addEventListener("reachy:unauthorized", clear);
+    window.addEventListener("team-endurance:unauthorized", clear);
     window.addEventListener("pageshow", recheck);
     document.addEventListener("visibilitychange", recheck);
     return () => {
-      window.removeEventListener("reachy:unauthorized", clear);
+      window.removeEventListener("team-endurance:unauthorized", clear);
       window.removeEventListener("pageshow", recheck);
       document.removeEventListener("visibilitychange", recheck);
     };

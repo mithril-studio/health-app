@@ -116,6 +116,8 @@ class ToolService:
         if name == "plan_workout":
             method, path = "POST", "events"
             # The UID is stable even if a timeout happens after Intervals committed.
+            # Idempotency key for the upstream event: kept as "coach-reachy-" so a write
+            # retried across the rebrand deploy cannot create a duplicate workout.
             uid = "coach-reachy-" + hashlib.sha256(operation_id.encode()).hexdigest()
             body = {
                 "uid": uid,
@@ -205,7 +207,7 @@ class ToolService:
         # user-facing list exposes the opaque token; it cannot be confirmed by an MCP tool.
         return {
             "pending_confirmation": True,
-            "message": "Confirm deletion in the Coach Reachy web app within 10 minutes.",
+            "message": "Confirm deletion in the Team-Endurance web app within 10 minutes.",
         }
 
     async def pending_deletions(self):

@@ -66,7 +66,7 @@ def create_mcp(service, settings):
         )
 
     server = Server(
-        "Coach Reachy",
+        "Team-Endurance",
         instructions="Use cached Intervals data. Missing data is unknown. Deletes require web user confirmation.",
         on_list_tools=list_tools,
         on_call_tool=call_tool,

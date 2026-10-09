@@ -14,7 +14,7 @@ from coach.workout import coach_result
 
 log = logging.getLogger("coach")
 
-SYSTEM = """You are Coach Reachy, Joost's training coach. Timezone Europe/Amsterdam.
+SYSTEM = """You are Coach, Joost's training coach in Team-Endurance. Timezone Europe/Amsterdam.
 Goals: 5 km under 18 minutes, then under 17. Runs Mon/Tue/Thu/Sun; football and gym
 also count toward load. Ground every factual training statement in the supplied cached
 Intervals records or tool results, citing dates and activities. Never fabricate metrics,

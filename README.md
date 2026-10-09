@@ -1,4 +1,4 @@
-# Coach Reachy
+# Team-Endurance
 
 A private training dashboard and data-grounded coach on Intervals.icu.
 
@@ -97,7 +97,7 @@ Sound is on by default, with a remembered mute control. Stretch changes play a s
 
 ### WHOOP through Intervals.icu
 
-No new developer app is needed for WHOOP wellness data. Connect WHOOP in [Intervals.icu settings](https://intervals.icu/settings) and choose the metrics you want synced. Coach Reachy already reads Intervals’ wellness endpoint, including sleep duration, HRV and resting heart rate. The selected source is managed in Intervals; this app does not independently choose between Garmin and WHOOP wellness values.
+No new developer app is needed for WHOOP wellness data. Connect WHOOP in [Intervals.icu settings](https://intervals.icu/settings) and choose the metrics you want synced. Team-Endurance already reads Intervals’ wellness endpoint, including sleep duration, HRV and resting heart rate. The selected source is managed in Intervals; this app does not independently choose between Garmin and WHOOP wellness values.
 
 The native WHOOP integration does **not currently import workout activities**, according to the [Intervals.icu maintainer’s explanation](https://forum.intervals.icu/t/no-whoop-activities/115164). Its [integration announcement](https://forum.intervals.icu/t/whoop-integration-added/69075) describes the supported wellness metrics. This distinction was checked on 8 October 2026. Any accessible activity that does reach Intervals is already included by our existing activity sync; there is no Garmin-only filter.
 

@@ -19,7 +19,7 @@ async function box(env, path, body) {
 export async function pollActivities(env, now) {
   const oldest=new Date(now.getTime()-3*86400000).toISOString().slice(0,10);
   const newest=new Date(now.getTime()+86400000).toISOString().slice(0,10);
-  const response=await fetch(`https://intervals.icu/api/v1/athlete/${encodeURIComponent(env.INTERVALS_ATHLETE_ID)}/activities?oldest=${oldest}&newest=${newest}`,{headers:{Authorization:`Basic ${btoa(`API_KEY:${env.INTERVALS_API_KEY}`)}`,'User-Agent':'CoachReachy/1.0'},signal:AbortSignal.timeout(20000)});
+  const response=await fetch(`https://intervals.icu/api/v1/athlete/${encodeURIComponent(env.INTERVALS_ATHLETE_ID)}/activities?oldest=${oldest}&newest=${newest}`,{headers:{Authorization:`Basic ${btoa(`API_KEY:${env.INTERVALS_API_KEY}`)}`,'User-Agent':'TeamEndurance/1.0'},signal:AbortSignal.timeout(20000)});
   if(!response.ok) throw new Error(`Intervals poll failed (${response.status})`);
   const activities=await response.json();
   if(!Array.isArray(activities)) throw new Error('Invalid Intervals response');
@@ -41,7 +41,7 @@ export async function pollActivities(env, now) {
 export default {
   async fetch(request,env) {
     const path=new URL(request.url).pathname;
-    if(path==='/health' && request.method==='GET') return Response.json({ok:true,service:'coach-reachy-scheduler'});
+    if(path==='/health' && request.method==='GET') return Response.json({ok:true,service:'team-endurance-scheduler'});
     return new Response('Not found',{status:404});
   },
   async scheduled(event,env,ctx) {

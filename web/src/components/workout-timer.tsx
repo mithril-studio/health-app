@@ -14,6 +14,7 @@ import { elapsedSeconds, timerPosition, type TimerState } from "@/lib/workouts";
 import {
   decodeDraft,
   encodeDraft,
+  migrateLegacyStorage,
   DRAFT_KEY,
   SOUND_KEY,
 } from "@/lib/workout-draft";
@@ -147,6 +148,10 @@ export function WorkoutTimerProvider({ children }: { children: ReactNode }) {
     [read, reconcile],
   );
 
+  // Move any pre-rebrand draft/sound keys before the first read below.
+  useEffect(() => {
+    migrateLegacyStorage();
+  }, []);
   useEffect(() => {
     const readSound = () => {
       try {

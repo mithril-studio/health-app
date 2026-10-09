@@ -1,4 +1,4 @@
-"""Coach Reachy's local scheduler relay."""
+"""Team-Endurance's local scheduler relay."""
 from __future__ import annotations
 
 import fcntl
@@ -236,7 +236,7 @@ class Endpoints:
         result = await self.request('GET', 'https://intervals.icu/api/v1/athlete/'
                                     + quote(self.config.athlete_id, safe='') + '/activities',
                                     auth=httpx.BasicAuth('API_KEY', self.config.intervals_key),
-                                    headers={'User-Agent': 'CoachReachy/1.0'},
+                                    headers={'User-Agent': 'TeamEndurance/1.0'},
                                     params={'oldest': (day - timedelta(days=3)).isoformat(),
                                             'newest': (day + timedelta(days=1)).isoformat()}, timeout=30)
         if not isinstance(result, list) or any(not isinstance(item, dict)
@@ -350,7 +350,7 @@ async def serve(config, state, once):
         loop.add_signal_handler(sig, stop.set)
     try:
         async with httpx.AsyncClient(trust_env=False, follow_redirects=False,
-                                     headers={'User-Agent': 'CoachReachy/1.0'}) as client:
+                                     headers={'User-Agent': 'TeamEndurance/1.0'}) as client:
             await run(Relay(state, Endpoints(config, client), config), once=once, stop=stop)
     finally:
         for sig in (signal.SIGTERM, signal.SIGINT):

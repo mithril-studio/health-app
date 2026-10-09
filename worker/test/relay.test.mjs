@@ -6,7 +6,7 @@ const env=()=>({BOX_URL:'https://coach-reachy.boxd.sh',BOX_SHARED_SECRET:'test',
 test('health reports the scheduler service',async()=>{
  const response=await worker.fetch(new Request('https://worker.example/health'),env());
  assert.equal(response.status,200);
- assert.deepEqual(await response.json(),{ok:true,service:'coach-reachy-scheduler'});
+ assert.deepEqual(await response.json(),{ok:true,service:'team-endurance-scheduler'});
 });
 test('every route other than health returns 404',async()=>{
  assert.equal((await worker.fetch(new Request('https://worker.example/telegram',{method:'POST',body:'{}'}),env())).status,404);

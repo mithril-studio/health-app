@@ -49,7 +49,7 @@ class Intervals:
                     auth=self.auth,
                     json=json,
                     params=params,
-                    headers={"User-Agent": "CoachReachy/1.0"},
+                    headers={"User-Agent": "TeamEndurance/1.0"},
                     timeout=30,
                     follow_redirects=False,
                 )

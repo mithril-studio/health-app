@@ -26,7 +26,7 @@ async def test_mcp_public_endpoint_initializes_without_redirect(web):
         },
     )
     assert response.status_code == 200
-    assert response.json()["result"]["serverInfo"]["name"] == "Coach Reachy"
+    assert response.json()["result"]["serverInfo"]["name"] == "Team-Endurance"
 
 
 @pytest.mark.asyncio
