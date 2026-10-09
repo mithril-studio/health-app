@@ -1,0 +1,61 @@
+export const athleteCopy = {
+  profile: "Profile",
+  records: "Coaching record",
+  confirmed: "Confirmed athlete profile",
+  profileNote:
+    "One shared profile for your coach. Changes are confirmed only when you save.",
+  goals: "Goals",
+  targetDate: "Target date",
+  background: "Training background",
+  availability: "Schedule and availability",
+  otherSports: "Other sports",
+  equipment: "Equipment",
+  constraints: "Constraints (optional)",
+  preferences: "Coaching preferences",
+  planContext: "Current plan rationale",
+  save: "Save profile",
+  saving: "Saving…",
+  saved: "Saved. Your confirmed profile is up to date.",
+  conflict:
+    "This profile changed elsewhere. Your draft is still here. Copy any changes you want to keep, then reload the saved profile before editing again.",
+  reload: "Reload saved profile",
+  updated: "Last confirmed",
+  notSaved: "No profile saved yet.",
+  recordsNote:
+    "Latest 50 records. Proposed suggestions are not your confirmed plan. Accept each explicitly before acting on it.",
+  newRecord: "Add a record",
+  kind: "Record type",
+  text: "Record text",
+  rationale: "Rationale",
+  outcome: "Outcome",
+  propose: "Save proposal",
+  proposalSaved:
+    "Proposal saved. Accept it separately in your Athlete coaching record.",
+  accept: "Accept",
+  dismiss: "Dismiss",
+  complete: "Complete with outcome",
+  updateOutcome: "Update outcome",
+  recordConflict:
+    "This record changed elsewhere. Reload records before choosing your next action.",
+  reloadRecords: "Reload records",
+  empty: "No coaching records yet.",
+  created: "Created",
+  changed: "Updated",
+  retryNote:
+    "The result is uncertain. Retry this same proposal to avoid duplicates; its fields stay locked until the save is confirmed.",
+  followUp: "Save for follow-up",
+  draftNote:
+    "Edit this excerpt before saving a proposal. It becomes accepted only after a separate confirmation in Athlete.",
+  tooLong: "Shorten the text to 4,000 characters before saving.",
+  kinds: {
+    observation: "Observation",
+    recommendation: "Recommendation",
+    question: "Question",
+  },
+  statuses: {
+    proposed: "Proposed · not confirmed",
+    accepted: "Accepted",
+    dismissed: "Dismissed",
+    completed: "Completed",
+  },
+};

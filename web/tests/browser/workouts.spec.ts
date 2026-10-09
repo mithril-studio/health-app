@@ -10,9 +10,9 @@ test("workout page fits iPhone and desktop and passes accessibility scans", asyn
   await expect(
     page.getByRole("heading", { name: "Workouts", exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Connect WHOOP" }),
-  ).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Connect WHOOP" })).toHaveCount(
+    0,
+  );
   for (const width of [320, 390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     expect(
@@ -165,58 +165,4 @@ test("temporary session-check failure keeps the timer but a real sign-out clears
   await expect(
     page.getByRole("button", { name: "Start meditation" }),
   ).toBeVisible();
-});
-
-test("WHOOP callback consumes the code once, clears the URL, and shows duplicate status", async ({
-  page,
-}) => {
-  await mock(page);
-  const connects: unknown[] = [];
-  await page.route("**/api/whoop", (route) =>
-    route.fulfill({
-      json: {
-        configured: true,
-        connected: true,
-        last_success: "2026-10-08T10:00:00Z",
-        error: null,
-      },
-    }),
-  );
-  await page.route("**/api/whoop/connect", (route) => {
-    connects.push(route.request().postDataJSON());
-    return route.fulfill({ json: { connected: true } });
-  });
-  await page.route("**/api/whoop/workouts?*", (route) =>
-    route.fulfill({
-      json: {
-        workouts: [
-          {
-            id: "whoop-synthetic",
-            name: "Running",
-            start_date_local: "2026-10-08T09:00:00",
-            duplicate_of: "garmin-synthetic",
-          },
-          {
-            id: "whoop-home",
-            name: "Functional Fitness",
-            start_date_local: "2026-10-08T11:00:00",
-            duplicate_of: null,
-          },
-        ],
-      },
-    }),
-  );
-  await page.goto("/workouts?code=synthetic-code&state=synthetic-state");
-  await expect(page).toHaveURL(/\/workouts$/);
-  await expect(
-    page.getByRole("button", { name: "Sync workouts" }),
-  ).toBeEnabled();
-  expect(connects).toEqual([
-    { code: "synthetic-code", state: "synthetic-state" },
-  ]);
-  await page.getByText("Recent WHOOP imports · 2", { exact: true }).click();
-  await expect(
-    page.getByText("Matched · not counted twice", { exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText("Included", { exact: true })).toBeVisible();
 });

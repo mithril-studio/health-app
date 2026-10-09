@@ -26,7 +26,6 @@ import { useWorkoutTimer } from "./workout-timer";
 import { useTraining } from "./workspace";
 import { PageMenu } from "./page-menu";
 import { ActivityDialog } from "./activity-dialog";
-import { WhoopConnection } from "./whoop-connection";
 const w = copy.workouts;
 export function Workouts() {
   const timer = useWorkoutTimer();
@@ -195,7 +194,6 @@ export function Workouts() {
             <p className="workout-caption">{w.empty}</p>
           )}
         </Card>
-        <WhoopConnection />
       </div>
       {log && <LogWorkout open={log} onClose={() => setLog(false)} />}
       <ActivityDialog id={activityId} onClose={() => setActivityId(null)} />
