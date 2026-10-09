@@ -12,6 +12,7 @@ Revision = Annotated[int, Field(strict=True, ge=0)]
 
 class AthleteProfileInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    # Eight editable text fields bound profile content to 16,000 characters total.
     goals: Text = ""
     target_date: date | None = None
     background: Text = ""

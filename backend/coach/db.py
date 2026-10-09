@@ -196,22 +196,20 @@ class Store:
 
         body = AthleteProfileInput.model_validate(body)
         data = body.model_dump(mode="json", exclude={"revision"})
-        row = (
-            await self.query(
-                "INSERT INTO athlete_profile(id,data,revision) SELECT 1,%s,1 WHERE %s=0 "
-                "ON CONFLICT(id) DO UPDATE SET data=excluded.data,revision=athlete_profile.revision+1,updated_at=now() "
-                "WHERE athlete_profile.revision=%s RETURNING data,revision,updated_at",
-                (Jsonb(data), body.revision, body.revision),
+        if body.revision == 0:
+            row = await self.query(
+                "INSERT INTO athlete_profile(id,data,revision) VALUES (1,%s,1) "
+                "ON CONFLICT(id) DO NOTHING RETURNING data,revision,updated_at",
+                (Jsonb(data),),
                 one=True,
             )
-            if body.revision == 0
-            else await self.query(
+        else:
+            row = await self.query(
                 "UPDATE athlete_profile SET data=%s,revision=revision+1,updated_at=now() "
                 "WHERE id=1 AND revision=%s RETURNING data,revision,updated_at",
                 (Jsonb(data), body.revision),
                 one=True,
             )
-        )
         if not row:
             raise CoachingConflict("Profile changed; reload before saving")
         return row["data"] | {

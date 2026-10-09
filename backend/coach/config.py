@@ -15,8 +15,6 @@ class Settings(BaseSettings):
     box_shared_secret: SecretStr = SecretStr("")
     intervals_api_key: SecretStr = SecretStr("")
     intervals_athlete_id: str = ""
-    whoop_client_id: str = ""
-    whoop_client_secret: SecretStr = SecretStr("")
     telegram_bot_token: SecretStr = SecretStr("")
     telegram_chat_id: str = ""
     openrouter_api_key: SecretStr = SecretStr("")
