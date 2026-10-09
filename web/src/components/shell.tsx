@@ -14,7 +14,7 @@ import {
   Moon,
   RefreshCw,
   LogOut,
-  Settings,
+  UserRound,
 } from "lucide-react";
 import { TimerBanner } from "./workout-timer";
 import { SourceNotice } from "./source-notice";
@@ -29,7 +29,7 @@ const nav = [
   { href: "/workouts", key: "workouts", Icon: Timer },
   { href: "/calendar", key: "calendar", Icon: CalendarDays },
   { href: "/insights", key: "insights", Icon: ChartNoAxesCombined },
-  { href: "/settings", key: "settings", Icon: Settings },
+  { href: "/athlete", key: "athlete", Icon: UserRound },
 ] as const;
 function preference(name: string, value: string) {
   document.cookie = `${name}=${value}; Path=/; Max-Age=31536000; SameSite=Lax`;
@@ -244,7 +244,7 @@ export function Shell({
                 retry={() => void refresh(true)}
               />
             )}
-            {data && pathname !== "/coach" && pathname !== "/settings" && (
+            {data && pathname !== "/coach" && pathname !== "/athlete" && (
               <SourceNotice data={data} />
             )}
             {pathname !== "/workouts" && <TimerBanner />}

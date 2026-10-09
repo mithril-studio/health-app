@@ -1,0 +1,77 @@
+.athlete-card {
+  max-width: 900px;
+  padding: 24px;
+}
+.athlete-card .card-heading {
+  padding: 0 0 24px;
+}
+.athlete-form,
+.athlete-form fieldset {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.athlete-form fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.athlete-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.athlete-field label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.athlete-field textarea,
+.athlete-field input,
+.athlete-field select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+.athlete-field textarea {
+  resize: vertical;
+}
+.athlete-field small,
+.athlete-caption {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.athlete-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+.athlete-records {
+  display: grid;
+  gap: 24px;
+}
+.athlete-records ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.athlete-records li {
+  border-top: 1px solid var(--border);
+  padding: 24px 0;
+  display: grid;
+  gap: 12px;
+}
+.record-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.6;
+}

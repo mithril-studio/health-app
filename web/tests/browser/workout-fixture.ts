@@ -21,14 +21,8 @@ export async function mockWorkouts(
     else if (path === "/api/dashboard") body = dashboard;
     else if (path === "/api/curves") body = { list: [] };
     else if (path === "/api/telegram/status") body = { connected: false };
-    else if (path === "/api/whoop")
-      body = {
-        configured: false,
-        connected: false,
-        last_success: null,
-        error: null,
-      };
-    else if (path === "/api/whoop/workouts") body = { workouts: [] };
+    else if (path === "/api/athlete-profile") body = emptyProfile;
+    else if (path === "/api/coaching-records") body = { records: [] };
     else if (path === "/api/sessions") {
       saves.push(route.request().postDataJSON());
       status = failFirst && saves.length === 1 ? 503 : 201;
@@ -38,3 +32,5 @@ export async function mockWorkouts(
     await route.fulfill({ status, json: body });
   });
 }
+
+export const emptyProfile = {goals:'',target_date:null,background:'',availability:'',other_sports:'',equipment:'',constraints:'',preferences:'',plan_context:'',updated_at:null,revision:0};

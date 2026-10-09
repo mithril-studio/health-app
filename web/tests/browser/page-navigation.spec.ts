@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { emptyProfile } from "./workout-fixture";
 import AxeBuilder from "@axe-core/playwright";
 
 test.beforeEach(async ({ page }) => {
@@ -16,7 +17,7 @@ test.beforeEach(async ({ page }) => {
               settings: {},
               sync: {},
             }
-          : path === "/api/chat"
+          : path === "/api/athlete-profile" ? emptyProfile : path === "/api/coaching-records" ? {records:[]} : path === "/api/chat"
             ? { messages: [] }
             : path === "/api/conversations"
               ? { conversations: [{ id: "web", title: "Earlier chats" }] }
@@ -34,7 +35,7 @@ test("every page has one bold header title and a full-width section menu", async
     ["/", "Overview"],
     ["/calendar", "Calendar"],
     ["/insights", "Insights"],
-    ["/settings", "Settings"],
+    ["/athlete", "Athlete"],
     ["/coach", "Chats"],
   ]) {
     await page.goto(route);
