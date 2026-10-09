@@ -17,13 +17,17 @@ test.beforeEach(async ({ page }) => {
               settings: {},
               sync: {},
             }
-          : path === "/api/athlete-profile" ? emptyProfile : path === "/api/coaching-records" ? {records:[]} : path === "/api/chat"
-            ? { messages: [] }
-            : path === "/api/conversations"
-              ? { conversations: [{ id: "web", title: "Earlier chats" }] }
-              : path === "/api/confirmations"
-                ? { pending: [] }
-                : {};
+          : path === "/api/athlete-profile"
+            ? emptyProfile
+            : path === "/api/coaching-records"
+              ? { records: [] }
+              : path === "/api/chat"
+                ? { messages: [] }
+                : path === "/api/conversations"
+                  ? { conversations: [{ id: "web", title: "Earlier chats" }] }
+                  : path === "/api/confirmations"
+                    ? { pending: [] }
+                    : {};
     return route.fulfill({ json: body });
   });
 });

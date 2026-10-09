@@ -75,3 +75,10 @@
   font-size: 14px;
   line-height: 1.6;
 }
+
+.record-outcome {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}

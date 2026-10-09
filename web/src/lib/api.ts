@@ -11,7 +11,7 @@ export class ApiError extends Error {
 export async function api<T = unknown>(
   path: string,
   options: {
-    method?: "GET" | "POST";
+    method?: "GET" | "POST" | "PATCH";
     body?: unknown;
     signal?: AbortSignal;
     timeout?: number;
