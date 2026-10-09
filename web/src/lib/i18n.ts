@@ -177,6 +177,7 @@ export const en = {
     athlete: "Athlete sections",
     activities: "Activities",
     zones: "Zones & load",
+    workouts: "Workout sections",
   },
   overview: {
     eyebrow: "THE BIG PICTURE",

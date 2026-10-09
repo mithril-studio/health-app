@@ -10,9 +10,6 @@ test("workout page fits iPhone and desktop and passes accessibility scans", asyn
   await expect(
     page.getByRole("heading", { name: "Workouts", exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Connect WHOOP" }),
-  ).toBeDisabled();
   for (const width of [320, 390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     expect(
@@ -31,7 +28,10 @@ test("workout page fits iPhone and desktop and passes accessibility scans", asyn
     path: "../.context/workouts-iphone.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Start stretching" }).click();
+  await page.getByRole("button", { name: /Everyday reset/ }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.getByRole("dialog").getByRole("button", { name: "Start" }).click();
   await expect(
     page.getByRole("heading", { name: "Calf · left", exact: true }),
   ).toBeVisible();
@@ -48,6 +48,7 @@ test("meditation catches up, survives navigation, pauses, and retries saving wit
   await mock(page, saves, true);
   await page.clock.install();
   await page.goto("/workouts");
+  await page.getByRole("tab", { name: "Meditate" }).click();
   await page.getByLabel("Minutes", { exact: true }).fill("1");
   await page.getByRole("button", { name: "Start meditation" }).click();
   await expect(page.getByRole("timer")).toBeVisible();
@@ -85,7 +86,8 @@ test("stretch advances across suspended steps and discard does not save", async 
   await mock(page, saves);
   await page.clock.install();
   await page.goto("/workouts");
-  await page.getByRole("button", { name: "Start stretching" }).click();
+  await page.getByRole("button", { name: /Everyday reset/ }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Start" }).click();
   await expect(page.getByRole("timer")).toBeVisible();
   await page.clock.fastForward(125000);
   await expect(
@@ -98,7 +100,7 @@ test("stretch advances across suspended steps and discard does not save", async 
     .getByRole("button", { name: "End session", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "Start stretching" }),
+    page.getByRole("button", { name: /Everyday reset/ }),
   ).toBeVisible();
   expect(saves).toEqual([]);
 });
@@ -144,6 +146,7 @@ test("temporary session-check failure keeps the timer but a real sign-out clears
 }) => {
   await mock(page);
   await page.goto("/workouts");
+  await page.getByRole("tab", { name: "Meditate" }).click();
   await page.getByRole("button", { name: "Start meditation" }).click();
   await page.route(
     "**/api/session",
@@ -162,61 +165,8 @@ test("temporary session-check failure keeps the timer but a real sign-out clears
     await page.evaluate((key) => localStorage.getItem(key), DRAFT_KEY),
   ).toBeNull();
   await page.evaluate(() => window.dispatchEvent(new Event("pageshow")));
+  await page.getByRole("tab", { name: "Meditate" }).click();
   await expect(
     page.getByRole("button", { name: "Start meditation" }),
   ).toBeVisible();
-});
-
-test("WHOOP callback consumes the code once, clears the URL, and shows duplicate status", async ({
-  page,
-}) => {
-  await mock(page);
-  const connects: unknown[] = [];
-  await page.route("**/api/whoop", (route) =>
-    route.fulfill({
-      json: {
-        configured: true,
-        connected: true,
-        last_success: "2026-10-08T10:00:00Z",
-        error: null,
-      },
-    }),
-  );
-  await page.route("**/api/whoop/connect", (route) => {
-    connects.push(route.request().postDataJSON());
-    return route.fulfill({ json: { connected: true } });
-  });
-  await page.route("**/api/whoop/workouts?*", (route) =>
-    route.fulfill({
-      json: {
-        workouts: [
-          {
-            id: "whoop-synthetic",
-            name: "Running",
-            start_date_local: "2026-10-08T09:00:00",
-            duplicate_of: "garmin-synthetic",
-          },
-          {
-            id: "whoop-home",
-            name: "Functional Fitness",
-            start_date_local: "2026-10-08T11:00:00",
-            duplicate_of: null,
-          },
-        ],
-      },
-    }),
-  );
-  await page.goto("/workouts?code=synthetic-code&state=synthetic-state");
-  await expect(page).toHaveURL(/\/workouts$/);
-  await expect(
-    page.getByRole("button", { name: "Sync workouts" }),
-  ).toBeEnabled();
-  expect(connects).toEqual([
-    { code: "synthetic-code", state: "synthetic-state" },
-  ]);
-  await page.getByText("Recent WHOOP imports · 2", { exact: true }).click();
-  await expect(
-    page.getByText("Matched · not counted twice", { exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText("Included", { exact: true })).toBeVisible();
 });

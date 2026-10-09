@@ -6,6 +6,11 @@ import {
   type TimerState,
 } from "../src/lib/workouts";
 import { normalizeActivity, sportOf } from "../src/lib/data";
+import {
+  stretchRoutines,
+  routineById,
+  routineSeconds,
+} from "../src/lib/stretch-catalogue";
 test("timer catches up after suspension, caps completion, and excludes paused time", () => {
   const timer: TimerState = {
     id: "test",
@@ -90,4 +95,95 @@ test("drafts retain only valid, versioned, bounded timer state", async () => {
     ),
     timer,
   );
+});
+
+test("the stretch catalogue has unique, bounded, whole-minute routines", () => {
+  const ids = new Set<string>();
+  for (const r of stretchRoutines) {
+    assert.ok(!ids.has(r.id), `duplicate id ${r.id}`);
+    ids.add(r.id);
+    assert.ok(r.steps.length > 0);
+    for (const step of r.steps) assert.ok(step.seconds >= 15);
+    const total = routineSeconds(r);
+    assert.equal(total % 60, 0);
+    assert.ok(total <= 7200);
+  }
+});
+
+test("legacy stretch-v1 drafts map to their equivalent catalogue routine", async () => {
+  const { decodeDraft, encodeDraft } = await import("../src/lib/workout-draft");
+  const base = {
+    id: "c6128c0a-65c8-4e39-8850-6b2966b63a58",
+    name: "Everyday reset",
+    sport: "Stretching" as const,
+    started: "2026-10-08T10:00:00.000Z",
+    elapsed: 0,
+    runningSince: null,
+  };
+  assert.equal(
+    decodeDraft(
+      encodeDraft({ ...base, routine: "stretch-v1", total: 300 } as TimerState),
+    )?.routine,
+    "everyday-reset",
+  );
+  assert.equal(
+    decodeDraft(
+      encodeDraft({ ...base, routine: "stretch-v1", total: 600 } as TimerState),
+    )?.routine,
+    "full-body-unwind",
+  );
+  assert.equal(
+    decodeDraft(
+      encodeDraft({ ...base, routine: "stretch-v1", total: 301 } as TimerState),
+    ),
+    null,
+  );
+});
+
+test("unknown routine ids and mismatched totals are rejected", async () => {
+  const { decodeDraft, encodeDraft } = await import("../src/lib/workout-draft");
+  const routine = routineById("everyday-reset")!;
+  const base = {
+    id: "c6128c0a-65c8-4e39-8850-6b2966b63a58",
+    name: routine.name,
+    sport: "Stretching" as const,
+    started: "2026-10-08T10:00:00.000Z",
+    elapsed: 0,
+    runningSince: null,
+  };
+  assert.equal(
+    decodeDraft(
+      encodeDraft({ ...base, routine: "no-such-routine", total: 300 } as TimerState),
+    ),
+    null,
+  );
+  assert.equal(
+    decodeDraft(
+      encodeDraft({
+        ...base,
+        routine: routine.id,
+        total: routineSeconds(routine) + 30,
+      } as TimerState),
+    ),
+    null,
+  );
+  assert.equal(
+    decodeDraft(
+      encodeDraft({
+        ...base,
+        routine: routine.id,
+        total: routineSeconds(routine),
+      } as TimerState),
+    )?.routine,
+    routine.id,
+  );
+});
+
+test("timerPosition advances correctly across steps of different lengths", () => {
+  assert.deepEqual(timerPosition([30, 45, 60], 0), { index: 0, remaining: 30 });
+  assert.deepEqual(timerPosition([30, 45, 60], 29), { index: 0, remaining: 1 });
+  assert.deepEqual(timerPosition([30, 45, 60], 30), { index: 1, remaining: 45 });
+  assert.deepEqual(timerPosition([30, 45, 60], 74), { index: 1, remaining: 1 });
+  assert.deepEqual(timerPosition([30, 45, 60], 75), { index: 2, remaining: 60 });
+  assert.deepEqual(timerPosition([30, 45, 60], 135), { index: 2, remaining: 0 });
 });

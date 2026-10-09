@@ -45,7 +45,7 @@ export function WhoopConnection() {
       state = url.searchParams.get("state");
     const denied = url.searchParams.has("error");
     if (code || state || denied)
-      window.history.replaceState(null, "", "/workouts");
+      window.history.replaceState(null, "", "/settings");
     async function initialize() {
       setBusy(true);
       try {

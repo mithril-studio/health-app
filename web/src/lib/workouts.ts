@@ -2,7 +2,7 @@ export type TimerState = {
   id: string;
   name: string;
   sport: "Stretching" | "Meditation";
-  routine: "stretch-v1" | "meditation-v1";
+  routine: string;
   started: string;
   total: number;
   elapsed: number;

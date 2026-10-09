@@ -2607,18 +2607,11 @@ td {
   display: grid;
   gap: 24px;
 }
-.workouts-intro {
-  margin: 0;
-  color: var(--muted-foreground);
-}
-.workouts-menu-label {
-  flex: 1;
-  color: var(--muted-foreground);
-}
-.workout-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+.page-menu .workouts-menu-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 .workout-option {
   padding: 28px;
@@ -2626,22 +2619,9 @@ td {
   flex-direction: column;
   gap: 20px;
 }
-.workout-option .card-heading {
-  padding: 0;
-  margin: 0;
-}
 .workout-option > .button {
   align-self: flex-start;
   margin-top: auto;
-}
-.workout-symbol {
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--primary);
 }
 .workout-caption {
   color: var(--muted-foreground);
@@ -2649,12 +2629,33 @@ td {
   margin: 0;
   line-height: 1.7;
 }
-.routine-choices {
+.stretch-catalogue {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
-.routine-choices button,
+.routine-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: 18px;
+  text-align: left;
+}
+.routine-card strong {
+  font-size: 16px;
+  font-weight: 500;
+}
+.routine-card span {
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.routine-card small {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
 .meditation-presets button {
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -2662,20 +2663,10 @@ td {
   padding: 16px;
   text-align: left;
 }
-.routine-choices button[aria-pressed="true"],
 .meditation-presets button[aria-pressed="true"] {
   border-color: var(--primary);
   background: var(--accent);
   color: var(--accent-foreground);
-}
-.routine-choices span {
-  display: block;
-  font-size: 12px;
-  margin-bottom: 12px;
-}
-.routine-choices strong {
-  font-size: 20px;
-  font-weight: 500;
 }
 .meditation-presets {
   display: flex;
@@ -2712,12 +2703,6 @@ td {
   min-width: 0;
   max-width: 100%;
   font-size: 16px;
-}
-.workout-secondary > .card {
-  padding: 24px;
-}
-.workout-secondary .card-heading {
-  padding: 0 0 20px;
 }
 .workout-history,
 .whoop-history ul {
@@ -2832,10 +2817,6 @@ td {
   gap: 12px;
   flex-wrap: wrap;
 }
-.timer-phone {
-  max-width: 350px;
-  margin: 20px auto 0;
-}
 .stretch-sequence {
   flex: 1;
   list-style: none;
@@ -2891,8 +2872,8 @@ td {
   text-align: center;
 }
 @media (max-width: 900px) {
-  .workout-grid {
-    grid-template-columns: 1fr;
+  .stretch-catalogue {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .timer-player {
     flex-direction: column;
@@ -2903,29 +2884,14 @@ td {
 }
 @media (max-width: 480px) {
   .workout-option,
-  .workout-secondary > .card,
   .timer-player {
     padding: 20px;
   }
-  .workouts-menu-label {
-    display: none;
-  }
-  .workout-secondary .card-heading {
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-  .routine-choices {
-    gap: 8px;
+  .stretch-catalogue {
+    grid-template-columns: 1fr;
   }
   .timer-dial {
     width: 200px;
     height: 200px;
   }
-}
-
-.workout-sound {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 20px;
 }

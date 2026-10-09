@@ -3,6 +3,7 @@ import { mockWorkouts } from "./workout-fixture";
 import { DRAFT_KEY, SOUND_KEY } from "../../src/lib/workout-draft";
 
 async function meditation(page: Page) {
+  await page.getByRole("tab", { name: "Meditate" }).click();
   await page.getByLabel("Minutes", { exact: true }).fill("1");
   await page
     .getByRole("button", { name: "Start meditation", exact: true })
@@ -60,6 +61,7 @@ test("running, paused, and completed drafts survive reload without automatic sav
   ).toBeVisible();
   expect(await draft(page)).toBeNull();
   await page.reload();
+  await page.getByRole("tab", { name: "Meditate" }).click();
   await expect(
     page.getByRole("button", { name: "Start meditation" }),
   ).toBeVisible();
@@ -134,6 +136,7 @@ test("invalid drafts are cleared without preventing a new timer", async ({
       raw,
     });
     await page.reload();
+    await page.getByRole("tab", { name: "Meditate" }).click();
     await expect(
       page.getByRole("button", { name: "Start meditation" }),
     ).toBeVisible();
@@ -188,6 +191,7 @@ test("tabs synchronize pause and discard, and a stale tab cannot resurrect the t
   });
   await mockWorkouts(other);
   await other.goto("/workouts");
+  await other.getByRole("tab", { name: "Meditate" }).click();
   await expect(other.getByRole("timer")).toBeVisible();
   await other.getByRole("button", { name: "Pause", exact: true }).click();
   await expect(
@@ -234,7 +238,11 @@ test("a late save response cannot remove a replacement session in another tab", 
   await page.getByRole("button", { name: "Save session", exact: true }).click();
   await expect(page.getByRole("button", { name: "Saving…" })).toBeVisible();
   await end(other);
-  await other.getByRole("button", { name: "Start stretching" }).click();
+  await other.getByRole("button", { name: /Everyday reset/ }).click();
+  await other
+    .getByRole("dialog")
+    .getByRole("button", { name: "Start" })
+    .click();
   await expect(
     other.getByRole("heading", { name: "Everyday reset" }),
   ).toBeVisible();
@@ -309,7 +317,8 @@ test("stretch sound respects mute, avoids missed cues, and needs a gesture after
   await fakeAudio(page);
   await page.clock.install();
   await page.goto("/workouts");
-  await page.getByRole("button", { name: "Start stretching" }).click();
+  await page.getByRole("button", { name: /Everyday reset/ }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Start" }).click();
   await expect(page.getByRole("timer")).toBeVisible();
   await page.clock.runFor(30000);
   expect(await audioNotes(page)).toBe(1);
@@ -370,7 +379,8 @@ test("hidden transitions stay silent and foreground timing continues", async ({
   await fakeAudio(page);
   await page.clock.install();
   await page.goto("/workouts");
-  await page.getByRole("button", { name: "Start stretching" }).click();
+  await page.getByRole("button", { name: /Everyday reset/ }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Start" }).click();
   await expect(page.getByRole("timer")).toBeVisible();
   await page.evaluate(() => {
     Object.defineProperty(document, "visibilityState", {

@@ -1,25 +1,24 @@
 export const workoutCopy = {
-  intro: "Make time for the small things.",
-  subtitle:
-    "Stretch, find a little stillness, or record a session your watch missed.",
-  stretch: "Stretching",
-  stretchDetail: "A guided sequence, one stretch at a time.",
+  connections: "Connections",
+  tabStretch: "Stretch",
+  tabMeditate: "Meditate",
+  tabHistory: "History",
+  focusLabel: "Focus",
+  focusAll: "All",
+  focusFull: "Full body",
+  focusLegs: "Legs",
+  focusHips: "Hips",
+  focusBack: "Back",
+  focusUpper: "Upper body",
+  stretchCount: "stretches",
+  startRoutine: "Start",
   meditation: "Meditation",
   meditationDetail: "A quiet timer. Settle in and breathe at your own pace.",
-  quick: "Everyday reset",
-  full: "Full-body unwind",
   minute: "min",
   minutes: "Minutes",
-  startStretch: "Start stretching",
   startMeditation: "Start meditation",
-  gentle:
-    "Move gently, without forcing a position. Stop any stretch that hurts.",
-  phone:
-    "Your timer recovers in this browser after reload or screen lock. Sound cues work best with the app open and your device volume on.",
   readyToSave: "Save this session to add it to your calendar.",
   soundCues: "Sound cues",
-  soundOn: "Sound on",
-  soundOff: "Sound off",
   enableSound: "Enable sound",
   storageWarning:
     "This browser could not store your timer. Keep this tab open until you save; recovery after reload may be unavailable.",
@@ -41,7 +40,6 @@ export const workoutCopy = {
   step: "Stretch",
   remaining: "remaining",
   log: "Log a workout",
-  logDetail: "Fitness, home workouts, soccer, and everything in between.",
   name: "Session name",
   sport: "Sport",
   start: "Started at",
@@ -100,47 +98,5 @@ export const workoutCopy = {
     { value: "Stretching", label: "Stretching" },
     { value: "Meditation", label: "Meditation" },
     { value: "Other", label: "Other" },
-  ],
-  stretches: [
-    {
-      name: "Calf · left",
-      hint: "Hands on a wall, left leg behind you. Keep your heel down and lean gently forward.",
-    },
-    {
-      name: "Calf · right",
-      hint: "Switch legs. Keep your back heel down and your toes pointing forward.",
-    },
-    {
-      name: "Hip flexor · left",
-      hint: "Kneel on your left knee with your right foot in front. Stay tall and shift gently forward.",
-    },
-    {
-      name: "Hip flexor · right",
-      hint: "Switch sides. Keep your torso upright and avoid arching your lower back.",
-    },
-    {
-      name: "Hamstring · left",
-      hint: "Sit with your left leg extended and right leg bent. Hinge forward gently from your hips.",
-    },
-    {
-      name: "Hamstring · right",
-      hint: "Switch legs. Keep your back long; a small movement is enough.",
-    },
-    {
-      name: "Figure four · left",
-      hint: "Lie on your back. Cross your left ankle over your right thigh and draw the legs gently toward you.",
-    },
-    {
-      name: "Figure four · right",
-      hint: "Switch sides. Relax your shoulders and keep breathing.",
-    },
-    {
-      name: "Chest opening",
-      hint: "Stand tall with your hands loosely joined behind you. Gently open your chest without forcing your arms.",
-    },
-    {
-      name: "Child’s pose",
-      hint: "Kneel and sit back toward your heels. Reach your arms forward as far as feels comfortable.",
-    },
   ],
 };

@@ -10,7 +10,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { api, errorMessage } from "@/lib/api";
-import { elapsedSeconds, type TimerState } from "@/lib/workouts";
+import { elapsedSeconds, timerPosition, type TimerState } from "@/lib/workouts";
 import {
   decodeDraft,
   encodeDraft,
@@ -18,6 +18,7 @@ import {
   SOUND_KEY,
 } from "@/lib/workout-draft";
 import { WorkoutAudio } from "@/lib/workout-audio";
+import { routineById } from "@/lib/stretch-catalogue";
 import { copy } from "@/lib/i18n";
 
 type TimerContext = {
@@ -32,7 +33,12 @@ type TimerContext = {
   enableAudio: () => void;
   toggleSound: () => void;
   access: (state: "checking" | "in" | "out" | "error") => void;
-  start: (name: string, sport: TimerState["sport"], total: number) => void;
+  start: (
+    name: string,
+    sport: TimerState["sport"],
+    total: number,
+    routine: string,
+  ) => void;
   toggle: () => void;
   discard: () => void;
   save: () => Promise<void>;
@@ -206,11 +212,15 @@ export function WorkoutTimerProvider({ children }: { children: ReactNode }) {
     if (elapsed >= timer.total && previous.elapsed < timer.total)
       audio.current?.play("finish");
     else if (timer.sport === "Stretching") {
-      const duration = timer.total / copy.workouts.stretches.length;
-      if (
-        Math.floor(elapsed / duration) > Math.floor(previous.elapsed / duration)
-      )
-        audio.current?.play("step");
+      const routine = routineById(timer.routine);
+      if (routine) {
+        const durations = routine.steps.map((step) => step.seconds);
+        if (
+          timerPosition(durations, elapsed).index >
+          timerPosition(durations, previous.elapsed).index
+        )
+          audio.current?.play("step");
+      }
     }
   }, [timer, elapsed, now, sound]);
   useEffect(() => {
@@ -266,7 +276,7 @@ export function WorkoutTimerProvider({ children }: { children: ReactNode }) {
         /* The preference remains usable in memory. */
       }
     },
-    start(name, sport, total) {
+    start(name, sport, total, routine) {
       if (sound) enableAudio();
       void transact(() => {
         if (current.current && !saved) return;
@@ -275,7 +285,7 @@ export function WorkoutTimerProvider({ children }: { children: ReactNode }) {
           id: crypto.randomUUID(),
           name,
           sport,
-          routine: sport === "Stretching" ? "stretch-v1" : "meditation-v1",
+          routine,
           total,
           started: new Date(stamp).toISOString(),
           elapsed: 0,

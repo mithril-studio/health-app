@@ -1,22 +1,20 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import {
-  Flower2,
-  PersonStanding,
-  Plus,
-  Check,
-  Play,
-  Pause,
-} from "lucide-react";
+import { Plus, Check, Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { copy } from "@/lib/i18n";
 import { api, errorMessage } from "@/lib/api";
 import { clockTime, timerPosition } from "@/lib/workouts";
+import {
+  stretchRoutines,
+  routineById,
+  routineSeconds,
+  type Focus,
+} from "@/lib/stretch-catalogue";
 import { dateLabel } from "@/lib/dates";
 import { duration } from "@/lib/format";
 import {
   Button,
   Card,
-  CardHeading,
   Badge,
   Modal,
   ErrorNotice,
@@ -24,14 +22,22 @@ import {
 } from "./ui";
 import { useWorkoutTimer } from "./workout-timer";
 import { useTraining } from "./workspace";
-import { PageMenu } from "./page-menu";
+import { PageMenu, PageTabs, PagePanel } from "./page-menu";
 import { ActivityDialog } from "./activity-dialog";
-import { WhoopConnection } from "./whoop-connection";
 const w = copy.workouts;
+const focusLabel: Record<Focus, string> = {
+  full: w.focusFull,
+  legs: w.focusLegs,
+  hips: w.focusHips,
+  back: w.focusBack,
+  upper: w.focusUpper,
+};
 export function Workouts() {
   const timer = useWorkoutTimer();
   const { data, refresh } = useTraining();
-  const [stretchMinutes, setStretchMinutes] = useState(5);
+  const [tab, setTab] = useState("stretch");
+  const [focus, setFocus] = useState<"all" | Focus>("all");
+  const [openRoutine, setOpenRoutine] = useState<string | null>(null);
   const [meditationMinutes, setMeditationMinutes] = useState(5);
   const [log, setLog] = useState(false);
   const [activityId, setActivityId] = useState<string | null>(null);
@@ -45,85 +51,97 @@ export function Workouts() {
         ),
       )
       .slice(0, 8) ?? [];
+  const routines = stretchRoutines.filter(
+    (r) => focus === "all" || r.focus === focus,
+  );
+  const opened = openRoutine ? routineById(openRoutine) : undefined;
   useEffect(() => {
     if (timer.saved) void refresh();
   }, [timer.saved, refresh]);
   return (
     <div className="workouts-page">
       <PageMenu>
-        <span className="workouts-menu-label">{w.intro}</span>
-        <Button size="sm" onClick={() => setLog(true)}>
-          <Plus size={15} />
-          {w.log}
-        </Button>
-      </PageMenu>
-      <p className="workouts-intro">{w.subtitle}</p>
-      <div className="workout-sound">
-        <Button
-          variant="outline"
-          size="sm"
-          aria-label={w.soundCues}
-          aria-pressed={timer.sound}
-          onClick={timer.toggleSound}
-        >
-          {timer.sound ? w.soundOn : w.soundOff}
-        </Button>
-        {timer.sound && timer.timer && !timer.saved && !timer.audioReady && (
-          <Button variant="ghost" size="sm" onClick={timer.enableAudio}>
-            {w.enableSound}
-          </Button>
+        <PageTabs
+          prefix="workouts"
+          label={copy.navigation.workouts}
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: "stretch", label: w.tabStretch },
+            { id: "meditate", label: w.tabMeditate },
+            { id: "history", label: w.tabHistory },
+          ]}
+        />
+        {tab === "stretch" && (
+          <select
+            aria-label={w.focusLabel}
+            value={focus}
+            onChange={(e) => setFocus(e.target.value as "all" | Focus)}
+          >
+            <option value="all">{w.focusAll}</option>
+            <option value="full">{w.focusFull}</option>
+            <option value="legs">{w.focusLegs}</option>
+            <option value="hips">{w.focusHips}</option>
+            <option value="back">{w.focusBack}</option>
+            <option value="upper">{w.focusUpper}</option>
+          </select>
         )}
-      </div>
+        <div className="workouts-menu-actions">
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={w.soundCues}
+            aria-pressed={timer.sound}
+            onClick={timer.toggleSound}
+          >
+            {timer.sound ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          </Button>
+          {timer.sound && timer.timer && !timer.saved && !timer.audioReady && (
+            <Button variant="ghost" size="sm" onClick={timer.enableAudio}>
+              {w.enableSound}
+            </Button>
+          )}
+          <Button size="sm" onClick={() => setLog(true)}>
+            <Plus size={15} />
+            {w.log}
+          </Button>
+        </div>
+      </PageMenu>
       {timer.storageWarning && (
         <p role="status" className="workout-caption">
           {w.storageWarning}
         </p>
       )}
-      {timer.timer ? (
-        <TimerPlayer />
-      ) : (
-        <div className="workout-grid">
+      <PagePanel prefix="workouts" id="stretch" value={tab}>
+        {timer.timer ? (
+          tab === "stretch" && <TimerPlayer />
+        ) : (
+          <div className="stretch-catalogue">
+            {routines.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                className="routine-card"
+                onClick={() => setOpenRoutine(r.id)}
+              >
+                <strong>{r.name}</strong>
+                <span>
+                  {Math.round(routineSeconds(r) / 60)} {w.minute} ·{" "}
+                  {r.steps.length} {w.stretchCount}
+                </span>
+                <small>
+                  {focusLabel[r.focus]} · {r.when}
+                </small>
+              </button>
+            ))}
+          </div>
+        )}
+      </PagePanel>
+      <PagePanel prefix="workouts" id="meditate" value={tab}>
+        {timer.timer ? (
+          tab === "meditate" && <TimerPlayer />
+        ) : (
           <Card className="workout-option">
-            <span className="workout-symbol">
-              <PersonStanding size={28} strokeWidth={1.4} />
-            </span>
-            <CardHeading title={w.stretch} description={w.stretchDetail} />
-            <div className="routine-choices">
-              {[5, 10].map((mins) => (
-                <button
-                  key={mins}
-                  aria-pressed={stretchMinutes === mins}
-                  onClick={() => setStretchMinutes(mins)}
-                >
-                  <span>{mins === 5 ? w.quick : w.full}</span>
-                  <strong>
-                    {mins} {w.minute}
-                  </strong>
-                </button>
-              ))}
-            </div>
-            <p className="workout-caption">{w.gentle}</p>
-            <Button
-              onClick={() =>
-                timer.start(
-                  stretchMinutes === 5 ? w.quick : w.full,
-                  "Stretching",
-                  stretchMinutes * 60,
-                )
-              }
-            >
-              <Play size={16} />
-              {w.startStretch}
-            </Button>
-          </Card>
-          <Card className="workout-option">
-            <span className="workout-symbol">
-              <Flower2 size={28} strokeWidth={1.4} />
-            </span>
-            <CardHeading
-              title={w.meditation}
-              description={w.meditationDetail}
-            />
             <div className="meditation-presets">
               {[3, 5, 10, 15, 20].map((mins) => (
                 <button
@@ -153,27 +171,22 @@ export function Workouts() {
                 meditationMinutes > 120
               }
               onClick={() =>
-                timer.start(w.meditation, "Meditation", meditationMinutes * 60)
+                timer.start(
+                  w.meditation,
+                  "Meditation",
+                  meditationMinutes * 60,
+                  "meditation-v1",
+                )
               }
             >
               <Play size={16} />
               {w.startMeditation}
             </Button>
           </Card>
-        </div>
-      )}
-      <div className="workout-grid workout-secondary">
+        )}
+      </PagePanel>
+      <PagePanel prefix="workouts" id="history" value={tab}>
         <Card>
-          <CardHeading
-            title={w.recent}
-            description={w.logDetail}
-            action={
-              <Button variant="outline" size="sm" onClick={() => setLog(true)}>
-                <Plus size={15} />
-                {w.log}
-              </Button>
-            }
-          />
           {recent.length ? (
             <ul className="workout-history">
               {recent.map((a) => (
@@ -195,8 +208,43 @@ export function Workouts() {
             <p className="workout-caption">{w.empty}</p>
           )}
         </Card>
-        <WhoopConnection />
-      </div>
+      </PagePanel>
+      <Modal
+        open={!!opened}
+        onClose={() => setOpenRoutine(null)}
+        title={opened?.name ?? ""}
+        description={opened?.when ?? ""}
+      >
+        {opened && (
+          <>
+            <ol className="stretch-sequence">
+              {opened.steps.map((s, i) => (
+                <li key={`${i}-${s.name}`}>
+                  <span>{String(i + 1).padStart(2, "0")}</span>
+                  <strong>{s.name}</strong>
+                  <small>{clockTime(s.seconds)}</small>
+                </li>
+              ))}
+            </ol>
+            <div className="timer-actions">
+              <Button
+                onClick={() => {
+                  timer.start(
+                    opened.name,
+                    "Stretching",
+                    routineSeconds(opened),
+                    opened.id,
+                  );
+                  setOpenRoutine(null);
+                }}
+              >
+                <Play size={16} />
+                {w.startRoutine}
+              </Button>
+            </div>
+          </>
+        )}
+      </Modal>
       {log && <LogWorkout open={log} onClose={() => setLog(false)} />}
       <ActivityDialog id={activityId} onClose={() => setActivityId(null)} />
     </div>
@@ -209,12 +257,10 @@ function TimerPlayer() {
   if (!timer) return null;
   const done = elapsed >= timer.total,
     stretching = timer.sport === "Stretching";
-  const seconds = timer.total / w.stretches.length;
-  const position = timerPosition(
-    w.stretches.map(() => seconds),
-    elapsed,
-  );
-  const step = w.stretches[position.index];
+  const routine = stretching ? routineById(timer.routine) : undefined;
+  const durations = routine ? routine.steps.map((s) => s.seconds) : [];
+  const position = routine ? timerPosition(durations, elapsed) : null;
+  const step = routine && position ? routine.steps[position.index] : null;
   const paused = timer.runningSince === null;
   return (
     <Card className="timer-player">
@@ -236,26 +282,26 @@ function TimerPlayer() {
               {clockTime(
                 done
                   ? 0
-                  : stretching
+                  : position
                     ? position.remaining
                     : timer.total - elapsed,
               )}
             </span>
             <small>
-              {stretching && !done
-                ? `${w.step} ${position.index + 1} / ${w.stretches.length}`
+              {position && !done
+                ? `${w.step} ${position.index + 1} / ${routine!.steps.length}`
                 : w.remaining}
             </small>
           </div>
         </div>
         <div className="timer-instruction" aria-live="polite">
-          <h3>{done ? w.finished : stretching ? step.name : w.meditation}</h3>
+          <h3>{done ? w.finished : step ? step.name : w.meditation}</h3>
           <p>
             {done
               ? saved
                 ? w.saved
                 : w.readyToSave
-              : stretching
+              : step
                 ? step.hint
                 : w.meditationDetail}
           </p>
@@ -289,13 +335,12 @@ function TimerPlayer() {
           )}
         </div>
         {error && <ErrorNotice message={error} />}
-        <p className="workout-caption timer-phone">{w.phone}</p>
       </div>
-      {stretching && (
+      {routine && position && (
         <ol className="stretch-sequence">
-          {w.stretches.map((s, i) => (
+          {routine.steps.map((s, i) => (
             <li
-              key={s.name}
+              key={`${i}-${s.name}`}
               className={i === position.index && !done ? "current" : ""}
               aria-current={i === position.index && !done ? "step" : undefined}
             >
@@ -307,7 +352,7 @@ function TimerPlayer() {
                 )}
               </span>
               <strong>{s.name}</strong>
-              <small>{clockTime(seconds)}</small>
+              <small>{clockTime(s.seconds)}</small>
             </li>
           ))}
         </ol>

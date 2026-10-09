@@ -54,7 +54,7 @@ class Whoop:
 
     @property
     def redirect_uri(self):
-        return self.cfg.app_origin + "/workouts"
+        return self.cfg.app_origin + "/settings"
 
     async def status(self):
         row = await self.store.query(

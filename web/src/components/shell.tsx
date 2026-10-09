@@ -244,9 +244,10 @@ export function Shell({
                 retry={() => void refresh(true)}
               />
             )}
-            {data && pathname !== "/coach" && pathname !== "/settings" && (
-              <SourceNotice data={data} />
-            )}
+            {data &&
+              pathname !== "/coach" &&
+              pathname !== "/settings" &&
+              pathname !== "/workouts" && <SourceNotice data={data} />}
             {pathname !== "/workouts" && <TimerBanner />}
             {children}
           </main>
