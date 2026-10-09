@@ -17,6 +17,31 @@ async def store():
     db = Store(url, options=f"-c search_path={schema}")
     await db.open()
     await db.migrate()
+    # Foundation owns production persistence; compatibility fakes only until its merge.
+    if not hasattr(db, "athlete_profile"):
+
+        async def athlete_profile():
+            return {
+                "goals": "",
+                "target_date": None,
+                "background": "",
+                "availability": "",
+                "other_sports": "",
+                "equipment": "",
+                "constraints": "",
+                "preferences": "",
+                "plan_context": "",
+                "updated_at": None,
+                "revision": 0,
+            }
+
+        db.athlete_profile = athlete_profile
+    if not hasattr(db, "coaching_records"):
+
+        async def coaching_records():
+            return []
+
+        db.coaching_records = coaching_records
     try:
         yield db
     finally:
