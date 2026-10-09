@@ -71,6 +71,10 @@ test("confirmed profile persists after reload and fits mobile", async ({
       ),
     ).toBe(true);
   }
+  await page.screenshot({
+    path: "artifacts/athlete-desktop.png",
+    fullPage: true,
+  });
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 test("rejected and stale profile saves preserve draft and require conflict reload", async ({
@@ -87,7 +91,9 @@ test("rejected and stale profile saves preserve draft and require conflict reloa
   );
   mock.fail(409);
   await page.getByRole("button", { name: "Save profile", exact: true }).click();
-  await expect(page.getByRole("main").getByRole("alert")).toContainText("changed elsewhere");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "changed elsewhere",
+  );
   await expect(
     page.getByRole("button", { name: "Save profile", exact: true }),
   ).toBeDisabled();
@@ -97,4 +103,40 @@ test("rejected and stale profile saves preserve draft and require conflict reloa
   await page.getByLabel("Goals", { exact: true }).fill("Reconciled goal");
   await page.getByRole("button", { name: "Save profile", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Saved");
+});
+
+test("profile load failure retries without an empty editable fallback", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.route(
+    "**/api/athlete-profile",
+    (route) => route.fulfill({ status: 503, json: {} }),
+    { times: 1 },
+  );
+  await page.goto("/athlete");
+  await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
+  await expect(page.getByLabel("Goals", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(page.getByLabel("Goals", { exact: true })).toHaveValue("");
+});
+
+test("athlete profile is reachable through mobile navigation", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Expand navigation" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("link", { name: "Athlete", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/athlete$/);
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(page.getByLabel("Goals", { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: "artifacts/athlete-mobile.png",
+    fullPage: true,
+  });
 });

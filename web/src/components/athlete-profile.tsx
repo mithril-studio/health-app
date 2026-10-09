@@ -82,7 +82,10 @@ export function AthleteProfile() {
               void save();
             }}
           >
-            <fieldset disabled={busy || conflict}>
+            <fieldset
+              className="athlete-profile-fields"
+              disabled={busy || conflict}
+            >
               <TextField
                 id="goals"
                 label={c.goals}

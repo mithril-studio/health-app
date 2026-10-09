@@ -19,6 +19,7 @@ test("settings and WHOOP controls are removed without processing OAuth URLs", as
   ).toHaveCount(0);
   await expect(page.getByRole("button", { name: /WHOOP/ })).toHaveCount(0);
   expect(retired).toEqual([]);
-  await page.goto("/settings");
+  const removed = await page.goto("/settings");
+  expect(removed?.status()).toBe(404);
   await expect(page.getByText("Save scores", { exact: true })).toHaveCount(0);
 });

@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import { taskCopy } from "@/lib/coach-task";
 import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import {
@@ -16,6 +18,7 @@ import { dateLabel } from "@/lib/dates";
 import { metric, duration, pace } from "@/lib/format";
 import {
   Button,
+  buttonStyle,
   Badge,
   Empty,
   ErrorNotice,
@@ -110,6 +113,13 @@ export function ActivityDialog({
               ) : (
                 <ExternalActivityLink id={activity.id} />
               )}
+              <Link
+                className={buttonStyle({ variant: "outline" })}
+                href={`/coach?mode=workout&activity_id=${encodeURIComponent(activity.id)}`}
+                onClick={onClose}
+              >
+                {taskCopy.review}
+              </Link>
             </div>
             {isRestricted(activity) && (
               <p className="restricted-detail">{copy.sources.explanation}</p>
@@ -150,7 +160,7 @@ export function ActivityDialog({
             {activity.raw.source === "whoop" && (
               <p>
                 {copy.workouts.strain}:{" "}
-                {metric(number(activity.raw.whoop_strain))}
+                {metric(number(activity.raw.whoop_strain), 1)}
               </p>
             )}
             {activity.raw.source === "app" && (
