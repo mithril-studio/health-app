@@ -31,7 +31,7 @@ preflight() {
     echo "ABORT: a machine named $NEW already exists." >&2; exit 1
   fi
   echo "Recording current boxd config and proxy list for $OLD (re-apply in verify if the reboot drops them):"
-  boxd machine config get "$OLD" || true
+  boxd machine config list "$OLD" || true
   boxd machine proxy list "$OLD" 2>/dev/null || true
   if [ -n "$(git -C "$REPO_ROOT" status --porcelain)" ]; then
     echo "ABORT: git tree is not clean; deploy a committed tree." >&2; exit 1
@@ -49,7 +49,12 @@ preflight() {
 backup() {
   say "backup"
   mkdir -p "$ARTIFACTS"
-  boxd machine exec "$OLD" -- "docker exec $OLD-postgres pg_dump -Fc -U coach_reachy coach_reachy" > "$DUMP"
+  # Derive the real DB/role from the container; the deployed value is not the repo template.
+  local db user
+  db=$(boxd machine exec "$OLD" -- "docker exec $OLD-postgres printenv POSTGRES_DB" | tr -d '\r\n')
+  user=$(boxd machine exec "$OLD" -- "docker exec $OLD-postgres printenv POSTGRES_USER" | tr -d '\r\n')
+  echo "Dumping database '$db' as role '$user'."
+  boxd machine exec "$OLD" -- "docker exec $OLD-postgres pg_dump -Fc -U $user $db" > "$DUMP"
   echo "pg_dump -Fc written to $DUMP ($(wc -c <"$DUMP") bytes)."
   boxd machine checkpoint save "$OLD" "pre-$NEW" || echo "checkpoint may already exist; continuing."
   boxd machine backup now "$OLD" || true
@@ -95,7 +100,7 @@ rename() {
 verify() {
   say "verify"
   echo "Confirm the boxd config and proxy survived the reboot; re-apply if they did not:"
-  boxd machine config get "$NEW" || true
+  boxd machine config list "$NEW" || true
   boxd machine config set "$NEW" bot-protection off || true
   boxd machine config set "$NEW" auto-suspend.timeout 0 || true
   boxd machine config set "$NEW" auto-hibernate.timeout 0 || true
