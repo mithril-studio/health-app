@@ -16,6 +16,10 @@ COPYFILE_DISABLE=1 tar --no-xattrs -czf "$archive" \
   --exclude='._*' --exclude='__pycache__' --exclude='.venv' --exclude='.pytest_cache' \
   "${paths[@]}"
 boxd machine cp "$archive" "$VM:/tmp/team-endurance-release.tar.gz"
+# tar is additive, so prune the fully-repo-managed source dirs first; otherwise files
+# deleted from the repo linger on the VM and can break the build (e.g. a removed .ts).
+# Venvs (backend/.venv, ops/.venv) and web/node_modules/.next live outside these and survive.
+boxd machine exec "$VM" -- "rm -rf $APP/web/src $APP/backend/coach $APP/backend/migrations $APP/deploy"
 boxd machine exec "$VM" -- "tar -xzf /tmp/team-endurance-release.tar.gz -C $APP"
 # Create the service venvs on first deploy (e.g. after a relocate); reuse them afterwards.
 boxd machine exec "$VM" -- "test -x $APP/backend/.venv/bin/python || python3 -m venv $APP/backend/.venv"
