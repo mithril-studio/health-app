@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from urllib.parse import urlparse, unquote
 
-root=Path('/opt/coach-reachy')
+root=Path('/opt/team-endurance')
 values={}
 for line in (root/'.env').read_text().splitlines():
     if line.strip() and not line.startswith('#') and '=' in line:
@@ -13,14 +13,14 @@ for line in (root/'.env').read_text().splitlines():
         values[k.strip()]=v.strip().strip('\"').strip("'")
 url=urlparse(values['DATABASE_URL'])
 env_path=root/'.postgres.env'
-env_path.write_text(f'POSTGRES_DB={url.path[1:]}\nPOSTGRES_USER={unquote(url.username or "reachy")}\nPOSTGRES_PASSWORD={unquote(url.password or "")}\n')
+env_path.write_text(f'POSTGRES_DB={url.path[1:]}\nPOSTGRES_USER={unquote(url.username or "coach_reachy")}\nPOSTGRES_PASSWORD={unquote(url.password or "")}\n')
 os.chmod(env_path,0o600)
-subprocess.run(['docker','volume','create','coach-reachy-postgres'],check=True)
-exists=subprocess.run(['docker','container','inspect','coach-reachy-postgres'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0
+subprocess.run(['docker','volume','create','team-endurance-postgres'],check=True)
+exists=subprocess.run(['docker','container','inspect','team-endurance-postgres'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0
 if not exists:
-    subprocess.run(['docker','run','-d','--name','coach-reachy-postgres','--restart','unless-stopped','--env-file',str(env_path),'-p','127.0.0.1:5432:5432','-v','coach-reachy-postgres:/var/lib/postgresql/data','postgres:17@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f'],check=True)
+    subprocess.run(['docker','run','-d','--name','team-endurance-postgres','--restart','unless-stopped','--env-file',str(env_path),'-p','127.0.0.1:5432:5432','-v','team-endurance-postgres:/var/lib/postgresql/data','postgres:17@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f'],check=True)
 else:
-    subprocess.run(['docker','start','coach-reachy-postgres'],check=True)
+    subprocess.run(['docker','start','team-endurance-postgres'],check=True)
 subprocess.run(['sudo','chown','root:root',str(root/'.env'),str(env_path)],check=True)
 subprocess.run(['sudo','chmod','600',str(root/'.env'),str(env_path)],check=True)
 print('Postgres configured on loopback; environment files locked to root.')

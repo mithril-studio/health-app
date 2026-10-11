@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import worker,{pollActivities} from '../src/index.mjs';
 function store(){const data=new Map();return {data,get:async k=>data.get(k),put:async(k,v)=>data.set(k,v),delete:async k=>data.delete(k),list:async({prefix})=>({keys:[...data.keys()].filter(k=>k.startsWith(prefix)).map(name=>({name}))})};}
-const env=()=>({BOX_URL:'https://coach-reachy.boxd.sh',BOX_SHARED_SECRET:'test',INTERVALS_ATHLETE_ID:'test',INTERVALS_API_KEY:'test',STATE:store()});
+const env=()=>({BOX_URL:'https://team-endurance.boxd.sh',BOX_SHARED_SECRET:'test',INTERVALS_ATHLETE_ID:'test',INTERVALS_API_KEY:'test',STATE:store()});
 test('health reports the scheduler service',async()=>{
  const response=await worker.fetch(new Request('https://worker.example/health'),env());
  assert.equal(response.status,200);

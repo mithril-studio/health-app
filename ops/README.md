@@ -2,7 +2,7 @@
 
 An asyncio process for the period when Cloudflare is unavailable. Python 3.9+
 (with the OS `tzdata` package) and `httpx`; no backend package imports.
-`coach-reachy-relay.service` runs as `boxd`. No timer is needed: a single
+`team-endurance-relay.service` runs as `boxd`. No timer is needed: a single
 scheduler loop checks the schedule every 30 seconds and polls Intervals for new
 activities.
 
@@ -29,7 +29,7 @@ transport migration; stable backend job keys deduplicate any overlap.
 
 ## Environment and files
 
-Systemd reads **`/opt/coach-reachy/.env`**. Keep that file root-owned mode `0600`;
+Systemd reads **`/opt/team-endurance/.env`**. Keep that file root-owned mode `0600`;
 systemd passes its values to the `boxd` process. The Python CLI reads environment
 variables, not the `.env` file itself. Do not print or put secret values in CLI
 arguments or logs.
@@ -47,7 +47,7 @@ The timezone is always `Europe/Amsterdam`, independent of the host timezone.
 `RELAY_START_DATE` controls morning/evening reports; activity detection starts
 with the first successful baseline.
 
-**`/opt/coach-reachy/state/relay.sqlite`** stores the initial start timestamp,
+**`/opt/team-endurance/state/relay.sqlite`** stores the initial start timestamp,
 sent/pending/expired jobs, retry deadlines, and seen activity IDs. Preserve it
 across upgrades/restarts. Deleting it deliberately resets the start boundary and
 activity baseline. On startup the relay sweeps the removed Telegram relay's state
@@ -91,7 +91,7 @@ Python environment:
 
 ```sh
 python3 -m unittest discover -s ops/tests -v
-python3 ops/relay.py --once --dry-run --state /tmp/coach-reachy-check/relay.sqlite
+python3 ops/relay.py --once --dry-run --state /tmp/team-endurance-check/relay.sqlite
 ```
 
 `--dry-run` is **offline and read-only**, needs no secrets, never instantiates an
@@ -118,17 +118,17 @@ The VM must stay awake while this fallback is active: a process on a suspended
 VM cannot wake itself for a schedule. Configure VM lifecycle outside this
 directory. This service opens no listening port.
 
-After copying `ops/` under `/opt/coach-reachy`, setting the `.env` values above,
+After copying `ops/` under `/opt/team-endurance`, setting the `.env` values above,
 and making the authenticated backend available:
 
 ```sh
-sudo install -d -o boxd -g boxd -m 0700 /opt/coach-reachy/state
-sudo python3 -m venv /opt/coach-reachy/ops/.venv
-sudo /opt/coach-reachy/ops/.venv/bin/python -m pip install -r /opt/coach-reachy/ops/requirements.txt
-sudo install -m 0644 /opt/coach-reachy/ops/coach-reachy-relay.service /etc/systemd/system/coach-reachy-relay.service
-sudo systemd-analyze verify /etc/systemd/system/coach-reachy-relay.service
+sudo install -d -o boxd -g boxd -m 0700 /opt/team-endurance/state
+sudo python3 -m venv /opt/team-endurance/ops/.venv
+sudo /opt/team-endurance/ops/.venv/bin/python -m pip install -r /opt/team-endurance/ops/requirements.txt
+sudo install -m 0644 /opt/team-endurance/ops/team-endurance-relay.service /etc/systemd/system/team-endurance-relay.service
+sudo systemd-analyze verify /etc/systemd/system/team-endurance-relay.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now coach-reachy-relay.service
+sudo systemctl enable --now team-endurance-relay.service
 ```
 
 The unit mounts the application read-only except for `state/`, drops

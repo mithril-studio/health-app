@@ -10,7 +10,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 p=argparse.ArgumentParser()
-p.add_argument('--url',default='https://coach-reachy.boxd.sh')
+p.add_argument('--url',default='https://team-endurance.boxd.sh')
 p.add_argument('--env',default=str(Path(__file__).resolve().parents[1]/'.env'))
 p.add_argument('--chat',action='store_true',help='Run one read-only OpenRouter coaching conversation')
 args=p.parse_args()
@@ -48,7 +48,7 @@ assert status==200,f'Dashboard: {status}'
 assert isinstance(data.get('activities'),list) and isinstance(data.get('wellness'),list)
 print('PASS cached dashboard:',{key:len(data.get(key,[])) for key in ['activities','events','wellness','fitness']})
 print('Sync status:',{'last_success':data.get('sync',{}).get('last_success'),'error':data.get('sync',{}).get('error')})
-status,mcp=request('/mcp',{'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':'2025-03-26','capabilities':{},'clientInfo':{'name':'reachy-smoke','version':'1.0'}}},token=values['MCP_AUTH_TOKEN'],anonymous=True,extra_headers={'Accept':'application/json, text/event-stream'})
+status,mcp=request('/mcp',{'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':'2025-03-26','capabilities':{},'clientInfo':{'name':'team-endurance-smoke','version':'1.0'}}},token=values['MCP_AUTH_TOKEN'],anonymous=True,extra_headers={'Accept':'application/json, text/event-stream'})
 assert status==200,f'MCP initialize: {status}'
 print('PASS authenticated MCP initialize')
 status,tools=request('/mcp',{'jsonrpc':'2.0','id':2,'method':'tools/list','params':{}},token=values['MCP_AUTH_TOKEN'],anonymous=True,extra_headers={'Accept':'application/json, text/event-stream','MCP-Protocol-Version':'2025-03-26'})

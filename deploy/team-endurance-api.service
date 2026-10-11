@@ -1,0 +1,28 @@
+[Unit]
+Description=Team-Endurance API, coaching tools and MCP
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=boxd
+Group=boxd
+WorkingDirectory=/opt/team-endurance/backend
+EnvironmentFile=/opt/team-endurance/.env
+Environment=HOME=/home/boxd
+Environment=PATH=/opt/team-endurance/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/opt/team-endurance/backend/.venv/bin/uvicorn coach.app:app --host 127.0.0.1 --port 8001 --no-access-log
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+StandardOutput=append:/opt/team-endurance/state/api.log
+StandardError=append:/opt/team-endurance/state/api.log
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

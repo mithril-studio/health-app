@@ -1,6 +1,6 @@
 [Unit]
-Description=Coach Reachy dashboard
-After=network-online.target coach-reachy-api.service
+Description=Team-Endurance dashboard
+After=network-online.target team-endurance-api.service
 Wants=network-online.target
 StartLimitIntervalSec=0
 
@@ -8,14 +8,14 @@ StartLimitIntervalSec=0
 Type=simple
 User=boxd
 Group=boxd
-WorkingDirectory=/opt/coach-reachy/web
+WorkingDirectory=/opt/team-endurance/web
 Environment=NODE_ENV=production
 Environment=NEXT_TELEMETRY_DISABLED=1
 ExecStart=/usr/local/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3000
 Restart=always
 RestartSec=5
-StandardOutput=append:/opt/coach-reachy/state/web.log
-StandardError=append:/opt/coach-reachy/state/web.log
+StandardOutput=append:/opt/team-endurance/state/web.log
+StandardError=append:/opt/team-endurance/state/web.log
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full

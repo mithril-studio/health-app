@@ -362,7 +362,7 @@ def main(argv=None):
     import asyncio
     import logging
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--state', type=Path, default=Path('/opt/coach-reachy/state/relay.sqlite'))
+    parser.add_argument('--state', type=Path, default=Path('/opt/team-endurance/state/relay.sqlite'))
     parser.add_argument('--once', action='store_true', help='one LIVE pass; pair with --dry-run for offline verification')
     parser.add_argument('--dry-run', action='store_true', help='offline read-only plan; no API calls or state changes')
     args = parser.parse_args(argv)

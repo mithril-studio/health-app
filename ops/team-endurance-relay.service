@@ -1,5 +1,5 @@
 [Unit]
-Description=Coach Reachy local scheduler relay
+Description=Team-Endurance local scheduler relay
 Wants=network-online.target
 After=network-online.target
 StartLimitIntervalSec=0
@@ -8,24 +8,24 @@ StartLimitIntervalSec=0
 Type=simple
 User=boxd
 Group=boxd
-WorkingDirectory=/opt/coach-reachy
-EnvironmentFile=/opt/coach-reachy/.env
+WorkingDirectory=/opt/team-endurance
+EnvironmentFile=/opt/team-endurance/.env
 Environment=PYTHONUNBUFFERED=1
 Environment=TZ=Europe/Amsterdam
-ExecStart=/opt/coach-reachy/ops/.venv/bin/python /opt/coach-reachy/ops/relay.py
+ExecStart=/opt/team-endurance/ops/.venv/bin/python /opt/team-endurance/ops/relay.py
 Restart=on-failure
 RestartSec=60
 RestartPreventExitStatus=75 78
 TimeoutStopSec=20
-StandardOutput=append:/opt/coach-reachy/state/relay.log
-StandardError=append:/opt/coach-reachy/state/relay.log
+StandardOutput=append:/opt/team-endurance/state/relay.log
+StandardError=append:/opt/team-endurance/state/relay.log
 UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true
 PrivateDevices=true
 ProtectHome=true
 ProtectSystem=strict
-ReadWritePaths=/opt/coach-reachy/state
+ReadWritePaths=/opt/team-endurance/state
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 CapabilityBoundingSet=
 RestrictSUIDSGID=true

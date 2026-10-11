@@ -2,7 +2,7 @@
 
 A private training dashboard and data-grounded coach on Intervals.icu.
 
-**App:** https://coach-reachy.boxd.sh · **MCP:** https://coach-reachy.boxd.sh/mcp
+**App:** https://team-endurance.boxd.sh · **MCP:** https://team-endurance.boxd.sh/mcp
 
 ## Architecture
 
@@ -16,7 +16,7 @@ Intervals remains the source of truth for Garmin/imported activities and planned
 
 ## Access and secrets
 
-The dashboard uses a private password/session login. The generated password is `APP_PASSWORD` in the local ignored `.env`; the deployed environment is root-owned `/opt/coach-reachy/.env` with mode 600 and loaded by systemd. Never put secrets in browser environment variables.
+The dashboard uses a private password/session login. The generated password is `APP_PASSWORD` in the local ignored `.env`; the deployed environment is root-owned `/opt/team-endurance/.env` with mode 600 and loaded by systemd. Never put secrets in browser environment variables.
 
 **Scheduled reports:** morning (08:30), evening (21:00) and post-workout reviews are generated on the VM/Worker schedule and stored read-only. Read them in the **Reports** view on the Coach page (`/coach?chat=reports`); the scheduled channel never accepts posts, so it has no composer.
 
@@ -24,7 +24,7 @@ The coach sees the last week in detail plus four weekly totals on every message,
 
 Coaching uses the server's **OpenRouter API key** and `OPENROUTER_MODEL`. The live VM had already switched providers before the workout release; that behavior is preserved in this checkout. Only the application's validated training tools are exposed, with bounded tool rounds, read-only scheduled coaching, and idempotent writes. Provider credentials never reach the browser.
 
-If coaching fails, the chat reports a safe provider-specific error for missing/rejected credentials, exhausted credits, rate limits, model errors, or timeouts. Update `OPENROUTER_API_KEY` or `OPENROUTER_MODEL` in the private server environment as appropriate and restart `coach-reachy-api`. Scheduled work stays queued on failures. The older Claude CLI login script is historical and is not used by the current provider.
+If coaching fails, the chat reports a safe provider-specific error for missing/rejected credentials, exhausted credits, rate limits, model errors, or timeouts. Update `OPENROUTER_API_KEY` or `OPENROUTER_MODEL` in the private server environment as appropriate and restart `team-endurance-api`. Scheduled work stays queued on failures. The older Claude CLI login script is historical and is not used by the current provider.
 
 The VM's bot protection must be **off** for authenticated API/MCP/Worker traffic. App authentication stays on. Postgres, Next.js and FastAPI listen on loopback; nginx is the public entry point.
 
@@ -40,7 +40,7 @@ Cloudflare's CLI currently reports **not authenticated**. Consequently the Worke
 2. From the project root run `python3 deploy/publish-worker.py`. It creates/reuses KV and uploads only required Worker secrets via stdin, not command-line arguments.
 3. Verify the returned Worker URL's `/health`; run `npm test` in `worker/`.
 4. Verify an authenticated Worker-to-box job. The backend's persistent job keys deduplicate overlap across the fallback and Worker.
-5. Disable the fallback service. Then configure `boxd machine config set coach-reachy auto-suspend.timeout 300`. Keep auto-hibernate off until cold-start behavior is verified. Incoming HTTP wake-up has been verified with boxd bot protection disabled.
+5. Disable the fallback service. Then configure `boxd machine config set team-endurance auto-suspend.timeout 300`. Keep auto-hibernate off until cold-start behavior is verified. Incoming HTTP wake-up has been verified with boxd bot protection disabled.
 
 Never enable sleep while relying on in-VM cron scheduling: sleeping clocks cannot execute scheduled jobs.
 
@@ -68,15 +68,15 @@ See `backend/IMPLEMENTATION.md`, `web/IMPLEMENTATION.md` and `ops/README.md` for
 ## Operations
 
 ```sh
-boxd machine exec coach-reachy -- 'systemctl is-active coach-reachy-api coach-reachy-web nginx'
-boxd machine exec coach-reachy -- 'sudo tail -60 /opt/coach-reachy/state/api.log'
+boxd machine exec team-endurance -- 'systemctl is-active team-endurance-api team-endurance-web nginx'
+boxd machine exec team-endurance -- 'sudo tail -60 /opt/team-endurance/state/api.log'
 # Update the existing VM without copying secrets or OAuth credentials:
 bash deploy/update.sh
 ```
 
 `deploy/bootstrap.py` creates a named Docker volume and loopback-only Postgres container. Environment files are locked to root after bootstrap; run subsequent bootstrap invocations with `sudo`. Intervals tables are a replaceable cache. App-recorded sessions, WHOOP connection credentials and retained WHOOP history are private application data: back up PostgreSQL before replacing or resetting it. OAuth state, pending confirmations and message/job history are private state and should not be committed.
 
-Service logs are private under `/opt/coach-reachy/state/` and rotate after seven daily archives. Journald was unavailable on this VM, so systemd writes to those files directly.
+Service logs are private under `/opt/team-endurance/state/` and rotate after seven daily archives. Journald was unavailable on this VM, so systemd writes to those files directly.
 
 Verification: **58 backend tests, 33 relay tests, 10 Worker tests, 18 frontend unit tests, 25 core Chrome browser tests, 5 WebKit login regression tests**. Production build and live API/MCP smoke checks passed. Real-browser checks found no accessibility violations on all four surfaces and no page overflow at 320/768/1440px. Screenshots contain private data and remain ignored in `artifacts/`. See `VERIFICATION.md` for live status and remaining external setup.
 
@@ -105,7 +105,7 @@ For workouts absent from Intervals, use **Log a workout**, or enable the optiona
 
 ### Optional direct WHOOP workout import
 
-1. Create a personal application in the [WHOOP developer dashboard](https://developer-dashboard.whoop.com/). Register the exact redirect URL **`https://coach-reachy.boxd.sh/workouts`** (or your configured `APP_ORIGIN` plus `/workouts`).
+1. Create a personal application in the [WHOOP developer dashboard](https://developer-dashboard.whoop.com/). Register the exact redirect URL **`https://team-endurance.boxd.sh/workouts`** (or your configured `APP_ORIGIN` plus `/workouts`).
 2. Add `WHOOP_CLIENT_ID` and `WHOOP_CLIENT_SECRET` to the private server environment, then restart the API. Keep the secret out of browser variables, chat and git.
 3. Open **Workouts → Connect WHOOP** and authorize your own account in the browser. The integration requests only `read:workout` and `offline`, following [WHOOP OAuth documentation](https://developer.whoop.com/docs/developing/oauth/).
 4. After sign-in, the first sync imports the last 90 days using the [official v2 workout API](https://developer.whoop.com/api/). Background jobs check every 20 minutes while the service is running. **Sync workouts** refreshes immediately. Connection errors remain visible and can be retried or reconnected.

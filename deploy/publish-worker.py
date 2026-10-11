@@ -23,7 +23,7 @@ try:
     config=json.loads(config_path.read_text())
     if config['kv_namespaces'][0]['id'].startswith('REPLACE_'):
         namespaces=json.loads(wrangler('kv','namespace','list').stdout)
-        existing=next((n for n in namespaces if n['title']=='coach-reachy-STATE'),None)
+        existing=next((n for n in namespaces if n['title']=='team-endurance-STATE'),None)
         if existing:
             namespace_id=existing['id']
         else:
