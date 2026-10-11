@@ -82,7 +82,8 @@ relocate() {
   #    units and the new nginx site. The API restart-loops until step 7 creates its database.
   VM="$OLD" SKIP_HEALTH=1 bash "$REPO_ROOT/deploy/update.sh"
   # 7. Recreate the Postgres container from the copied volume using the shipped bootstrap.py.
-  boxd machine exec "$OLD" -- "cd $NEW_APP && python3 deploy/bootstrap.py"
+  #    Run as root: the moved .env is root-owned mode 600 after the original setup locked it.
+  boxd machine exec "$OLD" -- "cd $NEW_APP && sudo python3 deploy/bootstrap.py"
   boxd machine exec "$OLD" -- "sudo systemctl restart $NEW-api $NEW-web $NEW-relay"
   # 8. Validate nginx and the loopback health endpoint before the rename (retry as the API starts).
   boxd machine exec "$OLD" -- "sudo nginx -t && sudo systemctl reload nginx"
