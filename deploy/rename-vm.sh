@@ -75,14 +75,18 @@ relocate() {
   boxd machine exec "$OLD" -- "sudo rm -rf $NEW_APP/backend/.venv $NEW_APP/ops/.venv $NEW_APP/web/.next"
   # 4. Point the app origin at the new host.
   boxd machine exec "$OLD" -- "sudo sed -i 's#^APP_ORIGIN=.*#APP_ORIGIN=https://$NEW.boxd.sh#' $NEW_APP/.env"
-  # 5. Recreate the container/env and redeploy against the moved tree (health checked after rename).
-  boxd machine exec "$OLD" -- "cd $NEW_APP && python3 deploy/bootstrap.py"
+  # 5. Remove the old units, nginx site and logrotate entry *before* redeploying, so the new
+  #    nginx site does not collide with the old one's default_server when update.sh validates.
+  boxd machine exec "$OLD" -- "sudo rm -f /etc/systemd/system/$OLD-api.service /etc/systemd/system/$OLD-web.service /etc/systemd/system/$OLD-relay.service /etc/nginx/sites-enabled/$OLD /etc/nginx/sites-available/$OLD /etc/logrotate.d/$OLD; sudo systemctl daemon-reload"
+  # 6. Ship the new code: recreates the venvs, builds, installs+enables+restarts the renamed
+  #    units and the new nginx site. The API restart-loops until step 7 creates its database.
   VM="$OLD" SKIP_HEALTH=1 "$REPO_ROOT/deploy/update.sh"
-  # 6. Remove the old unit files, nginx site and logrotate entry.
-  boxd machine exec "$OLD" -- "sudo rm -f /etc/systemd/system/$OLD-api.service /etc/systemd/system/$OLD-web.service /etc/systemd/system/$OLD-relay.service /etc/nginx/sites-available/$OLD /etc/nginx/sites-enabled/$OLD /etc/logrotate.d/$OLD; sudo systemctl daemon-reload"
-  # 7. Validate nginx and the loopback health endpoint before the rename.
+  # 7. Recreate the Postgres container from the copied volume using the shipped bootstrap.py.
+  boxd machine exec "$OLD" -- "cd $NEW_APP && python3 deploy/bootstrap.py"
+  boxd machine exec "$OLD" -- "sudo systemctl restart $NEW-api $NEW-web $NEW-relay"
+  # 8. Validate nginx and the loopback health endpoint before the rename (retry as the API starts).
   boxd machine exec "$OLD" -- "sudo nginx -t && sudo systemctl reload nginx"
-  boxd machine exec "$OLD" -- "curl --fail --silent --show-error --max-time 15 http://127.0.0.1:8001/api/health" && echo
+  boxd machine exec "$OLD" -- "curl --fail --silent --show-error --retry 20 --retry-all-errors --retry-delay 3 --max-time 15 http://127.0.0.1:8001/api/health" && echo
   echo "relocate OK; ready to rename."
 }
 
@@ -118,7 +122,7 @@ verify() {
 cleanup() {
   say "cleanup (only after ~a week of stability)"
   boxd machine exec "$NEW" -- "docker volume rm $OLD-postgres || true"
-  boxd machine checkpoint delete "$NEW" "pre-$NEW" || true
+  boxd machine checkpoint remove "$NEW" "pre-$NEW" || true
   rm -f "$DUMP"
   echo "Old volume, checkpoint and dump removed. Delete deploy/rename-vm.sh in a follow-up commit."
 }
