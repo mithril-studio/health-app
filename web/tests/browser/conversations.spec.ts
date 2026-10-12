@@ -5,13 +5,19 @@ test("chat sidebar creates, restores, and switches independent conversations", a
   page,
 }) => {
   const id = "web:" + "a".repeat(32);
+  const latest = "web:" + "b".repeat(32);
   const threads: Record<string, { role: string; content: string }[]> = {
     web: [
       { role: "user", content: "Prior question" },
       { role: "assistant", content: "Prior response" },
     ],
+    [latest]: [
+      { role: "user", content: "Latest question" },
+      { role: "assistant", content: "Latest response" },
+    ],
   };
-  const order = ["web"];
+  // The API lists conversations newest first; opening /coach must show the first one.
+  const order = [latest, "web"];
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url()),
       path = url.pathname;
@@ -58,7 +64,13 @@ test("chat sidebar creates, restores, and switches independent conversations", a
   });
   await page.goto("/coach");
   const menu = page.locator(".conversation-menu");
-  await expect(page.locator(".chat-history")).toContainText("Prior response");
+  await expect(page.locator(".chat-history")).toContainText("Latest response");
+  await expect(page.locator(".chat-history")).not.toContainText(
+    "Prior response",
+  );
+  await expect(
+    menu.getByRole("button", { name: "Latest question", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
   await page
     .locator("#page-menu")
     .getByRole("button", { name: "New chat", exact: true })

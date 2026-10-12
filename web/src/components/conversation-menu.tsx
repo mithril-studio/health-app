@@ -20,11 +20,14 @@ function conversation(value: unknown): Conversation {
 export function ConversationMenu({
   active,
   onSelect,
+  onLoaded,
   busy,
   version,
 }: {
   active: string;
   onSelect: (id: string) => void;
+  /** Called after each list load with the most recent conversation id, or null when the list is empty or failed. */
+  onLoaded?: (first: string | null) => void;
   busy: boolean;
   version: number;
 }) {
@@ -42,16 +45,23 @@ export function ConversationMenu({
       .then((result) => {
         const items = record(result).conversations;
         if (!Array.isArray(items)) throw new Error("Invalid conversation list");
-        if (!controller.signal.aborted) setRows(items.map(conversation));
+        if (controller.signal.aborted) return;
+        const next = items.map(conversation);
+        setRows(next);
+        onLoaded?.(next[0]?.id ?? null);
       })
       .catch(() => {
-        if (!controller.signal.aborted) setError(copy.coach.historyUnavailable);
+        if (controller.signal.aborted) return;
+        setError(copy.coach.historyUnavailable);
+        onLoaded?.(null);
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [active, version, retry]);
+    // The list only changes when history changes (version) or on retry;
+    // switching the active conversation does not need a reload.
+  }, [version, retry, onLoaded]);
   async function create() {
     if (creating || busy) return;
     setCreating(true);
