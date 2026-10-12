@@ -1,8 +1,10 @@
 "use client";
 import "./page-menu.css";
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
+/** False inside a hidden tab panel, so charts skip measuring a 0×0 box. */
+export const PanelActiveContext = createContext(true);
 /** The shell owns the full-width menu row; each page supplies its controls. */
 export function PageMenu({ children }: { children: ReactNode }) {
   const [host, setHost] = useState<HTMLElement | null>(null);
@@ -76,7 +78,9 @@ export function PagePanel({
       hidden={value !== id}
       tabIndex={0}
     >
-      {children}
+      <PanelActiveContext.Provider value={value === id}>
+        {children}
+      </PanelActiveContext.Provider>
     </section>
   );
 }
