@@ -56,7 +56,8 @@ scores or weather unless asked or directly needed for the recommendation. Mentio
 or missing data briefly when relevant. Finish with at most one useful coaching takeaway;
 do not infer rep progression, drift or overexertion from grouped averages alone.
 Your default context is the last 12 messages in this conversation, cached calendar from
-7 days ago through 2 days ahead, 7 days of wellness, four-week training totals, sport
+7 days ago through 2 days ahead, 7 days of wellness, the last 28 days grouped by ISO week
+(first and last periods are usually partial; use each period's start, end and days), sport
 settings and saved athlete_scores. Older cached records are available through date-range tools. Other conversations are not included;
 there is no persistent athlete memory beyond these records and the goals in this prompt.
 If a raw result exceeds the context budget, use get_activity_analysis for activity detail
@@ -155,6 +156,14 @@ class Agent:
 
     async def context(self):
         today = datetime.now(ZoneInfo("Europe/Amsterdam")).date()
+        summary = await self.tools.call(
+            "get_training_summary",
+            {
+                "oldest": str(today - timedelta(days=27)),
+                "newest": str(today),
+                "group_by": "week",
+            },
+        )
         return {
             "today": str(today),
             "timezone": "Europe/Amsterdam",
@@ -177,17 +186,9 @@ class Agent:
                 ),
             ),
             "settings": compact_settings(await self.store.settings()),
-            # Four weekly totals give month-scale questions an anchor without a tool round.
-            "recent_weeks": (
-                await self.tools.call(
-                    "get_training_summary",
-                    {
-                        "oldest": str(today - timedelta(days=27)),
-                        "newest": str(today),
-                        "group_by": "week",
-                    },
-                )
-            )["periods"],
+            # Weekly totals for 28 days give month-scale questions an anchor without a tool
+            # round. The range travels with the periods: the first and last are usually partial.
+            "recent_weeks": {key: summary[key] for key in ("oldest", "newest", "periods")},
         }
 
     async def cached_reply(self, key, channel, message):
@@ -255,6 +256,70 @@ class Agent:
         }.get(status, "openrouter_unavailable")
         return AgentUnavailable(code)
 
+    async def complete(self, messages, schemas, tool_choice=None):
+        payload = {
+            "model": self.cfg.openrouter_model,
+            "max_tokens": self.cfg.agent_max_tokens,
+            "messages": messages,
+            "tools": schemas,
+            "provider": {"require_parameters": True},
+            "stream": False,
+        }
+        if tool_choice:
+            payload["tool_choice"] = tool_choice
+        try:
+            response = await self.client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": "Bearer " + self.cfg.openrouter_api_key.get_secret_value(),
+                },
+                json=payload,
+                timeout=self.cfg.agent_timeout_seconds,
+            )
+        except httpx.TimeoutException:
+            raise AgentUnavailable("openrouter_timeout") from None
+        except httpx.HTTPError:
+            raise AgentUnavailable("openrouter_unavailable") from None
+        if not response.is_success:
+            raise self.provider_error(response.status_code)
+        try:
+            data = response.json()
+            # OpenRouter can report generation failures inside HTTP 200 responses.
+            if data.get("error"):
+                raise self.provider_error(int(data["error"].get("code", 502)))
+            choice = data["choices"][0]
+            if choice.get("error"):
+                raise self.provider_error(int(choice["error"].get("code", 502)))
+            if choice.get("finish_reason") not in ("stop", "tool_calls"):
+                raise ValueError("Incomplete completion")
+            message = choice["message"]
+            if message["role"] != "assistant":
+                raise ValueError("Invalid role")
+            content = message.get("content")
+            if content is not None and not isinstance(content, str):
+                raise ValueError("Invalid content")
+            calls = message.get("tool_calls") or []
+            if not isinstance(calls, list):
+                raise ValueError("Invalid tool calls")
+            ids = set()
+            for call in calls:
+                if (
+                    call["type"] != "function"
+                    or not isinstance(call["id"], str)
+                    or not call["id"]
+                    or call["id"] in ids
+                    or not isinstance(call["function"]["name"], str)
+                    or not isinstance(call["function"]["arguments"], str)
+                ):
+                    raise ValueError("Invalid tool call")
+                ids.add(call["id"])
+            if not calls and not (content and content.strip()):
+                raise ValueError("Empty response")
+        except (ValueError, KeyError, TypeError, IndexError, AttributeError):
+            raise AgentUnavailable("openrouter_invalid_response") from None
+        self.auth_rejected = False
+        return message, content, calls
+
     async def api(self, prompt, history, key, read_only):
         names = READ_TOOLS if read_only else TOOL_MODELS
         schemas = [
@@ -272,65 +337,9 @@ class Agent:
         messages.extend({"role": r["role"], "content": r["content"]} for r in history)
         messages.append({"role": "user", "content": prompt})
         count = 0
+        limit = "The agent turn limit was reached. Please ask a narrower question; check your calendar to review any confirmed changes."
         for _ in range(self.cfg.agent_max_rounds):
-            try:
-                response = await self.client.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    headers={
-                        "Authorization": "Bearer " + self.cfg.openrouter_api_key.get_secret_value(),
-                    },
-                    json={
-                        "model": self.cfg.openrouter_model,
-                        "max_tokens": self.cfg.agent_max_tokens,
-                        "messages": messages,
-                        "tools": schemas,
-                        "provider": {"require_parameters": True},
-                        "stream": False,
-                    },
-                    timeout=self.cfg.agent_timeout_seconds,
-                )
-            except httpx.TimeoutException:
-                raise AgentUnavailable("openrouter_timeout") from None
-            except httpx.HTTPError:
-                raise AgentUnavailable("openrouter_unavailable") from None
-            if not response.is_success:
-                raise self.provider_error(response.status_code)
-            try:
-                data = response.json()
-                # OpenRouter can report generation failures inside HTTP 200 responses.
-                if data.get("error"):
-                    raise self.provider_error(int(data["error"].get("code", 502)))
-                choice = data["choices"][0]
-                if choice.get("error"):
-                    raise self.provider_error(int(choice["error"].get("code", 502)))
-                if choice.get("finish_reason") not in ("stop", "tool_calls"):
-                    raise ValueError("Incomplete completion")
-                message = choice["message"]
-                if message["role"] != "assistant":
-                    raise ValueError("Invalid role")
-                content = message.get("content")
-                if content is not None and not isinstance(content, str):
-                    raise ValueError("Invalid content")
-                calls = message.get("tool_calls") or []
-                if not isinstance(calls, list):
-                    raise ValueError("Invalid tool calls")
-                ids = set()
-                for call in calls:
-                    if (
-                        call["type"] != "function"
-                        or not isinstance(call["id"], str)
-                        or not call["id"]
-                        or call["id"] in ids
-                        or not isinstance(call["function"]["name"], str)
-                        or not isinstance(call["function"]["arguments"], str)
-                    ):
-                        raise ValueError("Invalid tool call")
-                    ids.add(call["id"])
-                if not calls and not (content and content.strip()):
-                    raise ValueError("Empty response")
-            except (ValueError, KeyError, TypeError, IndexError, AttributeError):
-                raise AgentUnavailable("openrouter_invalid_response") from None
-            self.auth_rejected = False
+            message, content, calls = await self.complete(messages, schemas)
             if not calls:
                 return content
             assistant = {"role": "assistant", "content": content, "tool_calls": calls}
@@ -341,7 +350,13 @@ class Agent:
             for call in calls:
                 count += 1
                 if count > self.cfg.agent_max_tools:
-                    return "The tool limit was reached. Please ask a narrower question; check your calendar to review any confirmed changes."
+                    limit = "The tool limit was reached. Please ask a narrower question; check your calendar to review any confirmed changes."
+                    # Every requested call needs a tool reply before the final completion.
+                    text = (
+                        "Not executed: the tool limit was reached. Answer from the results above."
+                    )
+                    messages.append({"role": "tool", "tool_call_id": call["id"], "content": text})
+                    continue
                 try:
                     name = call["function"]["name"]
                     arguments = json.loads(call["function"]["arguments"])
@@ -370,4 +385,11 @@ class Agent:
                         "Tool rejected or unavailable. Do not infer missing data or claim success."
                     )
                 messages.append({"role": "tool", "tool_call_id": call["id"], "content": text})
-        return "The agent turn limit was reached. Please ask a narrower question; check your calendar to review any confirmed changes."
+            if count > self.cfg.agent_max_tools:
+                break
+        # Limits are spent: ask once for an answer from the gathered evidence, without tools.
+        try:
+            _, content, calls = await self.complete(messages, schemas, tool_choice="none")
+        except AgentUnavailable:
+            return limit
+        return limit if calls else content

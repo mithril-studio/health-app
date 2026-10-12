@@ -41,6 +41,11 @@ def test_summary_groups_by_week_and_month_and_counts_missing_load():
     ]
     weekly = training_summary(activities, wellness, oldest, newest, "week")
     assert [p["period"] for p in weekly["periods"]] == ["2026-01-05", "2026-02-02", "2026-02-09"]
+    assert [(p["start"], p["end"], p["days"], p["partial"]) for p in weekly["periods"]] == [
+        ("2026-01-05", "2026-01-11", 7, False),
+        ("2026-02-02", "2026-02-08", 7, False),
+        ("2026-02-09", "2026-02-15", 7, False),
+    ]
     first = weekly["periods"][0]
     assert first["sessions"] == 2 and first["missing_load"] == 1 and first["load"] == 50
     assert first["distance_km"] == 20.0 and first["by_sport"]["Run"]["sessions"] == 2
@@ -53,6 +58,10 @@ def test_summary_groups_by_week_and_month_and_counts_missing_load():
     assert first["fitness_end"] == {"date": "2026-01-06", "ctl": 31, "atl": 34, "form": -3}
     monthly = training_summary(activities, wellness, oldest, newest, "month")
     assert [p["period"] for p in monthly["periods"]] == ["2026-01", "2026-02"]
+    assert [(p["start"], p["end"], p["days"], p["partial"]) for p in monthly["periods"]] == [
+        ("2026-01-05", "2026-01-31", 27, True),  # starts at oldest, not on the 1st
+        ("2026-02-01", "2026-02-28", 28, False),
+    ]
     assert monthly["periods"][1]["by_sport"] == {
         "Soccer": {"sessions": 1, "distance_km": 0.0, "moving_time_min": 50.0, "load": 50.0},
         "Restricted source": {
@@ -64,6 +73,18 @@ def test_summary_groups_by_week_and_month_and_counts_missing_load():
     }
     assert monthly["periods"][1]["restricted"] == 1 and monthly["periods"][0]["restricted"] == 0
     assert monthly["restriction_notes"] == ["STRAVA activities are not available via the API"]
+
+
+def test_summary_periods_are_clipped_to_the_range_and_marked_partial():
+    # The 28-day coach window ending on a Monday: that Monday is a 1-day week, not a full one.
+    oldest, newest = date(2026, 9, 15), date(2026, 10, 12)
+    activities = [run(date(2026, 9, 16)), run(date(2026, 10, 12))]
+    periods = training_summary(activities, [], oldest, newest, "week")["periods"]
+    assert [(p["start"], p["end"], p["days"], p["partial"]) for p in periods] == [
+        ("2026-09-15", "2026-09-20", 6, True),
+        ("2026-10-12", "2026-10-12", 1, True),
+    ]
+    assert periods[-1]["period"] == "2026-10-12" and periods[-1]["sessions"] == 1
 
 
 def test_compact_records_keep_training_fields_and_drop_noise():

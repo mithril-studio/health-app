@@ -199,6 +199,12 @@ def period_start(day, group_by):
     return day - timedelta(days=day.weekday())
 
 
+def period_end(start, group_by):
+    if group_by == "month":
+        return (start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    return start + timedelta(days=6)
+
+
 def period_label(start, group_by):
     return start.strftime("%Y-%m") if group_by == "month" else str(start)
 
@@ -215,11 +221,17 @@ def training_summary(activities, wellness, oldest, newest, group_by="week"):
 
     def bucket(day):
         start = period_start(day, group_by)
+        end = period_end(start, group_by)
+        # Periods are clipped to the range, so a Monday newest is a 1-day week, not a future week.
+        first, last = max(start, oldest), min(end, newest)
         return periods.setdefault(
             start,
             {
                 "period": period_label(start, group_by),
-                "start": str(max(start, oldest)),
+                "start": str(first),
+                "end": str(last),
+                "days": (last - first).days + 1,
+                "partial": first > start or last < end,
                 "sessions": 0,
                 "distance_km": 0.0,
                 "moving_time_min": 0.0,

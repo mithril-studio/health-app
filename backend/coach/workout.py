@@ -1,5 +1,8 @@
 """Compact, measured workout evidence for the coach; raw API records stay intact."""
 
+from bisect import bisect_left
+from math import log
+
 from coach.analytics import compact_records, number
 
 
@@ -13,6 +16,99 @@ ACTIVITY_FIELDS = (
     "description icu_rpe feel source source_error interval_summary session_duration whoop_strain"
 )
 EVENT_FIELDS = "id name type start_date_local category description paired_activity_id moving_time"
+CURVE_FIELDS = "id label start_date_local end_date_local days"
+KEY_DISTANCES = (400, 800, 1000, 1500, 1609, 2000, 3000, 5000, 10000, 15000, 21097, 42195)
+KEY_DURATIONS = (5, 30, 60, 300, 1200, 3600)
+
+
+def clock(seconds):
+    seconds = round(seconds)
+    return f"{seconds // 60}:{seconds % 60:02}"
+
+
+def curve_points(curve):
+    """Measured (x, y, index) points of one Intervals pace or power curve, by ascending x."""
+    if "watts" in curve or ("distance" not in curve and "distances" not in curve):
+        kind, xs, ys = "power", curve.get("secs"), curve.get("watts", curve.get("values"))
+    else:
+        kind = "pace"
+        xs = curve.get("distance", curve.get("distances"))
+        ys = curve.get("values", curve.get("secs"))
+    if not isinstance(xs, list) or not isinstance(ys, list):
+        return kind, []
+    points = []
+    for index, (x, y) in enumerate(zip(xs, ys, strict=False)):
+        x, y = number(x), number(y)
+        if x is not None and y is not None and x > 0 and y > 0:
+            points.append((x, y, index))
+    return kind, sorted(points)
+
+
+def log_samples(points, count):
+    """About count points spaced evenly on a log axis, snapped to measured points, no repeats."""
+    if len(points) <= count:
+        return points
+    scale = [log(x) for x, _, _ in points]
+    picked = set()
+    for step in range(count):
+        target = scale[0] + (scale[-1] - scale[0]) * step / (count - 1)
+        i = min(bisect_left(scale, target), len(points) - 1)
+        if i and target - scale[i - 1] < scale[i] - target:
+            i -= 1
+        picked.add(i)
+    return [points[i] for i in sorted(picked)]
+
+
+def compact_curve(curve, sample_points):
+    kind, points = curve_points(curve)
+    ids = curve.get("activity_id")
+    ids = ids if isinstance(ids, list) else []
+    x_name, y_name = ("distance", "seconds") if kind == "pace" else ("secs", "watts")
+
+    def effort(x, y, index, key=False):
+        item = {x_name: x, y_name: y}
+        if key and kind == "pace":
+            item |= {"pace_s_per_km": round(y * 1000 / x, 1), "time": clock(y)}
+        if index < len(ids) and ids[index] is not None:
+            item["activity_id"] = str(ids[index])
+        return item
+
+    exact = {x: (y, index) for x, y, index in points}
+    keys = KEY_DISTANCES if kind == "pace" else KEY_DURATIONS
+    return pick(curve, CURVE_FIELDS) | {
+        "kind": kind,
+        "measured_points": len(points),
+        "key_efforts": [effort(x, *exact[x], key=True) for x in keys if x in exact],
+        "samples": [effort(*point) for point in log_samples(points, sample_points)],
+    }
+
+
+def compact_curves(result, sample_points=40):
+    """Best efforts at standard distances/durations plus a sparse curve shape, never interpolated."""
+    curves = result.get("list", result.get("curves")) if isinstance(result, dict) else result
+    if not isinstance(curves, list):
+        return result
+    compact = [compact_curve(c, sample_points) for c in curves if isinstance(c, dict)]
+    referenced = {
+        item["activity_id"]
+        for curve in compact
+        for item in curve["key_efforts"] + curve["samples"]
+        if "activity_id" in item
+    }
+    activities = result.get("activities") if isinstance(result, dict) else None
+    if isinstance(activities, list):
+        activities = {str(a.get("id")): a for a in activities if isinstance(a, dict)}
+    return {
+        "curves": compact,
+        "activities": {
+            str(id): pick(activity, "name type start_date_local")
+            for id, activity in (activities or {}).items()
+            if str(id) in referenced and isinstance(activity, dict)
+        },
+        "note": "Values are measured best efforts: seconds at exact distances (pace) or watts at "
+        "exact durations (power). key_efforts lists only standard points present in the curve; "
+        "other points were omitted except a log-spaced sample. Never interpolate a missing point.",
+    }
 
 
 def coach_result(name, result):
@@ -30,6 +126,8 @@ def coach_result(name, result):
         }
     if name == "get_wellness":
         return compact_records("wellness", result)
+    if name == "get_curves":
+        return compact_curves(result)
     return result
 
 

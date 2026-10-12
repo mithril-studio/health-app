@@ -18,7 +18,7 @@ Use independent `APP_PASSWORD`, `API_AUTH_TOKEN` (optional), `MCP_AUTH_TOKEN`, a
 
 ## Agent data reach
 
-- The cache holds twelve months of activities, wellness and fitness plus planned events twelve months ahead. Every chat attaches the last seven days of calendar and wellness, sport settings, manually saved athlete scores, sync status and four weekly totals (`recent_weeks`).
+- The cache holds twelve months of activities, wellness and fitness plus planned events twelve months ahead. Every chat attaches the last seven days of calendar and wellness, sport settings, manually saved athlete scores, sync status and the last 28 days of weekly totals (`recent_weeks` with `oldest`, `newest` and `periods`; each period has `start`, `end`, `days` and `partial`).
 - `get_training_summary(oldest, newest, group_by=week|month)` aggregates any cached range (up to 730 days): sessions, distance, time and load per sport, wellness averages, end-of-period CTL/ATL/form and `missing_load`. Only recorded values are summed.
 - `get_calendar` and `get_wellness` return training-relevant fields (see `analytics.COMPACT_FIELDS`), so a full year of wellness is about 55 KB. One tool result may use `AGENT_RESULT_CHARS` characters (default 80000); larger results tell the model the data exists and to summarise or narrow the range.
 
@@ -80,8 +80,15 @@ discarded wholesale when it exceeds the history budget.
 
 Coach calendar/wellness inputs are projected to relevant fields in the OpenRouter loop and scoped MCP calls.
 Oversized context sections are marked as omitted independently, preserving other sections
-such as thresholds. The API tool-result budget remains 20,000 characters; compact analysis
-pages avoid passing raw telemetry to the model. Review instructions prioritize per-set
+such as thresholds. The API tool-result budget is 80,000 characters (`agent_result_chars`);
+compact analysis pages avoid passing raw telemetry to the model. `get_curves` results reach the
+model (and scoped MCP calls) compacted: per curve, the measured efforts at exact standard
+distances (400 m to marathon; seconds, pace and m:ss) or durations (5 s to 60 min; watts), a
+log-spaced sample of at most 40 measured points and only the referenced activities; nothing is
+interpolated. `/api/curves` stays raw. When the coach exhausts its tool or round limit, every
+requested call still gets a tool reply and one final completion with `tool_choice: "none"`
+answers from the gathered evidence; the canned limit message is returned only if that call
+fails or still asks for tools. Review instructions prioritize per-set
 execution and threshold time, suppress routine metadata and prohibit unsupported claims
 about rep progression or cooldown identity. Production response quality still requires
 reviewing an actual coach turn; mocked-provider tests verify evidence delivery and calculations.
