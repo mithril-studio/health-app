@@ -17,24 +17,37 @@ import { Reports } from "./reports";
 type Attempt = { message: string; key: string };
 export function Coach() {
   const router = useRouter();
-  const conversationId = useSearchParams().get("chat") || "web";
+  const requested = useSearchParams().get("chat");
+  // Without an explicit ?chat=, open the most recently updated conversation
+  // (the first row of the list) rather than the legacy "web" thread.
+  const [latest, setLatest] = useState<string | null>(null);
+  const conversationId = requested || latest;
   const [busy, setBusy] = useState(false);
   const [version, setVersion] = useState(0);
   const changed = useCallback(() => setVersion((v) => v + 1), []);
+  const loaded = useCallback(
+    (first: string | null) => setLatest(first ?? "web"),
+    [],
+  );
   return (
     <>
       <div className="coach-layout">
         <ConversationMenu
-          active={conversationId}
+          active={conversationId ?? ""}
           onSelect={(id) =>
             router.push(`/coach?chat=${encodeURIComponent(id)}`, {
               scroll: false,
             })
           }
+          onLoaded={loaded}
           busy={busy}
           version={version}
         />
-        {conversationId === REPORTS ? (
+        {conversationId === null ? (
+          <div className="chat-workspace" aria-busy="true">
+            <Skeleton compact />
+          </div>
+        ) : conversationId === REPORTS ? (
           <Reports />
         ) : (
           <Conversation
