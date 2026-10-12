@@ -65,6 +65,7 @@ export const en = {
     unknown: "Not recorded",
     none: "—",
     allSports: "All sports",
+    session: "session",
     sessions: "sessions",
     done: "Done",
     planned: "Planned",
@@ -83,6 +84,7 @@ export const en = {
     watts: "W",
     ms: "ms",
     km: "km",
+    metres: "m",
     minKm: "/km",
     pts: "pts",
     hours: "h",
@@ -243,6 +245,7 @@ export const en = {
     invalidDate: "Choose a valid workout date.",
     plannedDetails: "Planned session",
     eventDetails: "Calendar entry",
+    rawDescription: "Original workout text",
   },
   insights: {
     eyebrow: "UNDERSTAND THE WORK",
@@ -275,12 +278,22 @@ export const en = {
     zone: "Zone",
     zoneEmpty: "No measured zones for this selection.",
     zoneCoverage: "activities with zone data",
+    zoneCoverageOne: "activity with zone data",
+    restrictedZonesOne:
+      "activity is restricted at the source, so its zones are unavailable.",
+    restrictedZones:
+      "activities are restricted at the source, so their zones are unavailable.",
     zoneNote:
       "Zones follow each activity’s recorded settings; missing sensors are excluded.",
     sportLoad: "Load by sport",
     sportLoadDetail: "Weekly training load, including football and gym",
     noLoad: "No recorded load in this week.",
     missingLoad: "sessions without load",
+    missingLoadOne: "session without load",
+    restrictedLoadOne:
+      "session is restricted at the source, so its sport and load are unavailable.",
+    restrictedLoad:
+      "sessions are restricted at the source, so their sport and load are unavailable.",
     loadNote:
       "Totals include recorded load only. A missing metric is never counted as zero.",
     recovery: "Recovery trends",
@@ -329,6 +342,8 @@ export const en = {
     recovery: "Recovery",
     warmup: "Warm-up",
     cooldown: "Cool-down",
+    zeroLengthNote:
+      "Intervals.icu recorded one or more segments as zero-length; they are shown exactly as reported.",
   },
   coach: {
     eyebrow: "A THOUGHTFUL TRAINING PARTNER",
@@ -395,7 +410,22 @@ export const en = {
   sources: {
     title: "Some activity details are restricted at the source",
     explanation:
-      "Intervals.icu does not expose Strava-imported activity details through its API. Plans, recovery, fitness, and available aggregate curves still work. Connect Garmin directly to Intervals or upload original activity files for detailed analysis.",
+      "Intervals.icu does not expose Strava-imported activity details through its API.",
+    affectsTitle: "Missing for these activities",
+    affects: [
+      "Name, sport, and training load",
+      "Heart rate, pace, and power zones",
+      "Intervals and per-activity charts",
+    ],
+    unaffected:
+      "Plans, recovery, fitness, and available aggregate curves still work.",
+    stepsTitle: "To restore full details",
+    steps: [
+      "Connect Garmin or your device directly to Intervals.icu so new sessions sync in full.",
+      "Upload the original activity files to Intervals.icu for past sessions.",
+    ],
+    remedy:
+      "Connect your device directly to Intervals.icu or upload the original file for detailed analysis.",
     connection: "Manage Intervals connections",
     restricted: "Restricted activity",
     restrictedBadge: "Details restricted",

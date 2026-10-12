@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
 import { weeklyZones, type Dashboard, type Sport } from "@/lib/data";
+import { plural } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { Card, CardHeading } from "./ui";
 import { ZoneBars } from "./zone-bars";
+import { RestrictedNote } from "./source-notice";
 
 export function ZonesCard({ data, week }: { data: Dashboard; week: string }) {
   const [kind, setKind] = useState<"hr" | "pace" | "power">("hr");
@@ -40,8 +42,18 @@ export function ZonesCard({ data, week }: { data: Dashboard; week: string }) {
         </div>
         <ZoneBars zones={result.zones} />
         <p className="coverage-note">
-          {result.measured} / {result.total} {copy.insights.zoneCoverage}
+          {result.measured} / {result.total}{" "}
+          {plural(
+            result.total,
+            copy.insights.zoneCoverageOne,
+            copy.insights.zoneCoverage,
+          )}
         </p>
+        <RestrictedNote
+          restricted={result.restricted}
+          one={copy.insights.restrictedZonesOne}
+          many={copy.insights.restrictedZones}
+        />
       </div>
       <div className="card-footer">{copy.insights.zoneNote}</div>
     </Card>
