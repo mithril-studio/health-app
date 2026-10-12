@@ -45,6 +45,12 @@ Source-restricted Strava imports are explicitly labeled **Restricted activity**,
 
 5 km progress uses either an exact measured 5,000 m point in the 84-day Intervals pace curve, or actual elapsed times of whole runs between 4.95–5.05 km. Each source is labeled separately. Times are never interpolated, scaled from longer runs, or described as verified race PBs. Whole-run histories show their data-window limits. Threshold history uses recorded `icu_threshold_pace` (metres/second), converted to seconds/km.
 
+Trend charts skip nulls rather than bridging them, so a value with no recorded neighbour (one week of load in a 12-week window) is drawn as its own dot instead of disappearing. Charts in hidden tab panels render a fixed-height placeholder and mount only when their panel is shown.
+
+Planned-workout descriptions with Intervals `- ` step lines render as sections with repeat counts and ordered steps; durations and targets are shown verbatim, never converted, and the original text stays available behind a disclosure. Descriptions without step lines render unchanged.
+
+Activity interval rows show exact seconds (`m:ss`, `h:mm:ss`), fall back to elapsed time only when moving time is zero, show metres under 1 km, and show pace only for segments with recorded time and distance. Segments Intervals recorded as zero-length stay zero and are called out below the table.
+
 ## Verification
 
 - Unit tests cover missing/zero metrics, malformed responses, raw zone formats, football/gym load, elapsed-time-only 5 km runs, exact 5 km curve points, verified Intervals distance/values curves, fitness derivation, DST date handling, conversational roles, structured deletion capabilities, restricted records, and scheduled-report parsing with its kind fallback.
