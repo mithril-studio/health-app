@@ -3,7 +3,7 @@ import json
 import pytest
 
 from coach.agent import bounded_json
-from coach.workout import analyze_workout, coach_result
+from coach.workout import KEY_DURATIONS, analyze_workout, coach_result, compact_curves
 
 
 def streams(times, hr):
@@ -142,3 +142,60 @@ def test_compaction_preserves_plan_and_context_thresholds():
     preserved = json.loads(bounded_json(context))
     assert preserved["settings"] == context["settings"]
     assert preserved["today"] == context["today"]
+
+
+def pace_curves(points=1000):
+    distances = [10 * (i + 1) for i in range(points)]
+    return {
+        "list": [
+            {
+                "id": "84d",
+                "label": "84 days",
+                "distance": distances,
+                "values": [d * 0.216 for d in distances],
+                "activity_id": [f"a{i % 25}" for i in range(points)],
+                "unused": ["x" * 20] * points,
+            }
+        ],
+        "activities": {
+            f"a{i}": {"id": f"a{i}", "name": f"Run {i}", "type": "Run", "icu_zone_times": [1] * 50}
+            for i in range(60)
+        },
+    }
+
+
+def test_curve_compaction_keeps_exact_efforts_and_a_bounded_sample():
+    compact = coach_result("get_curves", pace_curves())
+    curve = compact["curves"][0]
+    efforts = {e["distance"]: e for e in curve["key_efforts"]}
+    assert efforts[5000] == {
+        "distance": 5000,
+        "seconds": 1080.0,
+        "pace_s_per_km": 216.0,
+        "time": "18:00",
+        "activity_id": "a24",
+    }
+    assert 1609 not in efforts and 4990 not in efforts  # never interpolated
+    distances = [s["distance"] for s in curve["samples"]]
+    assert len(distances) <= 40 and len(set(distances)) == len(distances)
+    assert 4990 not in distances and distances == sorted(distances)
+    assert distances[0] == 10 and distances[-1] == 10000
+    referenced = {e["activity_id"] for e in curve["key_efforts"] + curve["samples"]}
+    assert set(compact["activities"]) == referenced
+    assert compact["activities"]["a24"] == {"name": "Run 24", "type": "Run"}
+    assert len(json.dumps(compact)) < 10000
+
+
+def test_power_curve_keeps_key_durations_and_missing_values_stay_missing():
+    secs = list(range(1, 3601))
+    power = compact_curves({"list": [{"secs": secs, "watts": [1000 - s / 5 for s in secs]}]})
+    curve = power["curves"][0]
+    assert curve["kind"] == "power"
+    assert [e["secs"] for e in curve["key_efforts"]] == list(KEY_DURATIONS)
+    assert curve["key_efforts"][0] == {"secs": 5, "watts": 999.0}
+    raw = pace_curves()
+    raw["list"][0]["values"][499] = None  # the 5000 m point
+    curve = compact_curves(raw)["curves"][0]
+    assert 5000 not in [e["distance"] for e in curve["key_efforts"]]
+    assert 5000 not in [s["distance"] for s in curve["samples"]]
+    assert curve["measured_points"] == 999

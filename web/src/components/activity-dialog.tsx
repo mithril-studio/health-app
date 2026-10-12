@@ -13,7 +13,8 @@ import {
 import { activityLabel, isRestricted } from "@/lib/source-info";
 import { copy } from "@/lib/i18n";
 import { dateLabel } from "@/lib/dates";
-import { metric, duration, pace } from "@/lib/format";
+import { metric, duration, pace, clock } from "@/lib/format";
+import { intervalMetrics } from "@/lib/interval-rows";
 import {
   Button,
   Badge,
@@ -112,7 +113,9 @@ export function ActivityDialog({
               )}
             </div>
             {isRestricted(activity) && (
-              <p className="restricted-detail">{copy.sources.explanation}</p>
+              <p className="restricted-detail">
+                {copy.sources.explanation} {copy.sources.remedy}
+              </p>
             )}
             <dl className="detail-metrics">
               {[
@@ -199,64 +202,63 @@ export function ActivityDialog({
             )}
             <h3 className="detail-title">{copy.activity.intervals}</h3>
             {intervals.length ? (
-              <div className="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{copy.activity.interval}</th>
-                      <th>{copy.common.duration}</th>
-                      <th>{copy.common.distance}</th>
-                      <th>{copy.common.pace}</th>
-                      <th>{copy.common.hr}</th>
-                      <th>{copy.common.power}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {intervals.map((row, i) => {
-                      const speed = number(row.average_speed);
-                      const labels: Record<string, string> = {
-                        WORK: copy.activity.work,
-                        RECOVERY: copy.activity.recovery,
-                        WARMUP: copy.activity.warmup,
-                        COOLDOWN: copy.activity.cooldown,
-                      };
-                      return (
-                        <tr key={i}>
-                          <th scope="row">
-                            {text(row.label) ||
-                              labels[text(row.type)] ||
-                              text(row.type) ||
-                              `${copy.activity.interval} ${i + 1}`}
-                          </th>
-                          <td>
-                            {duration(
-                              number(row.moving_time ?? row.elapsed_time),
-                            )}
-                          </td>
-                          <td>
-                            {number(row.distance) === null
-                              ? copy.common.none
-                              : `${metric(number(row.distance)! / 1000, 2)} ${copy.common.km}`}
-                          </td>
-                          <td>
-                            {speed && speed > 0
-                              ? pace(1000 / speed)
-                              : copy.common.none}
-                          </td>
-                          <td>{metric(number(row.average_heartrate))}</td>
-                          <td>
-                            {metric(
-                              number(
-                                row.average_watts ?? row.icu_average_watts,
-                              ),
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>{copy.activity.interval}</th>
+                        <th>{copy.common.duration}</th>
+                        <th>{copy.common.distance}</th>
+                        <th>{copy.common.pace}</th>
+                        <th>{copy.common.hr}</th>
+                        <th>{copy.common.power}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {intervals.map((row, i) => {
+                        const m = intervalMetrics(row);
+                        const labels: Record<string, string> = {
+                          WORK: copy.activity.work,
+                          RECOVERY: copy.activity.recovery,
+                          WARMUP: copy.activity.warmup,
+                          COOLDOWN: copy.activity.cooldown,
+                        };
+                        return (
+                          <tr key={i}>
+                            <th scope="row">
+                              {text(row.label) ||
+                                labels[text(row.type)] ||
+                                text(row.type) ||
+                                `${copy.activity.interval} ${i + 1}`}
+                            </th>
+                            <td>{clock(m.seconds)}</td>
+                            <td>
+                              {m.distance === null
+                                ? copy.common.none
+                                : m.distance < 1000
+                                  ? `${metric(m.distance)} ${copy.common.metres}`
+                                  : `${metric(m.distance / 1000, 2)} ${copy.common.km}`}
+                            </td>
+                            <td>{pace(m.paceSecondsPerKm)}</td>
+                            <td>{metric(number(row.average_heartrate))}</td>
+                            <td>
+                              {metric(
+                                number(
+                                  row.average_watts ?? row.icu_average_watts,
+                                ),
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {intervals.some((row) => intervalMetrics(row).zeroLength) && (
+                  <p className="muted-text">{copy.activity.zeroLengthNote}</p>
+                )}
+              </>
             ) : (
               <Empty title={copy.activity.noIntervals} />
             )}

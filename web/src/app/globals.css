@@ -1911,6 +1911,45 @@ td {
   margin: 20px 0;
   line-height: 1.8;
 }
+.workout-steps {
+  font-size: 12px;
+  padding: 18px;
+  background: var(--muted);
+  border-radius: var(--radius-sm);
+  margin: 20px 0;
+  display: grid;
+  gap: 14px;
+}
+.workout-steps h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.workout-steps ol {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+.workout-steps li strong {
+  font-variant-numeric: tabular-nums;
+  margin-right: 8px;
+}
+.workout-steps details {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.workout-steps details summary {
+  width: fit-content;
+  cursor: pointer;
+}
+.workout-steps details .workout-description {
+  background: var(--background);
+  margin: 10px 0 0;
+}
 .comparison {
   display: flex;
   align-items: center;
@@ -2585,6 +2624,27 @@ td {
   color: var(--muted-foreground);
   margin: 10px 0;
   line-height: 1.8;
+}
+.source-notice h4 {
+  font-size: 11px;
+  font-weight: 500;
+  margin: 12px 0 4px;
+}
+.source-notice ul,
+.source-notice ol {
+  color: var(--muted-foreground);
+  margin: 0 0 10px;
+  padding-left: 18px;
+  line-height: 1.8;
+}
+.source-notice ul {
+  list-style: disc;
+}
+.source-notice ol {
+  list-style: decimal;
+}
+.restricted-note .inline-link {
+  font-size: inherit;
 }
 .restricted-detail {
   font-size: 11px;

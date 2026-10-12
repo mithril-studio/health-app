@@ -12,7 +12,7 @@ import {
   type CurvePoint,
   type Sport,
 } from "@/lib/data";
-import { metric, pace, duration } from "@/lib/format";
+import { metric, pace, clock, count } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { DataGate, useTraining } from "./workspace";
 import {
@@ -30,6 +30,7 @@ import { FitnessCard } from "./fitness";
 import { GoalCard } from "./goal";
 import { ZonesCard } from "./zones-card";
 import { PageMenu, PageTabs, PagePanel } from "./page-menu";
+import { RestrictedNote } from "./source-notice";
 export function Insights() {
   const { data, now } = useTraining();
   const [period, setPeriod] = useState(84);
@@ -51,15 +52,17 @@ export function Insights() {
             { id: "goal", label: copy.overview.goalTitle },
           ]}
         />
-        <select
-          aria-label={copy.insights.range}
-          value={period}
-          onChange={(e) => setPeriod(Number(e.target.value))}
-        >
-          <option value={28}>{copy.insights.last28}</option>
-          <option value={84}>{copy.insights.last84}</option>
-          <option value={365}>{copy.insights.lastYear}</option>
-        </select>
+        {(section === "fitness" || section === "recovery") && (
+          <select
+            aria-label={copy.insights.range}
+            value={period}
+            onChange={(e) => setPeriod(Number(e.target.value))}
+          >
+            <option value={28}>{copy.insights.last28}</option>
+            <option value={84}>{copy.insights.last84}</option>
+            <option value={365}>{copy.insights.lastYear}</option>
+          </select>
+        )}
       </PageMenu>
       <DataGate>
         {data && (
@@ -72,7 +75,11 @@ export function Insights() {
             </PagePanel>
             <PagePanel prefix="insights" id="zones" value={section}>
               <div className="insight-week-control">
-                <span>{copy.overview.week}</span>
+                <span>
+                  {week === startOfWeek(now)
+                    ? copy.overview.week
+                    : copy.calendar.week}
+                </span>
                 <div>
                   <Button
                     size="icon"
@@ -203,7 +210,7 @@ function CurvesCard() {
           xFormat={(v) =>
             sport === "Run"
               ? `${metric(Number(v) / 1000, 2)} ${copy.common.km}`
-              : duration(Number(v))
+              : clock(Number(v))
           }
           yFormat={(v) =>
             sport === "Run" ? pace(v) : `${metric(v)} ${copy.common.watts}`
@@ -236,9 +243,9 @@ function LoadCard({ data, week }: { data: Dashboard; week: string }) {
               <div>
                 <strong>{copy.sports[row.sport]}</strong>
                 <small>
-                  {row.count} {copy.common.sessions}
+                  {count(row.count, copy.common.session, copy.common.sessions)}
                   {row.missing
-                    ? ` · ${row.missing} ${copy.insights.missingLoad}`
+                    ? ` · ${count(row.missing, copy.insights.missingLoadOne, copy.insights.missingLoad)}`
                     : ""}
                 </small>
                 <div className="bar-track">
@@ -256,6 +263,11 @@ function LoadCard({ data, week }: { data: Dashboard; week: string }) {
         ) : (
           <Empty title={copy.insights.noLoad} />
         )}
+        <RestrictedNote
+          restricted={rows.reduce((sum, row) => sum + row.restricted, 0)}
+          one={copy.insights.restrictedLoadOne}
+          many={copy.insights.restrictedLoad}
+        />
       </div>
       <div className="card-footer">{copy.insights.loadNote}</div>
     </Card>

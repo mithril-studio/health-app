@@ -1,5 +1,5 @@
 "use client";
-import { useId } from "react";
+import { useContext, useId } from "react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -15,7 +15,9 @@ import {
 import { copy } from "@/lib/i18n";
 import { dateLabel, addDays } from "@/lib/dates";
 import { metric } from "@/lib/format";
+import { isolatedIndexes } from "@/lib/chart-points";
 import { Empty } from "./ui";
+import { PanelActiveContext } from "./page-menu";
 export type ChartRow = { [key: string]: number | string | null };
 export type Series = {
   key: string;
@@ -63,10 +65,45 @@ export function TrendChart({
   compact?: boolean;
 }) {
   const id = useId();
+  const active = useContext(PanelActiveContext);
   const available = rows.some((row) =>
     series.some((s) => typeof row[s.key] === "number"),
   );
   if (!available) return <Empty title={empty} />;
+  if (!active)
+    return (
+      <div className="chart-wrap">
+        <div className="chart-frame" style={{ height }} />
+      </div>
+    );
+  // Lines skip nulls, so a value without recorded neighbours needs its own dot.
+  const dots = (s: Series) => {
+    const isolated = isolatedIndexes(rows, s.key);
+    const DotFor = ({
+      cx,
+      cy,
+      index,
+      payload,
+    }: {
+      cx?: number;
+      cy?: number;
+      index?: number;
+      payload?: unknown;
+    }) =>
+      isolated.has(index ?? rows.indexOf(payload as ChartRow)) &&
+      cx != null &&
+      cy != null ? (
+        <circle
+          cx={cx}
+          cy={cy}
+          r={3}
+          fill={`var(--chart-${s.tone ?? "primary"})`}
+        />
+      ) : (
+        <g />
+      );
+    return DotFor;
+  };
   return (
     <div className="chart-wrap">
       <div
@@ -167,7 +204,7 @@ export function TrendChart({
                   fillOpacity={0.65}
                   strokeWidth={2}
                   connectNulls={false}
-                  dot={rows.length <= 2 ? { r: 3 } : false}
+                  dot={dots(s)}
                   isAnimationActive={false}
                 />
               ) : (
@@ -180,7 +217,7 @@ export function TrendChart({
                   strokeDasharray={s.dashed ? "4 4" : undefined}
                   strokeWidth={1.7}
                   connectNulls={false}
-                  dot={rows.length <= 2 ? { r: 3 } : false}
+                  dot={dots(s)}
                   isAnimationActive={false}
                 />
               ),

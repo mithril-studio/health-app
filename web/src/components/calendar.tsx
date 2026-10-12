@@ -25,6 +25,7 @@ import {
 import { activityLabel, isRestricted } from "@/lib/source-info";
 import { copy } from "@/lib/i18n";
 import { duration, metric } from "@/lib/format";
+import { parseWorkoutSteps } from "@/lib/workout-steps";
 import { useTraining } from "./workspace";
 import { ActivityDialog } from "./activity-dialog";
 import {
@@ -382,7 +383,7 @@ export function TrainingCalendar() {
               </span>
             </div>
             {event.description && (
-              <div className="workout-description">{event.description}</div>
+              <WorkoutDescription description={event.description} />
             )}
             {paired && (
               <p className="comparison">
@@ -484,5 +485,38 @@ export function TrainingCalendar() {
         )}
       </Modal>
     </>
+  );
+}
+function WorkoutDescription({ description }: { description: string }) {
+  const sections = parseWorkoutSteps(description);
+  if (!sections)
+    return <div className="workout-description">{description}</div>;
+  return (
+    <div className="workout-steps">
+      {sections.map((section, i) => (
+        <section key={i}>
+          {(section.title || section.repeat !== null) && (
+            <h4>
+              {section.title}
+              {section.repeat !== null && <Badge>{section.repeat}×</Badge>}
+            </h4>
+          )}
+          {section.steps.length > 0 && (
+            <ol>
+              {section.steps.map((step, j) => (
+                <li key={j}>
+                  {step.duration && <strong>{step.duration}</strong>}
+                  <span>{step.target}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      ))}
+      <details>
+        <summary>{copy.calendar.rawDescription}</summary>
+        <div className="workout-description">{description}</div>
+      </details>
+    </div>
   );
 }

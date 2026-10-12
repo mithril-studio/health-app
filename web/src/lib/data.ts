@@ -1,4 +1,5 @@
 import { addDays, startOfWeek, validDate } from "./dates";
+import { isRestricted } from "./source-info";
 export type Raw = Record<string, unknown>;
 export const record = (value: unknown): Raw =>
   value !== null && typeof value === "object" && !Array.isArray(value)
@@ -247,6 +248,7 @@ export function weeklyLoad(activities: Activity[], week: string) {
       sport,
       load: sumKnown(subset.map((a) => a.load)),
       missing: subset.filter((a) => a.load === null).length,
+      restricted: subset.filter(isRestricted).length,
       count: subset.length,
     };
   });
@@ -274,6 +276,7 @@ export function weeklyZones(
         a.zone.localeCompare(b.zone, undefined, { numeric: true }),
       ),
     measured: rows.filter((a) => a.zones[metric].length).length,
+    restricted: rows.filter(isRestricted).length,
     total: rows.length,
   };
 }

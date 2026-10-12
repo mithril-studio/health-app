@@ -25,9 +25,9 @@ import { Button, ErrorNotice, Modal, Wordmark, cn } from "./ui";
 const nav = [
   { href: "/", key: "overview", Icon: LayoutDashboard },
   { href: "/coach", key: "coach", Icon: MessageCircle },
-  { href: "/workouts", key: "workouts", Icon: Timer },
   { href: "/calendar", key: "calendar", Icon: CalendarDays },
   { href: "/insights", key: "insights", Icon: ChartNoAxesCombined },
+  { href: "/workouts", key: "workouts", Icon: Timer },
   { href: "/settings", key: "settings", Icon: Settings },
 ] as const;
 function preference(name: string, value: string) {

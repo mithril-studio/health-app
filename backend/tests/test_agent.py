@@ -43,6 +43,8 @@ async def test_agent_loop_is_bounded_and_scheduled_writes_rejected(store):
 
     async def remote(req):
         requests.append(req)
+        if json.loads(req.content).get("tool_choice") == "none":
+            return httpx.Response(200, json=completion("Answer from gathered evidence"))
         return httpx.Response(
             200, json=completion(None, [tool_call("delete_workout", {"id": "21"})])
         )
@@ -52,13 +54,41 @@ async def test_agent_loop_is_bounded_and_scheduled_writes_rejected(store):
     async with httpx.AsyncClient(transport=httpx.MockTransport(remote)) as client:
         agent = Agent(settings, store, service, client)
         reply = await agent.respond("suggest adjustments", key="job1", read_only=True)
-    assert len(requests) == 2 and "limit" in reply.lower()
+    # Two tool rounds, then one final completion that may not call tools.
+    assert len(requests) == 3 and reply == "Answer from gathered evidence"
+    final = json.loads(requests[-1].content)
+    assert final["tool_choice"] == "none" and final["messages"][-1]["role"] == "tool"
+    assert "tool_choice" not in json.loads(requests[0].content)
     assert service.source.calls == []
     assert await store.query("SELECT * FROM pending_deletions") == []
     assert requests[0].headers["Authorization"] == "Bearer fake"
     assert str(requests[0].url) == "https://openrouter.ai/api/v1/chat/completions"
     names = {t["function"]["name"] for t in json.loads(requests[0].content)["tools"]}
     assert "get_calendar" in names and "delete_workout" not in names
+
+
+async def test_tool_limit_answers_every_call_and_falls_back_when_tools_persist(store):
+    requests = []
+
+    async def remote(req):
+        payload = json.loads(req.content)
+        requests.append(payload)
+        calls = [
+            tool_call("get_calendar", {"oldest": "2026-10-01", "newest": "2026-10-09"}, f"c{i}")
+            for i in range(3)
+        ]
+        return httpx.Response(200, json=completion(None, calls))
+
+    cfg = Settings(_env_file=None, openrouter_api_key="fake", agent_max_tools=2)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(remote)) as client:
+        agent = Agent(cfg, store, ToolService(store, WritableSource()), client)
+        reply = await agent.api("review", [], "limit", True)
+    assert reply.startswith("The tool limit was reached")
+    assert len(requests) == 2 and requests[-1]["tool_choice"] == "none"
+    tools = [m for m in requests[-1]["messages"] if m["role"] == "tool"]
+    assert [m["tool_call_id"] for m in tools] == ["c0", "c1", "c2"]
+    assert "activities" in json.loads(tools[1]["content"])
+    assert tools[2]["content"].startswith("Not executed")
 
 
 async def test_chat_idempotency_key_cannot_reuse_a_different_message(store):

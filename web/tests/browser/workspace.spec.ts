@@ -348,6 +348,10 @@ test("drag and drop move updates calendar only after explicit confirmation", asy
 test("insights switch curves and zones without inventing missing metrics", async ({
   page,
 }) => {
+  const sizeWarnings: string[] = [];
+  page.on("console", (message) => {
+    if (message.text().includes("width(0)")) sizeWarnings.push(message.text());
+  });
   await mock(page, dashboard());
   await page.goto("/insights");
   await expect(
@@ -363,12 +367,36 @@ test("insights switch curves and zones without inventing missing metrics", async
       .locator(".sport-load-row")
       .getByText("Fitness & strength", { exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("combobox", { name: "Insight period" }),
+  ).toHaveCount(0);
+  await expect(page.locator(".sport-load-row small").first()).toHaveText(
+    "1 session",
+  );
+  await page.getByRole("button", { name: "Previous", exact: true }).click();
+  await expect(page.locator(".insight-week-control > span")).toHaveText("Week");
   await page.getByRole("button", { name: "Power", exact: true }).click();
   await expect(
     page.getByText("No measured zones for this selection."),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.locator(".insight-week-control > span")).toHaveText(
+    "This week",
+  );
   await accessible(page);
   await page.screenshot({ path: "artifacts/insights-desktop.png" });
+  await page.getByRole("tab", { name: "Recovery", exact: true }).click();
+  await expect(
+    page.getByRole("combobox", { name: "Insight period" }),
+  ).toBeVisible();
+  // One week of load per sport has no neighbours; it must still be drawn.
+  await expect(
+    page
+      .locator("#insights-recovery-panel .card")
+      .first()
+      .locator(".recharts-wrapper circle"),
+  ).toHaveCount(2);
+  expect(sizeWarnings).toEqual([]);
   await page.setViewportSize({ width: 320, height: 740 });
   await noOverflow(page);
 });
