@@ -34,6 +34,7 @@ test("every page has one bold header title and a full-width section menu", async
     ["/", "Overview"],
     ["/calendar", "Calendar"],
     ["/insights", "Insights"],
+    ["/athlete", "Athlete"],
     ["/coach", "Chats"],
   ]) {
     await page.goto(route);
@@ -78,6 +79,20 @@ test("section tabs are keyboard accessible and switch the visible content", asyn
         .analyze()
     ).violations,
   ).toEqual([]);
+});
+
+test("athlete tabs expose progress and coach voice controls", async ({ page }) => {
+  await page.goto("/athlete");
+  await expect(
+    page.getByRole("tabpanel", { name: "Athlete", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Long-term north star")).toBeVisible();
+  await page.getByRole("tab", { name: "Coach", exact: true }).click();
+  await expect(
+    page.getByRole("tabpanel", { name: "Coach", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /The Analyst/ }).click();
+  await expect(page.getByText("The Analyst").first()).toBeVisible();
 });
 
 test("chat history docks against the main sidebar and fills the remaining height", async ({

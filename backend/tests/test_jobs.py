@@ -3,7 +3,7 @@ import pytest
 from test_tools import WritableSource
 
 from coach.config import Settings
-from coach.jobs import Jobs, notification_chunks
+from coach.jobs import Jobs, notification_chunks, telegram_html
 from coach.tools import ToolError, ToolService
 
 
@@ -21,9 +21,17 @@ async def test_jobs_read_only_and_notification_survives_send_failure(store):
 
     async def remote(req):
         if req.url.path.endswith("/getMe"):
-            return httpx.Response(200, json={"ok": True, "result": {
-                "id": 999, "is_bot": True, "username": "coachreachybot",
-            }})
+            return httpx.Response(
+                200,
+                json={
+                    "ok": True,
+                    "result": {
+                        "id": 999,
+                        "is_bot": True,
+                        "username": "coachreachybot",
+                    },
+                },
+            )
         sends.append(req)
         if len(sends) == 1:
             return httpx.Response(503, json={"ok": False})
@@ -43,13 +51,23 @@ async def test_jobs_read_only_and_notification_survives_send_failure(store):
         assert (await jobs.process(key))["status"] == "succeeded"
         await jobs.process(key)
         assert len(sends) == 2
+        payload = sends[-1].read().decode()
+        assert '"parse_mode":"HTML"' in payload
 
 
 async def test_telegram_lock_dedup_and_payload_minimization(store):
     cfg = Settings(_env_file=None, telegram_bot_token="test", telegram_chat_id="123")
-    async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: httpx.Response(
-        200, json={"ok": True, "result": {"id": 999, "is_bot": True, "username": "coachreachybot"}}
-    ))) as client:
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(
+                200,
+                json={
+                    "ok": True,
+                    "result": {"id": 999, "is_bot": True, "username": "coachreachybot"},
+                },
+            )
+        )
+    ) as client:
         jobs = Jobs(cfg, store, ToolService(store, WritableSource()), FakeAgent(), client)
         bad = {"update_id": 42, "message": {"chat": {"id": 999}, "text": "hello"}}
         with pytest.raises(ToolError):
@@ -72,3 +90,8 @@ def test_telegram_chunks_respect_utf16_limit():
     chunks = notification_chunks("🙂" * 9000)
     assert "".join(chunks) == "🙂" * 9000
     assert all(len(c.encode("utf-16-le")) <= 8000 for c in chunks)
+
+
+def test_telegram_html_converts_safe_markdown_subset():
+    assert telegram_html("**Advies:** rust & herstel") == "<b>Advies:</b> rust &amp; herstel"
+    assert telegram_html("Gebruik `CTL` < ATL") == "Gebruik <code>CTL</code> &lt; ATL"

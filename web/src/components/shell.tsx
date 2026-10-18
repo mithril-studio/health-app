@@ -7,6 +7,7 @@ import {
   CalendarDays,
   ChartNoAxesCombined,
   MessageCircle,
+  Target,
   PanelLeft,
   PanelLeftClose,
   Sun,
@@ -23,6 +24,7 @@ import { Button, ErrorNotice, Mark, Modal, cn } from "./ui";
 const nav = [
   { href: "/", key: "overview", Icon: LayoutDashboard },
   { href: "/coach", key: "coach", Icon: MessageCircle },
+  { href: "/athlete", key: "athlete", Icon: Target },
   { href: "/calendar", key: "calendar", Icon: CalendarDays },
   { href: "/insights", key: "insights", Icon: ChartNoAxesCombined },
 ] as const;
@@ -66,6 +68,9 @@ export function Shell({
     const next = theme === "light" ? "dark" : "light";
     setTheme(next);
     document.documentElement.classList.toggle("dark", next === "dark");
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", next === "dark" ? "#0f0f0f" : "#ffffff");
     preference("theme", next);
   };
   const navigation = (

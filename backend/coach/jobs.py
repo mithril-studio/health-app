@@ -1,10 +1,34 @@
 import asyncio
+import html
+import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from coach.models import JobInput
 from coach.telegram_link import TelegramLink, private_sender
 from coach.tools import ToolError
+
+
+def telegram_html(text):
+    """Render the small Markdown subset the coach uses as Telegram HTML.
+
+    Telegram does not understand GitHub Markdown (notably **bold** and tables),
+    so sending model text verbatim makes formatting markers visible.  Keep this
+    adapter intentionally conservative: escape everything first, then opt in to
+    a few safe tags Telegram supports.
+    """
+    parts = re.split(r"(```(?:[^`]|`(?!``))*```)", text)
+    rendered = []
+    for part in parts:
+        if part.startswith("```") and part.endswith("```"):
+            body = part[3:-3].strip("\n")
+            rendered.append("<pre>" + html.escape(body, quote=False) + "</pre>")
+            continue
+        escaped = html.escape(part, quote=False)
+        escaped = re.sub(r"\*\*([^*\n][^\n]*?)\*\*", r"<b>\1</b>", escaped)
+        escaped = re.sub(r"`([^`\n]+)`", r"<code>\1</code>", escaped)
+        rendered.append(escaped)
+    return "".join(rendered)
 
 
 def notification_chunks(text):
@@ -126,7 +150,8 @@ class Jobs:
                     + "/sendMessage",
                     json={
                         "chat_id": target,
-                        "text": chunk,
+                        "text": telegram_html(chunk),
+                        "parse_mode": "HTML",
                         "link_preview_options": {"is_disabled": True},
                     },
                     timeout=20,

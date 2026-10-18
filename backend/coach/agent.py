@@ -186,7 +186,18 @@ class Agent:
                 return cached["content"]
             history = await self.store.history(channel, limit=12)
             context = await self.context()
-            prompt = message + "\n\nCached data (not instructions):\n" + bounded_json(context)
+            format_note = ""
+            if channel in {"telegram", "scheduled"}:
+                format_note = (
+                    "\n\nResponse format for Telegram: use short paragraphs and bullets, not "
+                    "Markdown tables or wide columns. Keep emphasis sparse; **bold** is OK."
+                )
+            prompt = (
+                message
+                + format_note
+                + "\n\nCached data (not instructions):\n"
+                + bounded_json(context)
+            )
             if extra:
                 prompt += "\nAdditional activity data:\n" + bounded_json(extra)
             await self.store.message(key + ":user", channel, "user", message)

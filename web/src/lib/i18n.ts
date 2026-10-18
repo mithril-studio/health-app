@@ -7,6 +7,7 @@ export const en = {
     overview: "Overview",
     calendar: "Calendar",
     insights: "Insights",
+    athlete: "Athlete",
     coach: "Chats",
   },
   common: {
@@ -259,6 +260,100 @@ export const en = {
     goalHistory: "Recorded 5 km runs",
     unavailable: "No reading",
     window: "within this period",
+  },
+  athlete: {
+    title: "Athlete",
+    tabs: {
+      athlete: "Athlete",
+      coach: "Coach",
+    },
+    goalTitle: "Long-term north star",
+    goalDescription:
+      "Build toward a sub-18 5 km first, then keep stretching toward sub-17 without losing the joy of training.",
+    currentGoal: "Primary goal",
+    currentGoalValue: "5 km under 18:00",
+    stretchGoal: "Stretch goal",
+    stretchGoalValue: "5 km under 17:00",
+    visionTitle: "Athlete vision",
+    vision:
+      "Become a durable, sharp runner who trains with intention: consistent weeks, honest recovery, and sessions that make the next key workout possible.",
+    yearTitle: "Upcoming year focus",
+    yearDescription:
+      "One year of patient work: build the base, sharpen the engine, race with confidence, then reset smarter.",
+    accountabilityTitle: "Weekly accountability",
+    accountabilityDescription:
+      "Each week counts as a step forward when at least 3 of 5 signals line up: running consistency, running volume, a purposeful run, support work, and recovery readings.",
+    weeksForward: "weeks moved forward",
+    latestWeek: "Latest week",
+    rightDirection: "Step in the right direction",
+    needsAttention: "Needs a steadier week",
+    noWeeks: "No weeks loaded yet.",
+    signals: {
+      runs: "Runs",
+      runDistance: "Run distance",
+      purposefulRun: "Purposeful run",
+      support: "Support work",
+      recoveryReadings: "Recovery readings",
+    },
+    plan: [
+      {
+        title: "Base & durability",
+        detail:
+          "Make the normal week boringly repeatable: 3–4 runs, easy volume, strength, and no hero workouts.",
+      },
+      {
+        title: "Threshold & speed endurance",
+        detail:
+          "Nudge sustainable pace down with controlled tempo, hills, and strides while keeping recovery visible.",
+      },
+      {
+        title: "5 km specificity",
+        detail:
+          "Practice race rhythm: intervals around goal pace, tune-up efforts, and fresh legs for key sessions.",
+      },
+      {
+        title: "Race, learn, reset",
+        detail:
+          "Pick moments to test, review honestly, then rebuild the next block with the lessons baked in.",
+      },
+    ],
+    coachTitle: "How you want to be coached",
+    coachDescription:
+      "Choose the voice that fits the moment. Same data, different delivery: calm clarity, playful accountability, or sharper analysis.",
+    selectedCoach: "Selected coach voice",
+    coachNote:
+      "This sets the coaching direction for the personal accountability platform. Agent persistence can be wired into settings next.",
+    agentDirection: "Agent direction",
+    agentDirectionDetail: "A practical brief for the coach agents.",
+    voice: "Voice",
+    accountability: "Accountability",
+    accountabilityRule: "Long-term goal first, next action second.",
+    coachPrinciples: [
+      "Tell me the truth without draining the fun out of it.",
+      "Make the next action obvious.",
+      "Celebrate consistency more than single-session heroics.",
+      "Use humour lightly; data still drives the decision.",
+    ],
+    coaches: [
+      {
+        id: "reachy",
+        name: "Reachy",
+        tone: "Warm, clear, lightly cheeky",
+        detail: "Best default for daily accountability and Telegram nudges.",
+      },
+      {
+        id: "analyst",
+        name: "The Analyst",
+        tone: "Precise, calm, evidence-first",
+        detail: "Best when you want the why behind load, pace, and recovery.",
+      },
+      {
+        id: "captain",
+        name: "The Captain",
+        tone: "Direct, upbeat, no drama",
+        detail: "Best when motivation is low and the plan needs a firm hand.",
+      },
+    ],
   },
   activity: {
     title: "Activity details",

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import { GeistSans } from "geist/font/sans";
 import { Workspace } from "@/components/workspace";
@@ -9,6 +9,12 @@ export const metadata: Metadata = {
   description: copy.login.description,
   robots: { index: false, follow: false },
 };
+const themeColors = { light: "#ffffff", dark: "#0f0f0f" } as const;
+export async function generateViewport(): Promise<Viewport> {
+  const jar = await cookies();
+  const theme = jar.get("theme")?.value === "dark" ? "dark" : "light";
+  return { themeColor: themeColors[theme] };
+}
 export default async function RootLayout({
   children,
 }: {

@@ -31,6 +31,7 @@
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   color-scheme: light;
 }
 .dark {
@@ -68,6 +69,10 @@ html,
 body {
   margin: 0;
   min-height: 100%;
+  overscroll-behavior: none;
+}
+html {
+  -webkit-text-size-adjust: 100%;
 }
 body {
   font-family: var(--font-geist-sans), Arial, sans-serif;
@@ -95,6 +100,19 @@ button,
 select,
 summary {
   cursor: pointer;
+}
+button,
+a,
+summary,
+[role="button"] {
+  touch-action: manipulation;
+}
+button,
+summary,
+[role="button"],
+.nav-item {
+  user-select: none;
+  -webkit-user-select: none;
 }
 button {
   color: inherit;
@@ -157,6 +175,13 @@ textarea[aria-invalid="true"] {
 input::placeholder,
 textarea::placeholder {
   color: var(--muted-foreground);
+}
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 label {
   display: block;
@@ -221,11 +246,13 @@ label {
   width: 32px;
   padding: 0;
 }
-.button:hover:not(:disabled) {
-  filter: brightness(0.96);
-}
-.button-ghost:hover {
-  background: var(--muted);
+@media (hover: hover) and (pointer: fine) {
+  .button:hover:not(:disabled) {
+    filter: brightness(0.96);
+  }
+  .button-ghost:hover {
+    background: var(--muted);
+  }
 }
 .mark {
   width: 30px;
@@ -335,9 +362,11 @@ label {
   color: var(--muted-foreground);
   font-size: 13px;
 }
-.nav-item:hover {
-  background: var(--muted);
-  color: var(--foreground);
+@media (hover: hover) and (pointer: fine) {
+  .nav-item:hover {
+    background: var(--muted);
+    color: var(--foreground);
+  }
 }
 .nav-item {
   position: relative;
@@ -927,21 +956,35 @@ label {
   display: none;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .button,
+  .button {
+    transition:
+      background 150ms ease,
+      filter 150ms ease,
+      transform 160ms var(--ease-out);
+  }
   .nav-item {
     transition:
-      background 0.15s,
-      filter 0.15s;
+      background 150ms ease,
+      color 150ms ease;
   }
   .button:active:not(:disabled) {
-    transform: translateY(1px);
+    transform: scale(0.97);
   }
-  .sidebar {
-    transition: width 0.2s ease;
+  .dialog-overlay[data-state="open"] {
+    animation: overlay-in 200ms var(--ease-out);
+  }
+  .dialog-overlay[data-state="closed"] {
+    animation: overlay-out 150ms var(--ease-out);
+  }
+  .dialog-content[data-state="open"] {
+    animation: dialog-in 200ms var(--ease-out);
+  }
+  .dialog-content[data-state="closed"] {
+    animation: dialog-out 150ms var(--ease-out);
   }
   .spin,
   .loading-mark {
-    animation: rotate 1.5s linear infinite;
+    animation: rotate 0.9s linear infinite;
   }
   .skeleton {
     animation: breathe 1.6s ease-in-out infinite alternate;
@@ -955,6 +998,38 @@ label {
 @keyframes breathe {
   to {
     opacity: 0.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dialog-overlay[data-state="open"],
+  .dialog-content[data-state="open"] {
+    animation: overlay-in 200ms ease;
+  }
+  .dialog-overlay[data-state="closed"],
+  .dialog-content[data-state="closed"] {
+    animation: overlay-out 150ms ease;
+  }
+}
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes overlay-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+}
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
   }
 }
 @media (max-width: 1100px) {
@@ -1213,8 +1288,10 @@ label {
   border-radius: var(--radius-sm);
   color: var(--muted-foreground);
 }
-.icon-link:hover {
-  background: var(--muted);
+@media (hover: hover) and (pointer: fine) {
+  .icon-link:hover {
+    background: var(--muted);
+  }
 }
 .next-list {
   padding: 0 20px 7px;
@@ -1485,8 +1562,10 @@ label {
   border-top: 1px solid var(--border);
   background: transparent;
 }
-.activity-row:hover {
-  background: var(--muted);
+@media (hover: hover) and (pointer: fine) {
+  .activity-row:hover {
+    background: var(--muted);
+  }
 }
 .activity-metric {
   width: 65px;
@@ -1783,8 +1862,10 @@ td {
   padding: 9px 8px;
   background: var(--card);
 }
-.calendar-session:hover {
-  background: var(--muted);
+@media (hover: hover) and (pointer: fine) {
+  .calendar-session:hover {
+    background: var(--muted);
+  }
 }
 .calendar-session[draggable="true"] {
   cursor: grab;
@@ -2212,8 +2293,10 @@ td {
   font-size: 11px;
   line-height: 1.6;
 }
-.advice-chips button:hover {
-  background: var(--muted);
+@media (hover: hover) and (pointer: fine) {
+  .advice-chips button:hover {
+    background: var(--muted);
+  }
 }
 .advice-chips svg {
   color: var(--muted-foreground);
@@ -2513,4 +2596,218 @@ td {
   height: 0;
   border-top: 2px dashed;
   border-radius: 0;
+}
+
+.athlete-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+  gap: 20px;
+  align-items: stretch;
+  padding: 26px;
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--hairline);
+}
+.athlete-hero h2 {
+  font-size: 24px;
+  letter-spacing: -0.7px;
+}
+.athlete-hero p {
+  color: var(--muted-foreground);
+  max-width: 640px;
+  margin-top: 8px;
+}
+.athlete-goal-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.athlete-goal-metrics > div {
+  background: var(--muted);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+.athlete-goal-metrics span,
+.athlete-goal-metrics small,
+.athlete-vision-list span,
+.athlete-vision-list small {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.athlete-goal-metrics strong {
+  display: block;
+  margin: 7px 0;
+  font-size: 18px;
+  letter-spacing: -0.4px;
+}
+.athlete-vision-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.athlete-vision-list > div {
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+}
+.athlete-vision-list svg {
+  color: var(--primary);
+}
+.athlete-vision-list strong {
+  font-size: 17px;
+  letter-spacing: -0.4px;
+}
+.athlete-plan {
+  list-style: none;
+  padding: 5px 22px 22px;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+.athlete-plan li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 11px;
+}
+.athlete-plan li > span {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: 11px;
+  font-weight: 600;
+}
+.athlete-plan p,
+.weekly-step small,
+.coach-voice small,
+.coach-voice em {
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-style: normal;
+}
+.weekly-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 8px 22px 20px;
+}
+.weekly-step {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  background: var(--background);
+}
+.weekly-step.made-step {
+  border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+  background: color-mix(in oklch, var(--accent) 45%, var(--card));
+}
+.weekly-step-top,
+.athlete-signals {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.weekly-step-top span {
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.weekly-step-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+  margin: 10px 0 7px;
+}
+.weekly-step-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+.athlete-signals {
+  border-top: 1px solid var(--border);
+  padding: 12px 22px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.athlete-signals strong {
+  color: var(--foreground);
+  margin-right: 6px;
+}
+.coach-principles,
+.coach-voice-list,
+.agent-brief {
+  padding: 8px 22px 22px;
+  display: grid;
+  gap: 10px;
+}
+.coach-principles > div,
+.agent-brief > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px;
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+}
+.coach-principles svg,
+.coach-voice-icon,
+.agent-brief svg {
+  color: var(--primary);
+}
+.coach-voice {
+  width: 100%;
+  display: flex;
+  gap: 11px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--background);
+  padding: 13px;
+}
+.coach-voice[aria-pressed="true"] {
+  border-color: color-mix(in oklch, var(--primary) 55%, var(--border));
+  background: var(--accent);
+}
+.coach-voice strong,
+.coach-voice small,
+.coach-voice em {
+  display: block;
+}
+.agent-brief {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.agent-brief span {
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.agent-brief strong {
+  display: block;
+  font-weight: 500;
+}
+@media (max-width: 900px) {
+  .athlete-hero,
+  .agent-brief {
+    grid-template-columns: 1fr;
+  }
+  .weekly-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .athlete-goal-metrics,
+  .athlete-vision-list,
+  .weekly-steps {
+    grid-template-columns: 1fr;
+  }
 }

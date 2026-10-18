@@ -121,6 +121,15 @@ async function noOverflow(page: Page) {
     );
 }
 async function accessible(page: Page) {
+  // Let finite enter animations (dialog fade) settle so contrast is measured at rest.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+        .map((a) => a.finished),
+    ),
+  );
   const result = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
     .analyze();
