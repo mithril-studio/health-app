@@ -35,9 +35,11 @@
   white-space: nowrap;
   font-size: 13px;
 }
-.page-menu .section-tabs button:hover {
-  background: var(--muted);
-  color: var(--foreground);
+@media (hover: hover) and (pointer: fine) {
+  .page-menu .section-tabs button:hover {
+    background: var(--muted);
+    color: var(--foreground);
+  }
 }
 .page-menu .section-tabs button[aria-selected="true"],
 .page-menu .section-tabs button[aria-pressed="true"] {

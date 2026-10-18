@@ -31,6 +31,7 @@
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   color-scheme: light;
 }
 .dark {
@@ -68,6 +69,10 @@ html,
 body {
   margin: 0;
   min-height: 100%;
+  overscroll-behavior: none;
+}
+html {
+  -webkit-text-size-adjust: 100%;
 }
 body {
   font-family: var(--font-geist-sans), Arial, sans-serif;
@@ -95,6 +100,19 @@ button,
 select,
 summary {
   cursor: pointer;
+}
+button,
+a,
+summary,
+[role="button"] {
+  touch-action: manipulation;
+}
+button,
+summary,
+[role="button"],
+.nav-item {
+  user-select: none;
+  -webkit-user-select: none;
 }
 button {
   color: inherit;
@@ -157,6 +175,13 @@ textarea[aria-invalid="true"] {
 input::placeholder,
 textarea::placeholder {
   color: var(--muted-foreground);
+}
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 label {
   display: block;
@@ -221,11 +246,13 @@ label {
   width: 32px;
   padding: 0;
 }
-.button:hover:not(:disabled) {
-  filter: brightness(0.96);
-}
-.button-ghost:hover {
-  background: var(--muted);
+@media (hover: hover) and (pointer: fine) {
+  .button:hover:not(:disabled) {
+    filter: brightness(0.96);
+  }
+  .button-ghost:hover {
+    background: var(--muted);
+  }
 }
 .wordmark {
   white-space: nowrap;
@@ -341,9 +368,11 @@ label {
   color: var(--muted-foreground);
   font-size: 13px;
 }
-.nav-item:hover {
-  background: var(--muted);
-  color: var(--foreground);
+@media (hover: hover) and (pointer: fine) {
+  .nav-item:hover {
+    background: var(--muted);
+    color: var(--foreground);
+  }
 }
 .nav-item {
   position: relative;
@@ -938,20 +967,34 @@ label {
   display: none;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .button,
+  .button {
+    transition:
+      background 150ms ease,
+      filter 150ms ease,
+      transform 160ms var(--ease-out);
+  }
   .nav-item {
     transition:
-      background 0.15s,
-      filter 0.15s;
+      background 150ms ease,
+      color 150ms ease;
   }
   .button:active:not(:disabled) {
-    transform: translateY(1px);
+    transform: scale(0.97);
   }
-  .sidebar {
-    transition: width 0.2s ease;
+  .dialog-overlay[data-state="open"] {
+    animation: overlay-in 200ms var(--ease-out);
+  }
+  .dialog-overlay[data-state="closed"] {
+    animation: overlay-out 150ms var(--ease-out);
+  }
+  .dialog-content[data-state="open"] {
+    animation: dialog-in 200ms var(--ease-out);
+  }
+  .dialog-content[data-state="closed"] {
+    animation: dialog-out 150ms var(--ease-out);
   }
   .spin {
-    animation: rotate 1.5s linear infinite;
+    animation: rotate 0.9s linear infinite;
   }
   .skeleton {
     animation: breathe 1.6s ease-in-out infinite alternate;
@@ -965,6 +1008,38 @@ label {
 @keyframes breathe {
   to {
     opacity: 0.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dialog-overlay[data-state="open"],
+  .dialog-content[data-state="open"] {
+    animation: overlay-in 200ms ease;
+  }
+  .dialog-overlay[data-state="closed"],
+  .dialog-content[data-state="closed"] {
+    animation: overlay-out 150ms ease;
+  }
+}
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes overlay-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+}
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
   }
 }
 @media (max-width: 1100px) {
@@ -1223,8 +1298,10 @@ label {
   border-radius: var(--radius-sm);
   color: var(--muted-foreground);
 }
-.icon-link:hover {
-  background: var(--muted);
+@media (hover: hover) and (pointer: fine) {
+  .icon-link:hover {
+    background: var(--muted);
+  }
 }
 .next-list {
   padding: 0 20px 7px;
@@ -1491,8 +1568,10 @@ label {
   border-top: 1px solid var(--border);
   background: transparent;
 }
-.activity-row:hover {
-  background: var(--muted);
+@media (hover: hover) and (pointer: fine) {
+  .activity-row:hover {
+    background: var(--muted);
+  }
 }
 .activity-metric {
   width: 65px;
@@ -1789,8 +1868,10 @@ td {
   padding: 9px 8px;
   background: var(--card);
 }
-.calendar-session:hover {
-  background: var(--muted);
+@media (hover: hover) and (pointer: fine) {
+  .calendar-session:hover {
+    background: var(--muted);
+  }
 }
 .calendar-session[draggable="true"] {
   cursor: grab;
@@ -2346,8 +2427,10 @@ td {
   font-size: 11px;
   line-height: 1.6;
 }
-.advice-chips button:hover {
-  background: var(--muted);
+@media (hover: hover) and (pointer: fine) {
+  .advice-chips button:hover {
+    background: var(--muted);
+  }
 }
 .advice-chips svg {
   color: var(--muted-foreground);
