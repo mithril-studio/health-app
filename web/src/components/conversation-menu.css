@@ -66,9 +66,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.conversation-item:hover {
-  background: var(--muted);
-  color: var(--foreground);
+@media (hover: hover) and (pointer: fine) {
+  .conversation-item:hover {
+    background: var(--muted);
+    color: var(--foreground);
+  }
 }
 .conversation-item.active {
   background: var(--accent);

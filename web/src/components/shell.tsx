@@ -70,6 +70,9 @@ export function Shell({
     const next = theme === "light" ? "dark" : "light";
     setTheme(next);
     document.documentElement.classList.toggle("dark", next === "dark");
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", next === "dark" ? "#0f0f0f" : "#ffffff");
     preference("theme", next);
   };
   const navigation = (
