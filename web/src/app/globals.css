@@ -176,13 +176,6 @@ input::placeholder,
 textarea::placeholder {
   color: var(--muted-foreground);
 }
-@media (pointer: coarse) {
-  input,
-  textarea,
-  select {
-    font-size: 16px;
-  }
-}
 label {
   display: block;
   font-size: 12px;
@@ -3037,5 +3030,14 @@ td {
   .timer-dial {
     width: 200px;
     height: 200px;
+  }
+}
+/* iOS zooms into any field under 16px on focus. Component rules set smaller sizes
+   with higher specificity, so this floor must win over all of them. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
   }
 }

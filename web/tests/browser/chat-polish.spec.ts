@@ -71,3 +71,28 @@ test("the chat does not overflow on mobile", async ({ page }) => {
     ),
   ).toBe(true);
 });
+
+test.describe("on a touch phone", () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  test("form fields are at least 16px so iOS does not zoom on focus", async ({
+    page,
+  }) => {
+    await page.goto("/coach");
+    const composer = page.locator(".chat-composer textarea");
+    await expect(composer).toBeVisible();
+    expect(
+      await page.evaluate(() => matchMedia("(pointer: coarse)").matches),
+    ).toBe(true);
+    const sizes = await page
+      .locator("input:visible, textarea:visible, select:visible")
+      .evaluateAll((els) =>
+        els.map((el) => parseFloat(getComputedStyle(el).fontSize)),
+      );
+    expect(sizes.length).toBeGreaterThan(0);
+    for (const size of sizes) expect(size).toBeGreaterThanOrEqual(16);
+  });
+});

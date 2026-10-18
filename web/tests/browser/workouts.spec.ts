@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { settleAnimations } from "./settle";
 import { DRAFT_KEY } from "../../src/lib/workout-draft";
 import { mockWorkouts as mock } from "./workout-fixture";
 test("workout page fits iPhone and desktop and passes accessibility scans", async ({
@@ -18,6 +19,7 @@ test("workout page fits iPhone and desktop and passes accessibility scans", asyn
       ),
     ).toBeTruthy();
   }
+  await settleAnimations(page);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.screenshot({
     path: "../.context/workouts-desktop.png",
@@ -30,11 +32,13 @@ test("workout page fits iPhone and desktop and passes accessibility scans", asyn
   });
   await page.getByRole("button", { name: /Everyday reset/ }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
+  await settleAnimations(page);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.getByRole("dialog").getByRole("button", { name: "Start" }).click();
   await expect(
     page.getByRole("heading", { name: "Calf · left", exact: true }),
   ).toBeVisible();
+  await settleAnimations(page);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.screenshot({
     path: "../.context/stretch-timer-iphone.png",
