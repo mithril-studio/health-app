@@ -5,6 +5,17 @@ cd "$(dirname "$0")/.."
 VM=${VM:-team-endurance}
 APP=/opt/team-endurance
 URL=${URL:-https://$VM.boxd.sh}
+# Only ship what is on origin/main, so the VM always matches a known commit.
+git fetch --quiet origin main
+REV=$(git rev-parse HEAD)
+if [ "$REV" != "$(git rev-parse origin/main)" ]; then
+  echo "Refusing to deploy: HEAD $REV is not origin/main. Check out origin/main first." >&2
+  exit 1
+fi
+if [ -n "$(git status --porcelain --untracked-files=no -- backend web ops deploy)" ]; then
+  echo "Refusing to deploy: uncommitted changes in shipped paths." >&2
+  exit 1
+fi
 archive=$(mktemp /tmp/team-endurance-release.XXXXXX)
 trap 'rm -f "$archive"' EXIT
 paths=(backend/coach backend/migrations backend/requirements.txt
@@ -21,6 +32,7 @@ boxd machine cp "$archive" "$VM:/tmp/team-endurance-release.tar.gz"
 # Venvs (backend/.venv, ops/.venv) and web/node_modules/.next live outside these and survive.
 boxd machine exec "$VM" -- "rm -rf $APP/web/src $APP/backend/coach $APP/backend/migrations $APP/deploy"
 boxd machine exec "$VM" -- "tar -xzf /tmp/team-endurance-release.tar.gz -C $APP"
+boxd machine exec "$VM" -- "echo $REV > $APP/REVISION"
 # Create the service venvs on first deploy (e.g. after a relocate); reuse them afterwards.
 boxd machine exec "$VM" -- "test -x $APP/backend/.venv/bin/python || python3 -m venv $APP/backend/.venv"
 boxd machine exec "$VM" -- "test -x $APP/ops/.venv/bin/python || python3 -m venv $APP/ops/.venv"
@@ -32,4 +44,4 @@ boxd machine exec "$VM" -- "sudo cp $APP/deploy/nginx.conf /etc/nginx/sites-avai
 if [ "${SKIP_HEALTH:-}" != 1 ]; then
   curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 --max-time 15 "$URL/api/health"
 fi
-printf '\nUpdated. Run python3 deploy/smoke.py and node deploy/browser-smoke.mjs.\n'
+printf '\nUpdated to %s. Run python3 deploy/smoke.py and node deploy/browser-smoke.mjs.\n' "$REV"
