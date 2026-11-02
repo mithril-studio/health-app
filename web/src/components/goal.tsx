@@ -100,6 +100,8 @@ export function GoalCard({
               { value: 1080, label: copy.insights.sub18 },
               { value: 1020, label: copy.insights.sub17 },
             ]}
+            // Race times and paces are read against their targets, not against zero.
+            fromZero={false}
             height={220}
           />
           <div className="threshold-section">
@@ -110,6 +112,7 @@ export function GoalCard({
               title={copy.insights.threshold}
               empty={copy.insights.noThreshold}
               yFormat={pace}
+              fromZero={false}
               height={170}
             />
           </div>

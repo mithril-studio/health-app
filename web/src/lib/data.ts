@@ -43,7 +43,8 @@ export function sportOf(type: string): Sport {
   if (/home.?workout/i.test(type)) return "home";
   if (/golf/i.test(type)) return "golf";
   if (/tennis/i.test(type)) return "tennis";
-  if (/weight|strength|gym|workout|fitness|crossfit|powerlifting/i.test(type)) return "gym";
+  if (/weight|strength|gym|workout|fitness|crossfit|powerlifting/i.test(type))
+    return "gym";
   if (/swim/i.test(type)) return "swim";
   return "other";
 }
@@ -72,8 +73,14 @@ export type Activity = {
   hr: number | null;
   watts: number | null;
   zones: Record<"hr" | "pace" | "power", Zone[]>;
+  /** Upper heart-rate limit (bpm) of each zone, as recorded on the activity. */
+  hrZoneLimits: number[];
   raw: Raw;
 };
+export function zoneLimits(value: unknown): number[] {
+  const limits = array(value).map(nonnegative);
+  return limits.every((n): n is number => n !== null) ? limits : [];
+}
 export type PlannedEvent = {
   id: string;
   name: string;
@@ -111,10 +118,12 @@ export function normalizeActivity(value: unknown): Activity | null {
     hr: nonnegative(r.average_heartrate),
     watts: nonnegative(r.icu_average_watts),
     zones: {
-      hr: zoneTimes(r.hr_zone_times),
+      // Intervals serialises HR zone seconds as icu_hr_zone_times; hr_zone_times never existed.
+      hr: zoneTimes(r.icu_hr_zone_times ?? r.hr_zone_times),
       pace: zoneTimes(r.pace_zone_times),
       power: zoneTimes(r.icu_zone_times),
     },
+    hrZoneLimits: zoneLimits(r.icu_hr_zones),
     raw: r,
   };
 }
@@ -123,6 +132,8 @@ export type Wellness = {
   hrv: number | null;
   sleep: number | null;
   restingHR: number | null;
+  /** WHOOP recovery score (0–100 %), synced by Intervals.icu as "readiness". */
+  recovery: number | null;
   ctl: number | null;
   atl: number | null;
 };
@@ -185,6 +196,7 @@ export function normalizeDashboard(value: unknown): Dashboard {
           hrv: nonnegative(r.hrv),
           sleep: nonnegative(r.sleepSecs),
           restingHR: nonnegative(r.restingHR),
+          recovery: nonnegative(r.readiness),
           ctl: number(r.ctl),
           atl: number(r.atl),
         },
@@ -233,6 +245,22 @@ export function fitnessSeries(data: Dashboard): Fitness[] {
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
+/**
+ * Daily wearable readings for the recovery views. Intervals merges several devices into one
+ * wellness row; WHOOP writes HRV, resting HR and the recovery score together each morning,
+ * while a watch may write its own resting HR on days WHOOP has nothing. A resting HR without a
+ * WHOOP HRV reading on the same day is therefore another device's value and is left out.
+ */
+export function recoveryRows(wellness: Wellness[]): Wellness[] {
+  return wellness.map((row) =>
+    row.hrv !== null ? row : { ...row, restingHR: null },
+  );
+}
+export type RecoveryBand = "high" | "medium" | "low";
+/** WHOOP's recovery bands: green from 67 %, yellow from 34 %, red below. */
+export function recoveryBand(score: number): RecoveryBand {
+  return score >= 67 ? "high" : score >= 34 ? "medium" : "low";
+}
 export function sumKnown(values: (number | null)[]): number | null {
   const known = values.filter((n): n is number => n !== null);
   return known.length ? known.reduce((sum, value) => sum + value, 0) : null;
@@ -269,16 +297,30 @@ export function weeklyZones(
   for (const a of rows)
     for (const z of a.zones[metric])
       sums.set(z.zone, (sums.get(z.zone) ?? 0) + z.seconds);
+  const measured = rows.filter((a) => a.zones[metric].length);
+  // Zone boundaries are only meaningful when every measured activity used the same ones.
+  const limits = measured.map((a) => JSON.stringify(a.hrZoneLimits));
+  const shared =
+    metric === "hr" && measured.length && limits.every((l) => l === limits[0])
+      ? measured[0].hrZoneLimits
+      : [];
   return {
     zones: [...sums]
       .map(([zone, seconds]) => ({ zone, seconds }))
       .sort((a, b) =>
         a.zone.localeCompare(b.zone, undefined, { numeric: true }),
       ),
-    measured: rows.filter((a) => a.zones[metric].length).length,
+    limits: shared.length === sums.size ? shared : [],
+    measured: measured.length,
     restricted: rows.filter(isRestricted).length,
     total: rows.length,
   };
+}
+/** Human zone ranges from Intervals' upper limits, e.g. ["≤126", "127–140", …]. */
+export function zoneRanges(limits: number[], unit: string): string[] {
+  return limits.map((upper, i) =>
+    i === 0 ? `≤${upper} ${unit}` : `${limits[i - 1] + 1}–${upper} ${unit}`,
+  );
 }
 export function goalResults(activities: Activity[]) {
   // A small GPS tolerance identifies recorded ~5 km runs. Never scale a duration to 5 km.

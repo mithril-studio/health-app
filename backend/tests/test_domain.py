@@ -67,7 +67,7 @@ def test_weekly_aggregation_keeps_sports_and_missing_measurements():
                 "icu_training_load": 40,
                 "moving_time": 1800,
                 "icu_zone_times": [{"id": "Z1", "secs": 600}],
-                "hr_zone_times": [100, 200],
+                "icu_hr_zone_times": [100, 200],
             },
             {
                 "id": "b",
@@ -86,6 +86,7 @@ def test_weekly_aggregation_keeps_sports_and_missing_measurements():
     assert run["load"] == 40 and run["missing_load"] == 1 and run["count"] == 2
     assert {r["sport"] for r in data["weekly_load"]} == {"Run", "Soccer"}
     assert data["time_in_zones"][0]["power"] == {"Z1": 600}
+    assert data["time_in_zones"][0]["hr"] == {"Z1": 100, "Z2": 200}
     assert data["goals"]["best_5k_seconds"] is None
 
 
