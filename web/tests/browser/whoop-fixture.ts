@@ -8,15 +8,11 @@ const dashboard = {
   sync: {},
   insights: {},
 };
-export async function mockWorkouts(
-  page: Page,
-  saves: Record<string, unknown>[] = [],
-  failFirst = false,
-) {
+export async function mockWhoop(page: Page) {
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
-    let body: unknown = {},
-      status = 200;
+    let body: unknown = {};
+    const status = 200;
     if (path === "/api/session") body = { authenticated: true };
     else if (path === "/api/dashboard") body = dashboard;
     else if (path === "/api/curves") body = { list: [] };
@@ -28,12 +24,6 @@ export async function mockWorkouts(
         error: null,
       };
     else if (path === "/api/whoop/workouts") body = { workouts: [] };
-    else if (path === "/api/sessions") {
-      saves.push(route.request().postDataJSON());
-      status = failFirst && saves.length === 1 ? 503 : 201;
-      body =
-        status === 201 ? { id: "local-test" } : { detail: "temporary failure" };
-    }
     await route.fulfill({ status, json: body });
   });
 }

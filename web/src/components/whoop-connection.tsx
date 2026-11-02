@@ -201,7 +201,7 @@ export function WhoopConnection() {
         title={w.disconnectTitle}
         description={w.disconnectDetail}
       >
-        <div className="timer-actions">
+        <div className="dialog-actions">
           <Button
             variant="outline"
             disabled={busy}
