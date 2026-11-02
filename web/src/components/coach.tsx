@@ -1,8 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ConversationMenu } from "./conversation-menu";
-import { ArrowUp, ArrowUpRight, MessageCircle, RotateCcw } from "lucide-react";
+import { ConversationHistory, useConversations } from "./conversation-menu";
+import { ArrowUp, Plus, RotateCcw } from "lucide-react";
 import { api, errorMessage } from "@/lib/api";
 import { chatMessages, type ChatMessage } from "@/lib/chat";
 import { record, text } from "@/lib/data";
@@ -10,9 +10,10 @@ import { timestampLabel } from "@/lib/dates";
 import { copy } from "@/lib/i18n";
 import { REPORTS } from "@/lib/reports";
 import { useTraining } from "./workspace";
-import { Button, ErrorNotice, Monogram, Skeleton, Spinner } from "./ui";
+import { Button, ErrorNotice, Skeleton, Spinner, cn } from "./ui";
 import { DeletionConfirmations } from "./deletion-confirmations";
 import { ChatMarkdown } from "./chat-markdown";
+import { PageActions } from "./page-menu";
 import { Reports } from "./reports";
 type Attempt = { message: string; key: string };
 export function Coach() {
@@ -24,35 +25,73 @@ export function Coach() {
   const conversationId = requested || latest;
   const [busy, setBusy] = useState(false);
   const [version, setVersion] = useState(0);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [reload, setReload] = useState(0);
   const changed = useCallback(() => setVersion((v) => v + 1), []);
+  // The shell's sync button also reloads the open thread or reports once a
+  // sync finishes, unless a reply is still in flight.
+  const { syncing } = useTraining();
+  const wasSyncing = useRef(false);
+  useEffect(() => {
+    if (wasSyncing.current && !syncing && !busy) setReload((v) => v + 1);
+    wasSyncing.current = syncing;
+  }, [syncing, busy]);
   const loaded = useCallback(
     (first: string | null) => setLatest(first ?? "web"),
     [],
   );
+  const list = useConversations({ busy, version, onLoaded: loaded });
+  const open = (id: string) =>
+    router.push(`/coach?chat=${encodeURIComponent(id)}`, { scroll: false });
   return (
     <>
-      <div className="coach-layout">
-        <ConversationMenu
+      <PageActions>
+        <Button
+          variant="ghost"
+          aria-label={copy.coach.newChat}
+          disabled={busy || list.creating}
+          onClick={async () => {
+            const id = await list.create();
+            if (id) open(id);
+          }}
+        >
+          <Plus size={16} aria-hidden="true" />
+          <span className="page-action-label">{copy.coach.newChat}</span>
+        </Button>
+        <ConversationHistory
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          rows={list.rows}
+          loading={list.loading}
+          error={list.error}
+          retry={list.retry}
           active={conversationId ?? ""}
-          onSelect={(id) =>
-            router.push(`/coach?chat=${encodeURIComponent(id)}`, {
-              scroll: false,
-            })
-          }
-          onLoaded={loaded}
           busy={busy}
-          version={version}
+          creating={list.creating}
+          onSelect={open}
         />
+      </PageActions>
+      <div className="coach-layout">
+        {list.error && !historyOpen && (
+          <div className="coach-notice">
+            <ErrorNotice message={list.error} retry={list.retry} />
+          </div>
+        )}
         {conversationId === null ? (
           <div className="chat-workspace" aria-busy="true">
-            <Skeleton compact />
+            <div className="chat-history">
+              <div className="chat-column">
+                <Skeleton compact />
+              </div>
+            </div>
           </div>
         ) : conversationId === REPORTS ? (
-          <Reports />
+          <Reports reloadKey={reload} />
         ) : (
           <Conversation
             key={conversationId}
             conversationId={conversationId}
+            reloadKey={reload}
             onBusyChange={setBusy}
             onHistoryChange={changed}
           />
@@ -63,10 +102,13 @@ export function Coach() {
 }
 function Conversation({
   conversationId,
+  reloadKey,
   onBusyChange,
   onHistoryChange,
 }: {
   conversationId: string;
+  /** Bumped after a manual sync to refetch the thread and confirmations. */
+  reloadKey: number;
   onBusyChange: (busy: boolean) => void;
   onHistoryChange: () => void;
 }) {
@@ -110,7 +152,7 @@ function Conversation({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [version, historyPath]);
+  }, [version, historyPath, reloadKey]);
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "instant", block: "nearest" });
   }, [messages, busy]);
@@ -175,28 +217,6 @@ function Conversation({
   return (
     <>
       <div className="chat-workspace">
-        <div className="chat-topline">
-          <div>
-            <span className="coach-avatar">
-              <Monogram />
-            </span>
-            <span>
-              <strong>{copy.coach.name}</strong>
-            </span>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={copy.coach.restore}
-            disabled={busy}
-            onClick={() => {
-              setVersion((v) => v + 1);
-              setConfirmVersion((v) => v + 1);
-            }}
-          >
-            <RotateCcw size={15} aria-hidden="true" />
-          </Button>
-        </div>
         <div
           className="chat-history"
           tabIndex={0}
@@ -205,139 +225,140 @@ function Conversation({
           aria-live="polite"
           aria-relevant="additions text"
         >
-          {loading ? (
-            <Skeleton compact />
-          ) : historyError ? (
-            <ErrorNotice
-              message={historyError}
-              retry={() => setVersion((v) => v + 1)}
-            />
-          ) : messages.length ? (
-            messages.map((message, i) => (
-              <article
-                key={`${i}-${message.createdAt}`}
-                className={`chat-message ${message.role}`}
-              >
-                <div className="message-avatar">
-                  {message.role === "assistant" ? (
-                    <Monogram />
-                  ) : (
-                    <MessageCircle size={16} aria-hidden="true" />
-                  )}
-                </div>
-                <div className="message-content">
-                  <div className="message-meta">
-                    <strong>
-                      {message.role === "assistant"
-                        ? copy.coach.name
-                        : copy.coach.you}
-                    </strong>
-                    {message.createdAt && (
-                      <time dateTime={message.createdAt}>
-                        {timestampLabel(message.createdAt)}
-                      </time>
-                    )}
+          <div
+            className={cn(
+              "chat-column",
+              !loading && !historyError && !messages.length && "chat-empty",
+            )}
+          >
+            {loading ? (
+              <Skeleton compact />
+            ) : historyError ? (
+              <ErrorNotice
+                message={historyError}
+                retry={() => setVersion((v) => v + 1)}
+              />
+            ) : messages.length ? (
+              messages.map((message, i) => (
+                <article
+                  key={`${i}-${message.createdAt}`}
+                  className={`chat-message ${message.role}`}
+                >
+                  <div className="message-content">
+                    <div className="message-meta">
+                      <strong>
+                        {message.role === "assistant"
+                          ? copy.coach.name
+                          : copy.coach.you}
+                      </strong>
+                      {message.createdAt && (
+                        <time dateTime={message.createdAt}>
+                          {timestampLabel(message.createdAt)}
+                        </time>
+                      )}
+                    </div>
+                    <div className="message-text">
+                      {message.role === "assistant" ? (
+                        <ChatMarkdown content={message.content} />
+                      ) : (
+                        message.content
+                      )}
+                    </div>
                   </div>
-                  <div className="message-text">
-                    {message.role === "assistant" ? (
-                      <ChatMarkdown content={message.content} />
-                    ) : (
-                      message.content
-                    )}
-                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="chat-welcome">
+                <h2>{copy.coach.welcome}</h2>
+                <p>{copy.coach.intro}</p>
+                <div className="advice-chips">
+                  {copy.coach.chips.map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => {
+                        setInput(chip);
+                        inputRef.current?.focus();
+                      }}
+                    >
+                      {chip}
+                    </button>
+                  ))}
                 </div>
-              </article>
-            ))
-          ) : (
-            <div className="chat-welcome">
-              <div className="welcome-mark">
-                <Monogram />
               </div>
-              <h2>{copy.coach.welcome}</h2>
-              <div className="advice-chips">
-                {copy.coach.chips.map((chip) => (
-                  <button
-                    key={chip}
-                    onClick={() => {
-                      setInput(chip);
-                      inputRef.current?.focus();
-                    }}
-                  >
-                    {chip}
-                    <ArrowUpRight size={14} aria-hidden="true" />
-                  </button>
-                ))}
+            )}
+            {busy && (
+              <div className="thinking-state" role="status">
+                <Spinner className="thinking-spinner" />
+                <div>
+                  <strong>{copy.coach.thinking}</strong>
+                </div>
               </div>
-            </div>
-          )}
-          {busy && (
-            <div className="thinking-state" role="status">
-              <Spinner className="thinking-spinner" />
-              <div>
-                <strong>{copy.coach.thinking}</strong>
-              </div>
-            </div>
-          )}
-          <div ref={bottom} />
+            )}
+            <div ref={bottom} />
+          </div>
         </div>
         <div className="chat-bottom">
-          <DeletionConfirmations version={confirmVersion} />
-          {error && (
-            <div className="chat-error">
-              <ErrorNotice message={error} />
-              <p>{copy.coach.retryNote}</p>
-              {attempt && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => void send(attempt)}
-                >
-                  <RotateCcw size={12} aria-hidden="true" />
-                  {copy.coach.retry}
-                </Button>
-              )}
-            </div>
-          )}
-          <form
-            className="chat-composer"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void send();
-            }}
-          >
-            <label className="sr-only" htmlFor="coach-message">
-              {copy.coach.input}
-            </label>
-            <textarea
-              id="coach-message"
-              ref={inputRef}
-              placeholder={copy.coach.placeholder}
-              value={input}
-              maxLength={8000}
-              rows={2}
-              disabled={busy || loading || !!historyError}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (
-                  e.key === "Enter" &&
-                  !e.shiftKey &&
-                  !e.nativeEvent.isComposing
-                ) {
-                  e.preventDefault();
-                  void send();
-                }
+          <div className="chat-column">
+            <DeletionConfirmations version={confirmVersion + reloadKey} />
+            {error && (
+              <div className="chat-error">
+                <ErrorNotice message={error} />
+                <p>{copy.coach.retryNote}</p>
+                {attempt && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => void send(attempt)}
+                  >
+                    <RotateCcw size={12} aria-hidden="true" />
+                    {copy.coach.retry}
+                  </Button>
+                )}
+              </div>
+            )}
+            <form
+              className="chat-composer"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void send();
               }}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              aria-label={copy.coach.send}
-              disabled={!input.trim() || busy || loading || !!historyError}
             >
-              <ArrowUp size={17} aria-hidden="true" />
-            </Button>
-          </form>
+              <label className="sr-only" htmlFor="coach-message">
+                {copy.coach.input}
+              </label>
+              <textarea
+                id="coach-message"
+                ref={inputRef}
+                placeholder={copy.coach.placeholder}
+                value={input}
+                maxLength={8000}
+                rows={2}
+                disabled={busy || loading || !!historyError}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (
+                    e.key === "Enter" &&
+                    !e.shiftKey &&
+                    !e.nativeEvent.isComposing
+                  ) {
+                    e.preventDefault();
+                    void send();
+                  }
+                }}
+              />
+              <Button
+                type="submit"
+                size="icon"
+                className="chat-send"
+                aria-label={copy.coach.send}
+                disabled={!input.trim() || busy || loading || !!historyError}
+              >
+                <ArrowUp size={16} aria-hidden="true" />
+              </Button>
+            </form>
+          </div>
         </div>
       </div>
     </>

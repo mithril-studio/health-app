@@ -195,6 +195,7 @@ export function Shell({
             <h1 id="page-title">{copy.nav[title]}</h1>
           </div>
           <div className="topbar-actions">
+            <div id="page-actions" className="page-actions" />
             <Button
               variant="ghost"
               size="icon"
@@ -213,12 +214,14 @@ export function Shell({
             </Button>
           </div>
         </header>
-        <div
-          id="page-menu"
-          className="page-menu"
-          role="region"
-          aria-label={copy.nav[title]}
-        />
+        {pathname !== "/coach" && (
+          <div
+            id="page-menu"
+            className="page-menu"
+            role="region"
+            aria-label={copy.nav[title]}
+          />
+        )}
         <div
           className={cn("main-scroll", pathname === "/coach" && "chat-scroll")}
         >

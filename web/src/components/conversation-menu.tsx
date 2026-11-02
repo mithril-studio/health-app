@@ -1,42 +1,44 @@
 "use client";
 import "./conversation-menu.css";
-import { useEffect, useState } from "react";
-import { ChevronDown, FileText, MessageCircle, Plus } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Clock, FileText, MessageCircle, Search } from "lucide-react";
 import { api, errorMessage } from "@/lib/api";
 import { record, text } from "@/lib/data";
+import { dayStampLabel } from "@/lib/dates";
 import { copy } from "@/lib/i18n";
 import { REPORTS } from "@/lib/reports";
 import { Button, ErrorNotice, cn } from "./ui";
-import { PageMenu } from "./page-menu";
 
-type Conversation = { id: string; title: string };
+export type Conversation = { id: string; title: string; updatedAt: string };
 function conversation(value: unknown): Conversation {
   const row = record(value),
     id = text(row.id);
   if (!/^(web|web:[a-f0-9]{32})$/.test(id))
     throw new Error("Invalid conversation");
-  return { id, title: text(row.title) };
+  return { id, title: text(row.title), updatedAt: text(row.updated_at) };
 }
-export function ConversationMenu({
-  active,
-  onSelect,
-  onLoaded,
+export function conversationTitle(row: Conversation) {
+  return (
+    row.title ||
+    (row.id === "web" ? copy.coach.earlierChats : copy.coach.newChat)
+  );
+}
+export function useConversations({
   busy,
   version,
+  onLoaded,
 }: {
-  active: string;
-  onSelect: (id: string) => void;
-  /** Called after each list load with the most recent conversation id, or null when the list is empty or failed. */
-  onLoaded?: (first: string | null) => void;
   busy: boolean;
   version: number;
+  /** Called after each list load with the most recent conversation id, or null when the list is empty or failed. */
+  onLoaded?: (first: string | null) => void;
 }) {
   const [rows, setRows] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [retry, setRetry] = useState(0);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
@@ -61,9 +63,11 @@ export function ConversationMenu({
     return () => controller.abort();
     // The list only changes when history changes (version) or on retry;
     // switching the active conversation does not need a reload.
-  }, [version, retry, onLoaded]);
-  async function create() {
-    if (creating || busy) return;
+  }, [version, attempt, onLoaded]);
+  const retry = useCallback(() => setAttempt((v) => v + 1), []);
+  /** Starts a conversation and resolves to its id, or null when it couldn't be created. */
+  async function create(): Promise<string | null> {
+    if (creating || busy) return null;
     setCreating(true);
     setError("");
     try {
@@ -71,95 +75,138 @@ export function ConversationMenu({
         await api("/api/conversations", { method: "POST", body: {} }),
       );
       setRows((previous) => [row, ...previous]);
-      setExpanded(false);
-      onSelect(row.id);
+      return row.id;
     } catch (e) {
       setError(errorMessage(e));
+      return null;
     } finally {
       setCreating(false);
     }
   }
+  return { rows, loading, error, retry, creating, create };
+}
+/** The History button and its dropdown: Reports, then searchable conversations. */
+export function ConversationHistory({
+  open,
+  onOpenChange,
+  rows,
+  loading,
+  error,
+  retry,
+  active,
+  busy,
+  creating,
+  onSelect,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  rows: Conversation[];
+  loading: boolean;
+  error: string;
+  retry: () => void;
+  active: string;
+  busy: boolean;
+  creating: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  const matches = needle
+    ? rows.filter((row) =>
+        conversationTitle(row).toLowerCase().includes(needle),
+      )
+    : rows;
+  function toggle(next: boolean) {
+    onOpenChange(next);
+    if (!next) setQuery("");
+  }
+  function select(id: string) {
+    onSelect(id);
+    toggle(false);
+  }
   return (
-    <aside
-      className={cn("conversation-menu", expanded && "expanded")}
-      aria-label={copy.coach.conversations}
-    >
-      <PageMenu>
-        <div className="conversation-actions">
+    <Dialog.Root open={open} onOpenChange={toggle} modal={false}>
+      <div className="history-anchor">
+        <Dialog.Trigger asChild>
           <Button
             variant="ghost"
-            className="conversation-history-toggle"
-            aria-label={
-              expanded ? copy.coach.hideHistory : copy.coach.showHistory
-            }
-            aria-expanded={expanded}
-            aria-controls="conversation-list"
-            onClick={() => setExpanded(!expanded)}
+            className={cn(open && "active")}
+            aria-label={copy.coach.historyButton}
           >
-            <ChevronDown size={16} aria-hidden="true" />
-            {copy.coach.conversations}
+            <Clock size={16} aria-hidden="true" />
+            <span className="page-action-label">
+              {copy.coach.historyButton}
+            </span>
           </Button>
-          <Button
-            variant="outline"
-            disabled={busy || creating}
-            onClick={() => void create()}
-          >
-            <Plus size={16} aria-hidden="true" />
-            {copy.coach.newChat}
-          </Button>
-        </div>
-      </PageMenu>
-      <div id="conversation-list" className="conversation-list">
-        <div className="conversation-pinned">
-          <button
-            type="button"
-            title={copy.reports.nav}
-            className={cn("conversation-item", active === REPORTS && "active")}
-            aria-current={active === REPORTS ? "page" : undefined}
-            onClick={() => {
-              setExpanded(false);
-              onSelect(REPORTS);
-            }}
-          >
-            <FileText size={15} aria-hidden="true" />
-            <span>{copy.reports.nav}</span>
-          </button>
-        </div>
-        {error && (
-          <ErrorNotice message={error} retry={() => setRetry((v) => v + 1)} />
-        )}
-        {loading && !rows.length ? (
-          <div className="history-loading" role="status">
-            {copy.coach.loadingHistory}
+        </Dialog.Trigger>
+        <Dialog.Content
+          className="history-dropdown"
+          aria-describedby={undefined}
+        >
+          <Dialog.Title className="history-title">
+            {copy.coach.historyButton}
+          </Dialog.Title>
+          <label className="history-search">
+            <Search size={15} aria-hidden="true" />
+            <span className="sr-only">{copy.coach.searchHistory}</span>
+            <input
+              type="search"
+              placeholder={copy.coach.searchHistory}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          <div className="conversation-pinned">
+            <button
+              type="button"
+              title={copy.reports.nav}
+              className={cn(
+                "conversation-item",
+                active === REPORTS && "active",
+              )}
+              aria-current={active === REPORTS ? "page" : undefined}
+              onClick={() => select(REPORTS)}
+            >
+              <FileText size={15} aria-hidden="true" />
+              <span>{copy.reports.nav}</span>
+            </button>
           </div>
-        ) : null}
-        <nav aria-label={copy.coach.conversations}>
-          {rows.map((row) => {
-            const title =
-              row.title ||
-              (row.id === "web" ? copy.coach.earlierChats : copy.coach.newChat);
-            return (
-              <button
-                key={row.id}
-                title={title}
-                className={cn(
-                  "conversation-item",
-                  active === row.id && "active",
-                )}
-                aria-current={active === row.id ? "page" : undefined}
-                disabled={busy || creating}
-                onClick={() => {
-                  setExpanded(false);
-                  onSelect(row.id);
-                }}
-              >
-                <MessageCircle size={15} aria-hidden="true" />
-                <span>{title}</span>
-              </button>
-            );
-          })}
-        </nav>
+          {error && <ErrorNotice message={error} retry={retry} />}
+          {loading && !rows.length ? (
+            <div className="history-loading" role="status">
+              {copy.coach.loadingHistory}
+            </div>
+          ) : needle && !matches.length ? (
+            <div className="history-loading" role="status">
+              {copy.coach.noMatches}
+            </div>
+          ) : null}
+          <nav aria-label={copy.coach.conversations}>
+            {matches.map((row) => {
+              const title = conversationTitle(row);
+              const day = row.updatedAt && dayStampLabel(row.updatedAt);
+              return (
+                <button
+                  key={row.id}
+                  type="button"
+                  title={title}
+                  className={cn(
+                    "conversation-item",
+                    active === row.id && "active",
+                  )}
+                  aria-current={active === row.id ? "page" : undefined}
+                  disabled={busy || creating}
+                  onClick={() => select(row.id)}
+                >
+                  <MessageCircle size={14} aria-hidden="true" />
+                  <span>{title}</span>
+                  {day && <time dateTime={row.updatedAt}>{day}</time>}
+                </button>
+              );
+            })}
+          </nav>
+        </Dialog.Content>
       </div>
-    </aside>
+    </Dialog.Root>
   );
 }

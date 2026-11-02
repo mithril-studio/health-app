@@ -1,38 +1,89 @@
 .coach-layout {
-  display: grid;
-  grid-template-columns: 208px minmax(0, 1fr);
-  flex: 1;
-  min-height: 0;
-  background: var(--card);
-  box-shadow: none;
-  border-radius: 0;
-  overflow: hidden;
-}
-.conversation-menu {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
-  min-width: 0;
-  background: var(--sidebar);
-  border-right: 1px solid var(--border);
+  background: var(--background);
+  overflow: hidden;
 }
-.conversation-actions {
+.coach-notice {
+  width: 100%;
+  max-width: 768px;
+  margin: 12px auto 0;
+  padding-inline: 24px;
+}
+/* Chat and History sit in the shell's top bar, before the sync button. */
+.page-actions {
   display: flex;
-  gap: 8px;
   align-items: center;
-  padding: 0;
-  min-height: 40px;
+  gap: 4px;
 }
-.conversation-actions > .button {
-  width: auto;
-}
-.conversation-history-toggle {
+.page-actions:empty {
   display: none;
 }
-.conversation-list {
+.page-actions .button.active {
+  background: var(--muted);
+}
+/* Anchored to the whole action group so the dropdown lines up with the
+   top bar's right edge and stays on screen at narrow widths. */
+.topbar-actions:has(.history-anchor) {
+  position: relative;
+}
+.history-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 40;
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(480px, calc(100dvh - 140px));
   overflow-y: auto;
-  min-height: 0;
   padding: 12px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 16px 32px -16px var(--overlay);
+  transform-origin: top right;
+}
+.history-dropdown:focus {
+  outline: none;
+}
+.history-title {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 4px 10px;
+}
+.history-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  margin-bottom: 8px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  color: var(--muted-foreground);
+}
+.history-search:focus-within {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.history-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 9px 0;
+  outline: none;
+  font-size: 13px;
+  color: var(--foreground);
+}
+.history-dropdown nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.history-dropdown .error-notice {
+  margin-bottom: 8px;
 }
 .conversation-pinned {
   padding-bottom: 8px;
@@ -40,7 +91,6 @@
   border-bottom: 1px solid var(--border);
 }
 .conversation-pinned .conversation-item {
-  margin-bottom: 0;
   color: var(--foreground);
   font-weight: 550;
 }
@@ -53,7 +103,6 @@
   gap: 8px;
   text-align: left;
   padding: 10px;
-  margin-bottom: 4px;
   border-radius: var(--radius-sm);
   font-size: 12px;
   color: var(--muted-foreground);
@@ -62,12 +111,19 @@
   flex-shrink: 0;
 }
 .conversation-item span {
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.conversation-item time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
 @media (hover: hover) and (pointer: fine) {
-  .conversation-item:hover {
+  .conversation-item:hover:not(:disabled) {
     background: var(--muted);
     color: var(--foreground);
   }
@@ -82,14 +138,12 @@
   color: var(--muted-foreground);
 }
 .coach-layout .chat-workspace {
+  flex: 1;
   min-width: 0;
   min-height: 0;
+  background: transparent;
   border-radius: 0;
   box-shadow: none;
-}
-.coach-layout .chat-topline {
-  min-height: 66px;
-  padding: 12px 20px;
 }
 .coach-layout .chat-history {
   min-height: 140px;
@@ -98,31 +152,13 @@
 .coach-layout .chat-bottom {
   flex-shrink: 0;
 }
-@media (max-width: 800px) {
-  .coach-layout {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+@media (max-width: 600px) {
+  .coach-notice {
+    padding-inline: 18px;
   }
-  .conversation-menu {
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .conversation-actions {
-    padding: 0;
-    min-height: 40px;
-    border-bottom: 0;
-    justify-content: space-between;
-  }
-  .conversation-actions > .button {
-    width: auto;
-  }
-  .conversation-history-toggle {
-    display: inline-flex;
-  }
-  .conversation-menu:not(.expanded) .conversation-list {
+}
+@media (max-width: 360px) {
+  .page-action-label {
     display: none;
-  }
-  .conversation-list {
-    max-height: 180px;
   }
 }

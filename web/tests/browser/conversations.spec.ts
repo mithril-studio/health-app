@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-test("chat sidebar creates, restores, and switches independent conversations", async ({
+test("chat history dropdown creates, restores, and switches independent conversations", async ({
   page,
 }) => {
   const id = "web:" + "a".repeat(32);
@@ -63,18 +63,21 @@ test("chat sidebar creates, restores, and switches independent conversations", a
     await route.fulfill({ json: body });
   });
   await page.goto("/coach");
-  const menu = page.locator(".conversation-menu");
+  const header = page.locator(".topbar");
+  const dropdown = page.getByRole("dialog");
+  const openHistory = () =>
+    header.getByRole("button", { name: "History", exact: true }).click();
   await expect(page.locator(".chat-history")).toContainText("Latest response");
   await expect(page.locator(".chat-history")).not.toContainText(
     "Prior response",
   );
+  await openHistory();
   await expect(
-    menu.getByRole("button", { name: "Latest question", exact: true }),
+    dropdown.getByRole("button", { name: "Latest question", exact: true }),
   ).toHaveAttribute("aria-current", "page");
-  await page
-    .locator("#page-menu")
-    .getByRole("button", { name: "New chat", exact: true })
-    .click();
+  await page.keyboard.press("Escape");
+  await expect(dropdown).toHaveCount(0);
+  await header.getByRole("button", { name: "Chat", exact: true }).click();
   await expect(page).toHaveURL(/chat=web%3A/);
   await expect(page.locator(".chat-history")).not.toContainText(
     "Prior response",
@@ -84,16 +87,23 @@ test("chat sidebar creates, restores, and switches independent conversations", a
   await expect(page.locator(".chat-history")).toContainText(
     "A separate conversation",
   );
+  await openHistory();
   await expect(
-    menu.getByRole("button", { name: "New training question", exact: true }),
-  ).toBeVisible();
+    dropdown.getByRole("button", { name: "New training question" }),
+  ).toHaveAttribute("aria-current", "page");
+  await page.keyboard.press("Escape");
   await page.reload();
   await expect(page.locator(".chat-history")).toContainText(
     "A separate conversation",
   );
-  await menu
+  await openHistory();
+  await expect(dropdown.getByLabel("Search conversations")).toBeFocused();
+  await page.keyboard.type("prior");
+  await expect(dropdown.locator("nav button")).toHaveText(["Prior question"]);
+  await dropdown
     .getByRole("button", { name: "Prior question", exact: true })
     .click();
+  await expect(dropdown).toHaveCount(0);
   await expect(page.locator(".chat-history")).toContainText("Prior response");
   await expect(page.locator(".chat-history")).not.toContainText(
     "A separate conversation",
@@ -105,9 +115,19 @@ test("chat sidebar creates, restores, and switches independent conversations", a
         .analyze()
     ).violations,
   ).toEqual([]);
+  await openHistory();
+  await expect(dropdown).toBeVisible();
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 320, height: 900 });
-  await page.getByRole("button", { name: "Show chat history" }).click();
-  await menu
+  await openHistory();
+  await dropdown
     .getByRole("button", { name: "New training question", exact: true })
     .click();
   await expect(page.locator(".chat-history")).toContainText(
