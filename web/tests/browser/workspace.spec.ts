@@ -238,11 +238,19 @@ test("minimal shell, paired overview charts, and weekly measured zones", async (
     has: page.getByRole("heading", { name: "Time in zones", exact: true }),
   });
   // Running is the default; football and gym never count toward running zones.
-  await expect(zones.locator(".coverage-note")).toContainText("1 / 1");
+  await expect(zones.locator(".coverage-note")).toContainText("1 of 1");
+  await expect(zones.locator(".coverage-note")).toContainText("bpm");
   await expect(zones.locator(".zone-row")).toHaveCount(3);
-  await expect(zones.locator(".zone-range").nth(1)).toHaveText("127–140 bpm");
+  await expect(zones.locator(".zone-range").nth(1)).toHaveText("127–140");
+  await expect(zones.locator(".zone-summary-labels")).toContainText(
+    "18 min total",
+  );
+  await expect(zones.locator(".zone-summary-labels")).toContainText(
+    "61% easy (Z1–Z2)",
+  );
+  await expect(zones.locator(".zone-stack > span")).toHaveCount(3);
   await zones.getByRole("button", { name: "Cycling", exact: true }).click();
-  await expect(zones.locator(".coverage-note")).toContainText("0 / 0");
+  await expect(zones.locator(".coverage-note")).toContainText("0 of 0");
   await expect(
     zones.getByRole("button", { name: "Pace", exact: true }),
   ).toHaveCount(0);

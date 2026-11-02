@@ -28,6 +28,13 @@
   --chart-fill: oklch(0.94 0.015 166);
   --overlay: oklch(0.12 0 0 / 45%);
   --track: oklch(0.89 0 0);
+  --zone-1: oklch(0.6 0.12 255);
+  --zone-2: oklch(0.62 0.12 160);
+  --zone-3: oklch(0.74 0.13 88);
+  --zone-4: oklch(0.64 0.14 48);
+  --zone-5: oklch(0.58 0.16 25);
+  --zone-6: oklch(0.52 0.16 335);
+  --zone-7: oklch(0.46 0.16 300);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
@@ -60,6 +67,13 @@
   --chart-fill: oklch(0.27 0.025 166);
   --overlay: oklch(0.08 0 0 / 70%);
   --track: oklch(0.33 0 0);
+  --zone-1: oklch(0.68 0.11 255);
+  --zone-2: oklch(0.78 0.12 160);
+  --zone-3: oklch(0.84 0.13 90);
+  --zone-4: oklch(0.68 0.12 48);
+  --zone-5: oklch(0.62 0.14 25);
+  --zone-6: oklch(0.7 0.14 335);
+  --zone-7: oklch(0.66 0.14 300);
   color-scheme: dark;
 }
 * {
@@ -1503,17 +1517,6 @@ label {
 .recovery-band.low {
   background: var(--destructive);
 }
-.zone-row > span:first-child {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.zone-range {
-  font-size: 9px;
-  color: var(--muted-foreground);
-  letter-spacing: 0;
-  white-space: nowrap;
-}
 .goal-body {
   display: flex;
   align-items: center;
@@ -1700,47 +1703,144 @@ td {
   color: var(--foreground);
   box-shadow: 0 0 0 1px var(--hairline);
 }
-.zone-bars {
-  padding: 15px 0 8px;
+.zone-summary {
+  padding-top: 6px;
 }
-.zone-row {
+.zone-summary-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--muted-foreground);
+  margin-bottom: 8px;
+}
+.zone-stack {
+  display: flex;
+  gap: 2px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--muted);
+  overflow: hidden;
+}
+.zone-stack > span {
+  flex: 0 0 auto;
+  min-width: 2px;
+}
+.zone-bars {
   display: grid;
-  grid-template-columns: 24px 1fr 36px 29px;
+  grid-template-columns: 6px auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 11px;
-  margin-bottom: 16px;
+  column-gap: 14px;
+  padding: 14px 0 0;
   font-size: 10px;
 }
-.zone-row small {
-  font-size: 9px;
+.zone-row {
+  display: contents;
+}
+.zone-row > * {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+.zone-row:last-child > * {
+  border-bottom: 0;
+}
+.zone-row.is-empty > * {
+  opacity: 0.45;
+}
+.zone-label {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  white-space: nowrap;
+  padding-right: 14px;
+}
+.zone-label strong {
+  font-size: 11px;
+  font-weight: 600;
+}
+.zone-range {
+  font-size: 10px;
+  color: var(--muted-foreground);
+  letter-spacing: 0;
+}
+.zone-time {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.zone-share {
+  font-size: 10px;
   color: var(--muted-foreground);
   text-align: right;
+  min-width: 26px;
+  font-variant-numeric: tabular-nums;
 }
 .bar-track {
-  height: 7px;
-  border-radius: 2px;
+  height: 6px;
+  border-radius: 999px;
   background: var(--muted);
   overflow: hidden;
 }
 .bar-value {
   height: 100%;
-  border-radius: 2px;
+  border-radius: 999px;
   background: var(--primary);
 }
 .zone-1 {
-  opacity: 0.85;
+  --zone: var(--zone-1);
+  background: var(--zone);
 }
 .zone-2 {
-  opacity: 0.7;
+  --zone: var(--zone-2);
+  background: var(--zone);
 }
 .zone-3 {
-  opacity: 0.6;
+  --zone: var(--zone-3);
+  background: var(--zone);
 }
 .zone-4 {
-  opacity: 0.5;
+  --zone: var(--zone-4);
+  background: var(--zone);
 }
 .zone-5 {
-  opacity: 0.4;
+  --zone: var(--zone-5);
+  background: var(--zone);
+}
+.zone-6 {
+  --zone: var(--zone-6);
+  background: var(--zone);
+}
+.zone-7 {
+  --zone: var(--zone-7);
+  background: var(--zone);
+}
+.zone-dot {
+  background: none;
+}
+.zone-dot::before {
+  content: "";
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--zone);
+}
+.zone-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.zone-footer .coverage-note {
+  font-size: inherit;
+}
+.zone-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: help;
 }
 @media (max-width: 1100px) {
   .metric-card {
@@ -2276,9 +2376,8 @@ td {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  justify-content: flex-end;
+  gap: 8px;
 }
 .zone-controls select {
   font-size: 10px;
