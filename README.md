@@ -82,18 +82,9 @@ Verification: **58 backend tests, 33 relay tests, 10 Worker tests, 18 frontend u
 
 The git history contains incremental local checkpoints. No remote repository was configured or created.
 
-## Web workout beta
+## WHOOP
 
-Open **Workouts** in the sidebar:
-
-- **Stretching:** five- or ten-minute sequences with ten guided holds, an automatic step timer, pause/resume, and a completion save.
-- **Meditation:** 3/5/10/15/20-minute presets or any whole minute from 1 to 120, pause/resume, and a completion save.
-- **Log a workout:** record completed fitness, home workouts, soccer, running, cycling, swimming, golf, tennis, walking, yoga, stretching, meditation or other sessions. Enter the start time in your device’s timezone; the calendar uses Amsterdam time. App sessions can be removed from their activity dialog.
-- Saved sessions appear in the calendar, overview and coach’s calendar tool. They stay separate from the Intervals cache and are not uploaded to Garmin or Intervals. Missing heart rate, distance and load stay missing. Retrying a save uses the same UUID and cannot add the same session twice.
-
-Timers continue across in-app navigation and recover after reload or browser eviction in the same browser or installed web app. One minimal unfinished-session draft is stored locally, restored after authentication, and synchronized across tabs. Running timers catch up using timestamps; paused timers stay paused. Saving, discarding, or signing out clears the draft; temporary network failures preserve it. If browser storage is unavailable, a warning asks you to keep the tab open. Clearing browser data removes recovery. Completed history, sensor data, and credentials are never stored in localStorage.
-
-Sound is on by default, with a remembered mute control. Stretch changes play a short chime; both timer types play a distinct completion chime. After recovery, tap **Enable sound** or **Resume** if prompted. Missed cues are not replayed. The app requests a screen wake lock where supported, but screen-lock sound is best effort and there are no background notifications. A completion must be saved explicitly; ending early does not record a completed session.
+The in-app Workouts tab (stretch and meditation timers, manual session logging) was removed. Previously saved app sessions remain in the calendar and overview and can still be removed from their activity dialog.
 
 ### WHOOP through Intervals.icu
 
@@ -101,13 +92,13 @@ No new developer app is needed for WHOOP wellness data. Connect WHOOP in [Interv
 
 The native WHOOP integration does **not currently import workout activities**, according to the [Intervals.icu maintainer’s explanation](https://forum.intervals.icu/t/no-whoop-activities/115164). Its [integration announcement](https://forum.intervals.icu/t/whoop-integration-added/69075) describes the supported wellness metrics. This distinction was checked on 8 October 2026. Any accessible activity that does reach Intervals is already included by our existing activity sync; there is no Garmin-only filter.
 
-For workouts absent from Intervals, use **Log a workout**, or enable the optional direct WHOOP workout importer below. The direct importer does not request or replace WHOOP wellness data.
+For workouts absent from Intervals, enable the optional direct WHOOP workout importer below. The direct importer does not request or replace WHOOP wellness data.
 
 ### Optional direct WHOOP workout import
 
-1. Create a personal application in the [WHOOP developer dashboard](https://developer-dashboard.whoop.com/). Register the exact redirect URL **`https://team-endurance.boxd.sh/workouts`** (or your configured `APP_ORIGIN` plus `/workouts`).
+1. Create a personal application in the [WHOOP developer dashboard](https://developer-dashboard.whoop.com/). Register the exact redirect URL **`https://team-endurance.boxd.sh/settings`** (or your configured `APP_ORIGIN` plus `/settings`).
 2. Add `WHOOP_CLIENT_ID` and `WHOOP_CLIENT_SECRET` to the private server environment, then restart the API. Keep the secret out of browser variables, chat and git.
-3. Open **Workouts → Connect WHOOP** and authorize your own account in the browser. The integration requests only `read:workout` and `offline`, following [WHOOP OAuth documentation](https://developer.whoop.com/docs/developing/oauth/).
+3. Open **Settings → Connections → Connect WHOOP** and authorize your own account in the browser. The integration requests only `read:workout` and `offline`, following [WHOOP OAuth documentation](https://developer.whoop.com/docs/developing/oauth/).
 4. After sign-in, the first sync imports the last 90 days using the [official v2 workout API](https://developer.whoop.com/api/). Background jobs check every 20 minutes while the service is running. **Sync workouts** refreshes immediately. Connection errors remain visible and can be retried or reconnected.
 
 WHOOP authorization state is single-use, expires after ten minutes and is tied to the signed-in browser session. Tokens stay in private PostgreSQL storage; refreshes are serialized to avoid rotating-token races. Disconnect revokes access and stops imports, retaining previously imported history. Reconnecting replaces the WHOOP import set so different accounts cannot be mixed.

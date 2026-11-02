@@ -10,6 +10,8 @@ import {
   fitnessSeries,
   recoveryRows,
   recoveryBand,
+  normalizeActivity,
+  sportOf,
 } from "../src/lib/data";
 import { addDays, startOfWeek, calendarDays } from "../src/lib/dates";
 
@@ -218,4 +220,22 @@ test("recovery rows carry the WHOOP recovery score and drop resting HR from non-
   assert.equal(recoveryBand(67), "high");
   assert.equal(recoveryBand(66), "medium");
   assert.equal(recoveryBand(33), "low");
+});
+test("new sports stay distinct and WHOOP elapsed duration does not become training load", () => {
+  assert.equal(sportOf("HomeWorkout"), "home");
+  assert.equal(sportOf("functional fitness"), "gym");
+  assert.equal(sportOf("soccer"), "football");
+  assert.equal(sportOf("Stretching"), "stretch");
+  assert.equal(sportOf("Meditation"), "meditation");
+  const a = normalizeActivity({
+    id: "whoop-test",
+    start_date_local: "2026-10-01T12:00:00",
+    type: "running",
+    session_duration: 3600,
+    elapsed_time: 3600,
+    whoop_strain: 14,
+  });
+  assert.equal(a?.duration, 3600);
+  assert.equal(a?.load, null);
+  assert.equal(a?.distance, null);
 });

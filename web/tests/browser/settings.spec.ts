@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { mockWorkouts as mock } from "./workout-fixture";
+import { mockWhoop as mock } from "./whoop-fixture";
 
 test("WHOOP callback consumes the code once, clears the URL, and shows duplicate status", async ({
   page,

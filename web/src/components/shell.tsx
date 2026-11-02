@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Timer,
   CalendarDays,
   ChartNoAxesCombined,
   MessageCircle,
@@ -16,7 +15,6 @@ import {
   LogOut,
   Settings,
 } from "lucide-react";
-import { TimerBanner } from "./workout-timer";
 import { SourceNotice } from "./source-notice";
 import { copy } from "@/lib/i18n";
 import { timestampLabel } from "@/lib/dates";
@@ -27,7 +25,6 @@ const nav = [
   { href: "/coach", key: "coach", Icon: MessageCircle },
   { href: "/calendar", key: "calendar", Icon: CalendarDays },
   { href: "/insights", key: "insights", Icon: ChartNoAxesCombined },
-  { href: "/workouts", key: "workouts", Icon: Timer },
   { href: "/settings", key: "settings", Icon: Settings },
 ] as const;
 function preference(name: string, value: string) {
@@ -247,11 +244,9 @@ export function Shell({
                 retry={() => void refresh(true)}
               />
             )}
-            {data &&
-              pathname !== "/coach" &&
-              pathname !== "/settings" &&
-              pathname !== "/workouts" && <SourceNotice data={data} />}
-            {pathname !== "/workouts" && <TimerBanner />}
+            {data && pathname !== "/coach" && pathname !== "/settings" && (
+              <SourceNotice data={data} />
+            )}
             {children}
           </main>
         </div>

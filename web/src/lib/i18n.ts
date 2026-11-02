@@ -40,7 +40,6 @@ export const en = {
     insights: "Insights",
     settings: "Settings",
     coach: "Chats",
-    workouts: "Workouts",
   },
   common: {
     workspace: "TRAINING SPACE",
