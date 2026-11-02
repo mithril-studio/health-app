@@ -1,6 +1,6 @@
 "use client";
-import { HeartPulse, Moon, Activity } from "lucide-react";
-import type { Dashboard } from "@/lib/data";
+import { HeartPulse, Moon, Activity, Gauge } from "lucide-react";
+import { recoveryBand, recoveryRows, type Dashboard } from "@/lib/data";
 import { dateLabel } from "@/lib/dates";
 import { metric, duration } from "@/lib/format";
 import { copy } from "@/lib/i18n";
@@ -12,7 +12,7 @@ export function RecoverySnapshot({
   data: Dashboard;
   now: string;
 }) {
-  const rows = data.wellness.filter((w) => w.date <= now);
+  const rows = recoveryRows(data.wellness.filter((w) => w.date <= now));
   const metrics = [
     {
       key: "hrv" as const,
@@ -35,6 +35,13 @@ export function RecoverySnapshot({
       Icon: HeartPulse,
       format: (v: number) => metric(v),
     },
+    {
+      key: "recovery" as const,
+      label: copy.insights.recoveryScore,
+      unit: copy.common.percent,
+      Icon: Gauge,
+      format: (v: number) => metric(v),
+    },
   ];
   return (
     <Card>
@@ -42,6 +49,8 @@ export function RecoverySnapshot({
       <div className="recovery-snapshot">
         {metrics.map(({ key, label, unit, Icon, format }) => {
           const last = rows.findLast((w) => w[key] !== null);
+          const band =
+            key === "recovery" && last ? recoveryBand(last.recovery!) : null;
           return (
             <div className="recovery-row" key={key}>
               <span className="recovery-icon">
@@ -56,6 +65,9 @@ export function RecoverySnapshot({
                 </small>
               </div>
               <strong>
+                {band && (
+                  <i className={`recovery-band ${band}`} aria-hidden="true" />
+                )}
                 {last ? format(last[key]!) : copy.common.none}
                 <small>{last && unit}</small>
               </strong>

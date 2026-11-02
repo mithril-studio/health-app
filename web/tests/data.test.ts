@@ -8,6 +8,8 @@ import {
   goalResults,
   normalizeCurves,
   fitnessSeries,
+  recoveryRows,
+  recoveryBand,
 } from "../src/lib/data";
 import { addDays, startOfWeek, calendarDays } from "../src/lib/dates";
 
@@ -181,4 +183,39 @@ test("5 km curve goals require an exact measured distance, not interpolation", a
     curveFiveK({ list: [{ distance: [5000], values: [null] }] }),
     null,
   );
+});
+
+test("recovery rows carry the WHOOP recovery score and drop resting HR from non-WHOOP days", () => {
+  const data = normalizeDashboard({
+    activities: [],
+    wellness: [
+      {
+        id: "2026-10-16",
+        hrv: 90.0,
+        restingHR: 51,
+        readiness: 78,
+        sleepSecs: 28406,
+      },
+      // A watch wrote its own resting HR on a day WHOOP recorded nothing.
+      { id: "2026-10-17", restingHR: 142, steps: 6065 },
+      { id: "2026-10-18", hrv: 78.4, restingHR: 53, readiness: 70 },
+      { id: "2026-10-19", restingHR: 74 },
+    ],
+  });
+  assert.deepEqual(
+    data.wellness.map((w) => [w.date, w.recovery, w.restingHR]),
+    [
+      ["2026-10-16", 78, 51],
+      ["2026-10-17", null, 142],
+      ["2026-10-18", 70, 53],
+      ["2026-10-19", null, 74],
+    ],
+  );
+  assert.deepEqual(
+    recoveryRows(data.wellness).map((w) => w.restingHR),
+    [51, null, 53, null],
+  );
+  assert.equal(recoveryBand(67), "high");
+  assert.equal(recoveryBand(66), "medium");
+  assert.equal(recoveryBand(33), "low");
 });

@@ -6,6 +6,8 @@ import { addDays, dateLabel, startOfWeek } from "@/lib/dates";
 import {
   normalizeCurves,
   recentWeeks,
+  recoveryBand,
+  recoveryRows,
   sumKnown,
   weeklyLoad,
   type Dashboard,
@@ -215,6 +217,8 @@ function CurvesCard() {
           yFormat={(v) =>
             sport === "Run" ? pace(v) : `${metric(v)} ${copy.common.watts}`
           }
+          // Pace in s/km would flatten against a zero baseline.
+          fromZero={sport !== "Run"}
           height={250}
         />
       )}
@@ -320,50 +324,56 @@ function RecoveryCard({
   oldest: string;
   now: string;
 }) {
-  const [kind, setKind] = useState<"hrv" | "sleep" | "restingHR" | "load">(
-    "hrv",
+  const keys = ["hrv", "sleep", "restingHR", "recovery", "load"] as const;
+  type Kind = (typeof keys)[number];
+  const [kind, setKind] = useState<Kind>("hrv");
+  const wellness = recoveryRows(
+    data.wellness.filter((w) => w.date >= oldest && w.date <= now),
   );
-  const days = new Set(
-    data.wellness
-      .filter((w) => w.date >= oldest && w.date <= now)
-      .map((w) => w.date),
-  );
+  const days = new Set(wellness.map((w) => w.date));
   data.activities
     .filter((a) => a.date >= oldest && a.date <= now)
     .forEach((a) => days.add(a.date));
   const rows = [...days].sort().map((date) => {
-    const wellness = data.wellness.find((w) => w.date === date);
+    const reading = wellness.find((w) => w.date === date);
     return {
       date,
-      hrv: wellness?.hrv ?? null,
+      hrv: reading?.hrv ?? null,
       sleep:
-        wellness?.sleep === null || wellness?.sleep === undefined
+        reading?.sleep === null || reading?.sleep === undefined
           ? null
-          : wellness.sleep / 3600,
-      restingHR: wellness?.restingHR ?? null,
+          : reading.sleep / 3600,
+      restingHR: reading?.restingHR ?? null,
+      recovery: reading?.recovery ?? null,
       load: sumKnown(
         data.activities.filter((a) => a.date === date).map((a) => a.load),
       ),
     };
   });
-  const labels = {
+  const labels: Record<Kind, string> = {
     hrv: copy.insights.hrv,
     sleep: copy.insights.sleep,
     restingHR: copy.insights.restingHR,
+    recovery: copy.insights.recoveryScore,
     load: copy.common.load,
   };
-  const units = {
+  const units: Record<Kind, string> = {
     hrv: copy.common.ms,
     sleep: copy.common.hours,
     restingHR: copy.common.bpm,
+    recovery: copy.common.percent,
     load: copy.common.pts,
   };
   return (
     <Card className="section-gap">
       <CardHeading title={copy.insights.recovery} />
       <div className="recovery-tabs">
-        {(["hrv", "sleep", "restingHR", "load"] as const).map((key) => {
+        {keys.map((key) => {
           const latest = rows.findLast((r) => r[key] !== null);
+          const band =
+            key === "recovery" && latest
+              ? recoveryBand(latest.recovery!)
+              : null;
           return (
             <button
               key={key}
@@ -372,6 +382,9 @@ function RecoveryCard({
             >
               <span>{labels[key]}</span>
               <strong>
+                {band && (
+                  <i className={`recovery-band ${band}`} aria-hidden="true" />
+                )}
                 {metric(latest?.[key], key === "sleep" ? 1 : 0)}
                 <small>{units[key]}</small>
               </strong>
@@ -383,7 +396,7 @@ function RecoveryCard({
         })}
       </div>
       <TrendChart
-        rows={dailyRows(rows, ["hrv", "sleep", "restingHR", "load"])}
+        rows={dailyRows(rows, [...keys])}
         series={[
           {
             key: kind,
