@@ -19,12 +19,14 @@ async function mockAuthed(page: Page) {
       body = { conversations: [{ id: "web", title: "Earlier chats" }] };
     if (path === "/api/confirmations") body = { pending: [] };
     if (path === "/api/chat")
-      body = { messages: [{ role: "assistant", content: "A grounded reply." }] };
+      body = {
+        messages: [{ role: "assistant", content: "A grounded reply." }],
+      };
     await route.fulfill({ json: body });
   });
 }
 
-test("wordmark, title, favicon and the TE assistant avatar", async ({
+test("wordmark, title, favicon, and no TE mark in the chat", async ({
   page,
 }) => {
   await mockAuthed(page);
@@ -35,9 +37,10 @@ test("wordmark, title, favicon and the TE assistant avatar", async ({
   expect(await page.title()).toContain("Team-Endurance");
   const icon = await page.request.get("/icon.svg");
   expect(icon.status()).toBe(200);
-  await expect(
-    page.locator(".chat-message.assistant .message-avatar .monogram"),
-  ).toHaveText("TE");
+  await expect(page.locator(".chat-message.assistant")).toContainText(
+    "A grounded reply.",
+  );
+  await expect(page.locator("#main-content .monogram")).toHaveCount(0);
 });
 
 test("login shows the wordmark when unauthenticated", async ({ page }) => {

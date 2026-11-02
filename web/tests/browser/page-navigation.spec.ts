@@ -35,7 +35,6 @@ test("every page has one bold header title and a full-width section menu", async
     ["/calendar", "Calendar"],
     ["/insights", "Insights"],
     ["/settings", "Settings"],
-    ["/coach", "Chats"],
   ]) {
     await page.goto(route);
     const titleNode = page.locator(".topbar h1");
@@ -50,6 +49,19 @@ test("every page has one bold header title and a full-width section menu", async
     expect(Math.abs(menu!.x - header!.x)).toBeLessThan(1);
     expect(Math.abs(menu!.width - header!.width)).toBeLessThan(1);
   }
+});
+
+test("chats put their actions in the top bar instead of a second menu row", async ({
+  page,
+}) => {
+  await page.goto("/coach");
+  await expect(page.locator(".topbar h1")).toHaveText("Chats");
+  await expect(page.locator(".chat-composer textarea")).toBeVisible();
+  await expect(page.locator("#page-menu")).toHaveCount(0);
+  const actions = page.locator(".topbar-actions button");
+  await expect(actions).toHaveCount(3);
+  for (const [i, name] of ["Chat", "History", "Refresh data"].entries())
+    await expect(actions.nth(i)).toHaveAccessibleName(name);
 });
 
 test("section tabs are keyboard accessible and switch the visible content", async ({
@@ -81,14 +93,14 @@ test("section tabs are keyboard accessible and switch the visible content", asyn
   ).toEqual([]);
 });
 
-test("chat history docks against the main sidebar and fills the remaining height", async ({
+test("chats dock against the main sidebar and fill the remaining height", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/coach");
   const sidebar = await page.locator(".sidebar").boundingBox();
-  const history = await page.locator(".conversation-menu").boundingBox();
-  const menu = await page.locator("#page-menu").boundingBox();
+  const history = await page.locator(".coach-layout").boundingBox();
+  const menu = await page.locator(".topbar").boundingBox();
   expect(Math.abs(history!.x - sidebar!.x - sidebar!.width)).toBeLessThan(1);
   expect(Math.abs(history!.y - menu!.y - menu!.height)).toBeLessThan(1);
   expect(Math.abs(history!.y + history!.height - 900)).toBeLessThan(2);
@@ -102,7 +114,7 @@ test("chat history docks against the main sidebar and fills the remaining height
           .querySelector(".sidebar")!
           .getBoundingClientRect();
         const history = document
-          .querySelector(".conversation-menu")!
+          .querySelector(".coach-layout")!
           .getBoundingClientRect();
         return (
           Math.abs(history.x - sidebar.right) + Math.abs(sidebar.width - 64)
@@ -112,7 +124,7 @@ test("chat history docks against the main sidebar and fills the remaining height
     .toBeLessThan(1);
   await page.setViewportSize({ width: 320, height: 900 });
   await expect(
-    page.getByRole("button", { name: "Show chat history" }),
+    page.getByRole("button", { name: "History", exact: true }),
   ).toBeVisible();
   await expect(page.getByLabel("Message your coach")).toBeInViewport();
   expect(

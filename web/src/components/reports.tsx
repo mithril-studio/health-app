@@ -4,7 +4,6 @@ import {
   Activity,
   FileText,
   MoonStar,
-  RotateCcw,
   Sunrise,
   type LucideIcon,
 } from "lucide-react";
@@ -12,7 +11,7 @@ import { api, errorMessage } from "@/lib/api";
 import { timestampLabel } from "@/lib/dates";
 import { copy } from "@/lib/i18n";
 import { parseReports, type Report, type ReportKind } from "@/lib/reports";
-import { Button, ErrorNotice, Monogram, Skeleton } from "./ui";
+import { ErrorNotice, Skeleton, cn } from "./ui";
 import { ChatMarkdown } from "./chat-markdown";
 const kindIcon: Record<ReportKind, LucideIcon> = {
   morning: Sunrise,
@@ -20,7 +19,8 @@ const kindIcon: Record<ReportKind, LucideIcon> = {
   activity: Activity,
   report: FileText,
 };
-export function Reports() {
+/** `reloadKey` is bumped after a manual sync. */
+export function Reports({ reloadKey }: { reloadKey: number }) {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -39,29 +39,9 @@ export function Reports() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [version]);
+  }, [version, reloadKey]);
   return (
     <div className="chat-workspace">
-      <div className="chat-topline">
-        <div>
-          <span className="coach-avatar">
-            <Monogram />
-          </span>
-          <span>
-            <strong>{copy.reports.title}</strong>
-            <small>{copy.reports.subtitle}</small>
-          </span>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={copy.reports.refresh}
-          disabled={loading}
-          onClick={reload}
-        >
-          <RotateCcw size={15} aria-hidden="true" />
-        </Button>
-      </div>
       <div
         className="chat-history"
         tabIndex={0}
@@ -69,40 +49,44 @@ export function Reports() {
         aria-label={copy.reports.history}
         aria-live="polite"
       >
-        {loading ? (
-          <Skeleton compact />
-        ) : error ? (
-          <ErrorNotice message={error} retry={reload} />
-        ) : reports.length ? (
-          reports.map((report) => {
-            const Icon = kindIcon[report.kind];
-            const time = timestampLabel(report.createdAt);
-            return (
-              <article key={report.id} className="chat-message assistant">
-                <div className="message-avatar">
-                  <Icon size={16} aria-hidden="true" />
-                </div>
-                <div className="message-content">
-                  <div className="message-meta">
-                    <strong>{copy.reports.kinds[report.kind]}</strong>
-                    {time && <time dateTime={report.createdAt}>{time}</time>}
+        <div
+          className={cn(
+            "chat-column",
+            !loading && !error && !reports.length && "chat-empty",
+          )}
+        >
+          {loading ? (
+            <Skeleton compact />
+          ) : error ? (
+            <ErrorNotice message={error} retry={reload} />
+          ) : reports.length ? (
+            reports.map((report) => {
+              const Icon = kindIcon[report.kind];
+              const time = timestampLabel(report.createdAt);
+              return (
+                <article key={report.id} className="chat-message assistant">
+                  <div className="message-avatar">
+                    <Icon size={16} aria-hidden="true" />
                   </div>
-                  <div className="message-text">
-                    <ChatMarkdown content={report.content} />
+                  <div className="message-content">
+                    <div className="message-meta">
+                      <strong>{copy.reports.kinds[report.kind]}</strong>
+                      {time && <time dateTime={report.createdAt}>{time}</time>}
+                    </div>
+                    <div className="message-text">
+                      <ChatMarkdown content={report.content} />
+                    </div>
                   </div>
-                </div>
-              </article>
-            );
-          })
-        ) : (
-          <div className="chat-welcome">
-            <div className="welcome-mark">
-              <Monogram />
+                </article>
+              );
+            })
+          ) : (
+            <div className="chat-welcome">
+              <h2>{copy.reports.title}</h2>
+              <p>{copy.reports.empty}</p>
             </div>
-            <h2>{copy.reports.title}</h2>
-            <p>{copy.reports.empty}</p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

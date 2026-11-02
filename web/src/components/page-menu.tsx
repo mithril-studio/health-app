@@ -5,15 +5,24 @@ import { createPortal } from "react-dom";
 
 /** False inside a hidden tab panel, so charts skip measuring a 0×0 box. */
 export const PanelActiveContext = createContext(true);
-/** The shell owns the full-width menu row; each page supplies its controls. */
-export function PageMenu({ children }: { children: ReactNode }) {
+function usePortalHost(id: string) {
   const [host, setHost] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    setHost(document.getElementById("page-menu"));
-  }, []);
+    setHost(document.getElementById(id));
+  }, [id]);
+  return host;
+}
+/** The shell owns the full-width menu row; each page supplies its controls. */
+export function PageMenu({ children }: { children: ReactNode }) {
+  const host = usePortalHost("page-menu");
   return host
     ? createPortal(<div className="page-menu-content">{children}</div>, host)
     : null;
+}
+/** Page controls placed in the top bar, just before the sync button. */
+export function PageActions({ children }: { children: ReactNode }) {
+  const host = usePortalHost("page-actions");
+  return host ? createPortal(children, host) : null;
 }
 export function PageTabs({
   prefix,

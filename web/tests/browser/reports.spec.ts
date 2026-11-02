@@ -45,9 +45,10 @@ test("reports are read-only, labelled, newest first, and navigable", async ({
   page,
 }) => {
   await page.goto("/coach");
+  await page.getByRole("button", { name: "History", exact: true }).click();
   await page
+    .getByRole("dialog")
     .getByRole("button", { name: "Reports", exact: true })
-    .first()
     .click();
   await expect(page).toHaveURL(/chat=reports/);
   const messages = page.locator(".chat-message.assistant");
@@ -56,9 +57,10 @@ test("reports are read-only, labelled, newest first, and navigable", async ({
     "Evening report",
     "Morning check",
   ]);
-  await expect(
-    messages.first().locator("strong").filter({ hasText: "Evening" }),
-  ).toBeVisible();
+  // Report bodies render Markdown.
+  await expect(messages.first().locator(".message-text strong")).toHaveText(
+    "Evening",
+  );
   // The scheduled channel is read only: there is no composer.
   await expect(page.locator("textarea")).toHaveCount(0);
   expect(
@@ -75,6 +77,8 @@ test("reports do not overflow at 320px", async ({ page }) => {
   await page.goto("/coach?chat=reports");
   await expect(page.locator(".chat-message.assistant").first()).toBeVisible();
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
   ).toBe(true);
 });

@@ -61,3 +61,14 @@ export function timestampLabel(value: string) {
       }).format(date)
     : null;
 }
+/** Day and month of an instant in the athlete's timezone, e.g. "27 Oct". */
+export function dayStampLabel(value: string) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? new Intl.DateTimeFormat(LOCALE, {
+        timeZone: TIMEZONE,
+        day: "numeric",
+        month: "short",
+      }).format(date)
+    : null;
+}
