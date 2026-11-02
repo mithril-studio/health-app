@@ -4,7 +4,7 @@ import { weeklyZones, zoneRanges, type Dashboard } from "@/lib/data";
 import { plural } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { Card, CardHeading } from "./ui";
-import { ZoneBars } from "./zone-bars";
+import { ZoneBars, ZoneSourceNote } from "./zone-bars";
 import { RestrictedNote } from "./source-notice";
 
 type ZoneSport = "run" | "ride";
@@ -26,55 +26,65 @@ export function ZonesCard({ data, week }: { data: Dashboard; week: string }) {
   const kind = METRICS[sport].includes(choice) ? choice : "hr";
   const result = weeklyZones(data.activities, week, kind, sport);
   const mixed = kind === "hr" && result.measured > 1 && !result.limits.length;
+  // Ranges are shown bare per row; the unit is named once in the footer.
+  const ranges = zoneRanges(result.limits, "").map((r) => r.trim());
   return (
     <Card>
-      <CardHeading title={copy.insights.zones} />
+      <CardHeading
+        title={copy.insights.zones}
+        action={
+          <div className="zone-controls">
+            <div className="segmented" aria-label={copy.common.sport}>
+              {(["run", "ride"] as const).map((key) => (
+                <button
+                  key={key}
+                  aria-pressed={sport === key}
+                  onClick={() => setSport(key)}
+                >
+                  {copy.sports[key]}
+                </button>
+              ))}
+            </div>
+            <div className="segmented">
+              {METRICS[sport].map((key) => (
+                <button
+                  key={key}
+                  aria-pressed={kind === key}
+                  onClick={() => setChoice(key)}
+                >
+                  {copy.common[key]}
+                </button>
+              ))}
+            </div>
+          </div>
+        }
+      />
       <div className="card-body">
-        <div className="zone-controls">
-          <div className="segmented" aria-label={copy.common.sport}>
-            {(["run", "ride"] as const).map((key) => (
-              <button
-                key={key}
-                aria-pressed={sport === key}
-                onClick={() => setSport(key)}
-              >
-                {copy.sports[key]}
-              </button>
-            ))}
-          </div>
-          <div className="segmented">
-            {METRICS[sport].map((key) => (
-              <button
-                key={key}
-                aria-pressed={kind === key}
-                onClick={() => setChoice(key)}
-              >
-                {copy.common[key]}
-              </button>
-            ))}
-          </div>
-        </div>
         <ZoneBars
           zones={result.zones}
-          ranges={zoneRanges(result.limits, copy.common.bpm)}
+          ranges={ranges}
           empty={EMPTY[kind]}
+          summary
         />
-        <p className="coverage-note">
-          {result.measured} / {result.total}{" "}
-          {plural(
-            result.total,
-            copy.insights.zoneCoverageOne,
-            copy.insights.zoneCoverage,
-          )}
-          {mixed && ` · ${copy.insights.zoneMixed}`}
-        </p>
+        {mixed && <p className="coverage-note">{copy.insights.zoneMixed}</p>}
         <RestrictedNote
           restricted={result.restricted}
           one={copy.insights.restrictedZonesOne}
           many={copy.insights.restrictedZones}
         />
       </div>
-      <div className="card-footer">{copy.insights.zoneNote}</div>
+      <div className="card-footer zone-footer">
+        <span className="coverage-note">
+          {result.measured} {copy.insights.zoneCoverageOf} {result.total}{" "}
+          {plural(
+            result.total,
+            copy.insights.zoneCoverageOne,
+            copy.insights.zoneCoverage,
+          )}
+          {ranges.length > 0 && ` · ${copy.common.bpm}`}
+        </span>
+        <ZoneSourceNote detail={copy.insights.zoneNote} />
+      </div>
     </Card>
   );
 }

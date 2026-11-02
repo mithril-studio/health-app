@@ -286,6 +286,12 @@ export const en = {
       "Zone limits differ between these activities, so bpm ranges are hidden.",
     zoneCoverage: "activities with zone data",
     zoneCoverageOne: "activity with zone data",
+    zoneCoverageOf: "of",
+    zoneDistribution: "Distribution",
+    zoneTotal: "total",
+    zoneTotalMinutes: "min",
+    zoneEasy: "easy (Z1–Z2)",
+    zoneFooter: "Zones follow Intervals.icu settings",
     restrictedZonesOne:
       "activity is restricted at the source, so its zones are unavailable.",
     restrictedZones:
