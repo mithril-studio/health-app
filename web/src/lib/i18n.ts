@@ -87,6 +87,7 @@ export const en = {
     metres: "m",
     minKm: "/km",
     pts: "pts",
+    percent: "%",
     hours: "h",
     minutes: "m",
     seconds: "s",
@@ -277,6 +278,13 @@ export const en = {
     zonesDetail: "Weekly measured time at each intensity",
     zone: "Zone",
     zoneEmpty: "No measured zones for this selection.",
+    zoneEmptyHr: "No heart-rate zone time recorded for this week.",
+    zoneEmptyPace:
+      "No pace zone time recorded. Intervals.icu only computes it when running pace zones are set there.",
+    zoneEmptyPower:
+      "No power zone time recorded. Rides need a power meter for Intervals.icu to compute it.",
+    zoneMixed:
+      "Zone limits differ between these activities, so bpm ranges are hidden.",
     zoneCoverage: "activities with zone data",
     zoneCoverageOne: "activity with zone data",
     restrictedZonesOne:
@@ -284,7 +292,7 @@ export const en = {
     restrictedZones:
       "activities are restricted at the source, so their zones are unavailable.",
     zoneNote:
-      "Zones follow each activity’s recorded settings; missing sensors are excluded.",
+      "Running and cycling only. Heart-rate zones follow each activity’s recorded Intervals.icu settings; pace and power zones appear once Intervals records them.",
     sportLoad: "Load by sport",
     sportLoadDetail: "Weekly training load, including football and gym",
     noLoad: "No recorded load in this week.",
@@ -301,9 +309,10 @@ export const en = {
     hrv: "HRV",
     sleep: "Sleep",
     restingHR: "Resting HR",
+    recoveryScore: "Recovery score",
     noRecovery: "No recovery readings in this period.",
     recoveryNote:
-      "Wearable gaps stay visible. These are recorded readings, not a readiness score.",
+      "WHOOP readings via Intervals.icu. HRV leads; the recovery score is WHOOP’s own 0–100 % summary. Resting HR is shown only on days with a WHOOP HRV reading, so other devices’ values are left out. Gaps stay visible.",
     goal: "5 km progress",
     goalDetail: "Two milestones. One consistent practice.",
     sub18: "Sub 18",

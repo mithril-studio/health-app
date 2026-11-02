@@ -86,7 +86,8 @@ def insights(activities, wellness, settings):
         )
         for source, dest in [
             ("icu_zone_times", "power"),
-            ("hr_zone_times", "hr"),
+            # Intervals serialises HR zone seconds as icu_hr_zone_times.
+            ("icu_hr_zone_times", "hr"),
             ("pace_zone_times", "pace"),
         ]:
             for zone, secs in zone_seconds(row.get(source)).items():
@@ -137,7 +138,8 @@ ACTIVITY_FIELDS = (
     "source_error",
     "interval_summary",
     "icu_zone_times",
-    "hr_zone_times",
+    "icu_hr_zone_times",
+    "icu_hr_zones",
     "pace_zone_times",
 )
 EVENT_FIELDS = (

@@ -52,6 +52,7 @@ export function TrendChart({
   yFormat = (v) => metric(Number(v)),
   references = [],
   compact = false,
+  fromZero = true,
 }: {
   rows: ChartRow[];
   series: Series[];
@@ -63,6 +64,8 @@ export function TrendChart({
   yFormat?: (value: number) => string;
   references?: { value: number; label: string }[];
   compact?: boolean;
+  /** Anchor the y-axis at zero so levels, not just swings, are readable. */
+  fromZero?: boolean;
 }) {
   const id = useId();
   const active = useContext(PanelActiveContext);
@@ -141,18 +144,20 @@ export function TrendChart({
               axisLine={false}
               tickLine={false}
               tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
-              domain={
-                references.length
-                  ? [
-                      (minimum: number) =>
+              domain={[
+                fromZero
+                  ? 0
+                  : references.length
+                    ? (minimum: number) =>
                         Math.min(minimum, ...references.map((r) => r.value)) *
-                        0.97,
-                      (maximum: number) =>
-                        Math.max(maximum, ...references.map((r) => r.value)) *
-                        1.03,
-                    ]
-                  : ["auto", "auto"]
-              }
+                        0.97
+                    : "auto",
+                references.length
+                  ? (maximum: number) =>
+                      Math.max(maximum, ...references.map((r) => r.value)) *
+                      1.03
+                  : "auto",
+              ]}
             />
             <Tooltip
               contentStyle={{

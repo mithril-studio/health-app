@@ -25,7 +25,8 @@ const run = {
   icu_training_load: 55,
   average_heartrate: 151,
   icu_threshold_pace: 4.5,
-  hr_zone_times: [60, 600, 420],
+  icu_hr_zone_times: [60, 600, 420],
+  icu_hr_zones: [126, 140, 191],
   pace_zone_times: [100, 500, 480],
 };
 const event = {
@@ -64,7 +65,9 @@ function dashboard() {
       id: addDays(now, i - 13),
       hrv: i === 4 ? null : 55 + i,
       sleepSecs: i === 8 ? null : 25000 + i * 200,
-      restingHR: 48 + (i % 3),
+      // Day 4 has no WHOOP HRV, so its watch resting HR must not be shown.
+      restingHR: i === 4 ? 140 : 48 + (i % 3),
+      readiness: i === 4 ? null : 30 + i * 4,
       ctl: 40 + i / 2,
       atl: 51 + i / 3,
     })),
@@ -234,8 +237,15 @@ test("minimal shell, paired overview charts, and weekly measured zones", async (
   const zones = page.locator(".card").filter({
     has: page.getByRole("heading", { name: "Time in zones", exact: true }),
   });
-  await expect(zones.locator(".coverage-note")).toContainText("3 / 3");
+  // Running is the default; football and gym never count toward running zones.
+  await expect(zones.locator(".coverage-note")).toContainText("1 / 1");
   await expect(zones.locator(".zone-row")).toHaveCount(3);
+  await expect(zones.locator(".zone-range").nth(1)).toHaveText("127–140 bpm");
+  await zones.getByRole("button", { name: "Cycling", exact: true }).click();
+  await expect(zones.locator(".coverage-note")).toContainText("0 / 0");
+  await expect(
+    zones.getByRole("button", { name: "Pace", exact: true }),
+  ).toHaveCount(0);
   const row = page.locator(".card-grid").first();
   const charts = row.locator(":scope > .card");
   await expect(charts).toHaveCount(2);
@@ -377,10 +387,11 @@ test("insights switch curves and zones without inventing missing metrics", async
   );
   await page.getByRole("button", { name: "Previous", exact: true }).click();
   await expect(page.locator(".insight-week-control > span")).toHaveText("Week");
+  await page.getByRole("button", { name: "Pace", exact: true }).click();
+  await expect(page.getByText(/No pace zone time recorded/)).toBeVisible();
+  await page.getByRole("button", { name: "Cycling", exact: true }).click();
   await page.getByRole("button", { name: "Power", exact: true }).click();
-  await expect(
-    page.getByText("No measured zones for this selection."),
-  ).toBeVisible();
+  await expect(page.getByText(/No power zone time recorded/)).toBeVisible();
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.locator(".insight-week-control > span")).toHaveText(
     "This week",
@@ -391,6 +402,17 @@ test("insights switch curves and zones without inventing missing metrics", async
   await expect(
     page.getByRole("combobox", { name: "Insight period" }),
   ).toBeVisible();
+  const tiles = page.locator("#insights-recovery-panel .recovery-tabs button");
+  await expect(tiles).toHaveCount(5);
+  await expect(tiles.filter({ hasText: "Resting HR" })).toContainText("49");
+  await expect(tiles.filter({ hasText: "Recovery score" })).toContainText("82");
+  await expect(
+    tiles.filter({ hasText: "Recovery score" }).locator(".recovery-band.high"),
+  ).toHaveCount(1);
+  await tiles.filter({ hasText: "Recovery score" }).click();
+  await expect(
+    page.locator("#insights-recovery-panel .chart-legend").last(),
+  ).toContainText("Recovery score");
   // One week of load per sport has no neighbours; it must still be drawn.
   await expect(
     page
